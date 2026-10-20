@@ -13,6 +13,7 @@ import os
 
 from . import boxes as _boxes
 from . import reader
+from . import units as _units
 
 FORMAT = "dot-bsp-intermediate"
 VERSION = 1
@@ -115,13 +116,16 @@ def _isnum(t):
         return False
 
 
-def build(bsp, credit=None, faces=False, displacements=False, slab=_boxes.SLAB, name=None):
+def build(bsp, credit=None, faces=False, displacements=False, slab=_boxes.SLAB, name=None, scale=None):
     """The intermediate document for a loaded `reader.Bsp`.
 
     `faces` adds the world's drawn faces (polygons by material) and `displacements` the
     terrain triangles; both are off by default because a box game reads neither and a surf
-    map's faces are tens of megabytes of JSON.
+    map's faces are tens of megabytes of JSON. `scale` is metres per unit (`units.VISUAL` by
+    default, `units.HULL` for a game that wants a 72 unit player to be 1.83 m); the geometry
+    stays in map units either way, and the choice is written to `units.metres_per_unit`.
     """
+    scale = _units.parse_scale(scale if scale is not None else _units.VISUAL)
     mats, mat_index = [], {}
 
     def mat(name_):
@@ -191,7 +195,7 @@ def build(bsp, credit=None, faces=False, displacements=False, slab=_boxes.SLAB, 
 
     doc = {
         "format": FORMAT, "version": VERSION,
-        "units": {"length": "map units; metres = units * %g" % reader.METRES_PER_UNIT,
+        "units": {"length": "map units; metres = units * %g" % scale, "metres_per_unit": scale,
                   "axes": "map axes, Z up; Godot = (x, z, -y)", "angles": "degrees (pitch, yaw, roll); yaw about +Z from +X"},
         "source": {"name": name or os.path.splitext(os.path.basename(bsp.path))[0],
                    "file": os.path.basename(bsp.path), "bytes": len(bsp.d),

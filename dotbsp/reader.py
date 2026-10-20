@@ -164,7 +164,18 @@ class Bsp:
         b, sz = self._lump(i), struct.calcsize(fmt)
         return [struct.unpack_from(fmt, b, o) for o in range(0, len(b) - sz + 1, sz)]
 
+    def truncated(self):
+        """Lump numbers whose record points past the end of the file (a cut-off download)."""
+        return [i for i, (off, ln, _v) in enumerate(self.dir) if ln > 0 and off + ln > len(self.d)]
+
     def load(self):
+        # [b]A cut-off file converts to an empty map without this[/b]: every lump past the cut
+        # reads as zero bytes, so 0 brushes and 0 entities came back with no error. Helix's
+        # deathrun map arrived as a 4 MB piece of a 23 MB file and looked like a reader crash.
+        cut = self.truncated()
+        if cut:
+            raise ValueError("%s is cut off: lumps %s run past the end of its %d bytes (an incomplete download or extraction)"
+                             % (self.path or "bsp", cut[:8], len(self.d)))
         # normal(3f), dist(f), type(i). Kept for exact face normals: a brush face lies on
         # its plane by construction, so a normal from the winding is strictly worse.
         self.planes = self._array(LUMP_PLANES, "<4fi")
@@ -394,18 +405,30 @@ class Bsp:
 
     # -- game lumps, static props, the embedded zip ------------------------
     def game_lumps(self):
-        """{four-character id: (version, bytes)} for every game lump the map has."""
+        """{four-character id: (version, bytes)} for every game lump the map has.
+
+        [b]A map can carry an empty or cut-off game lump[/b] (compiled with no static props, or a
+        file whose directory points past its end: Helix's deathrun map). Reading the count from
+        zero bytes raised struct.error out of the whole conversion, and zombie-zone-maps worked
+        round it by catching everything. Here a lump too short for its own directory, or an entry
+        that points outside the file, costs that lump, never the map.
+        """
         off, ln, _ = self.dir[LUMP_GAME]
-        if not ln:
+        raw = self.d[off:off + ln] if ln > 0 and 0 <= off < len(self.d) else b""
+        if len(raw) < 4:
             return {}
-        raw = self.d[off:off + ln]
         count = struct.unpack_from("<i", raw, 0)[0]
         out = {}
-        for i in range(count):
+        for i in range(max(0, min(count, (len(raw) - 4) // 16))):
             gid, _flags, version, fileofs, filelen = struct.unpack_from("<4sHHii", raw, 4 + 16 * i)
+            if fileofs < 0 or filelen <= 0 or fileofs + filelen > len(self.d):
+                continue
             data = self.d[fileofs:fileofs + filelen]
             if data[:4] == b"LZMA":
-                data = decompress_lump(data)
+                try:
+                    data = decompress_lump(data)
+                except Exception:      # a bad LZMA stream costs this lump only
+                    continue
             out[gid[::-1].decode("ascii", "replace")] = (version, data)
         return out
 

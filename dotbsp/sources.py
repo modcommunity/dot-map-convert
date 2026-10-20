@@ -11,9 +11,12 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import zipfile
 
-ARCHIVES = (".zip", ".rar", ".7z")
+from . import gma
+
+ARCHIVES = (".zip", ".rar", ".7z", ".gma")
 
 
 class Source:
@@ -59,6 +62,15 @@ def in_archive(path):
     """Every .bsp inside one archive, as Sources."""
     out = []
     low = path.lower()
+    if low.endswith(".gma"):
+        # fastgmad extracts to a temporary directory that is gone before this returns, so the
+        # bytes are read once here (a workshop addon holds one or a few maps).
+        try:
+            for member, data in gma.read_bsps(path):
+                out.append(Source(_stem(member), path, member, len(data), lambda d=data: d))
+        except gma.GmaError as e:
+            raise OSError(str(e))
+        return out
     if low.endswith(".zip"):
         try:
             z = zipfile.ZipFile(path)
@@ -113,7 +125,10 @@ def find(paths):
     res = []
     for s in out:
         if isinstance(s, tuple):
-            res.extend(in_archive(s[1]))
+            try:
+                res.extend(in_archive(s[1]))
+            except OSError as e:       # one unreadable archive does not end a listing
+                print("unreadable: %s: %s" % (s[1], e), file=sys.stderr)
         else:
             res.append(s)
     return res

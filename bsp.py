@@ -43,9 +43,14 @@ def cmd_convert(args):
             file=sys.stderr)
         return 2
     src = found[0]
-    bsp = reader.Bsp(src.member or src.origin, data=src.read()).load()
-    doc = intermediate.build(bsp, credit=_credit(args), faces=args.faces,
-                             displacements=args.displacements, name=src.name)
+    try:
+        bsp = reader.Bsp(src.member or src.origin, data=src.read()).load()
+        doc = intermediate.build(bsp, credit=_credit(args), faces=args.faces,
+                                 displacements=args.displacements, name=src.name,
+                                 scale=args.scale)
+    except (ValueError, OSError) as e:      # a cut-off or malformed map is a message, not a traceback
+        print("%s: %s" % (src.label(), e), file=sys.stderr)
+        return 1
     if not doc["credit"].get("author") or not doc["credit"].get("page"):
         print("warning: no author or page in the credit; a converted map ships with both", file=sys.stderr)
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
@@ -134,6 +139,8 @@ def main(argv):
     c.add_argument("--licence")
     c.add_argument("--no-share-check", dest="no_share_check",
                    help="when and how the page was checked for a do-not-share note")
+    c.add_argument("--scale", default="visual",
+                   help="metres per unit: visual (0.01905, the default), hull (0.0254, a 72 unit player is 1.83 m) or a number")
     c.add_argument("--faces", action="store_true", help="include the world's drawn faces")
     c.add_argument("--displacements", action="store_true", help="include terrain triangles")
     lst = sub.add_parser("list", help="inventory maps")

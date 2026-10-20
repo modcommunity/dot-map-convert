@@ -1,11 +1,12 @@
 # tools/bsp: the family's one BSP map converter
 
-Reads community maps in the VBSP v19-21 format, inventories a folder of them, and writes each as one documented intermediate JSON that a game's thin adapter turns into that game's own map document. Python 3, standard library only (plus `unrar` or `7z` on the path to list `.rar`/`.7z` downloads).
+Reads community maps in the VBSP v19-21 format, inventories a folder of them, and writes each as one documented intermediate JSON that a game's thin adapter turns into that game's own map document. Python 3, standard library only (plus `unrar` or `7z` on the path to list `.rar`/`.7z` downloads, and `fastgmad` for `.gma` workshop archives).
 
 ```bash
 python3 -I tools/bsp/bsp.py list ~/godot/inspirations/g2gfast --converted ~/godot --markdown
 python3 -I tools/bsp/bsp.py convert map.zip --out map.json --author "A" --page https://... --licence "CC BY-NC-ND 4.0" --no-share-check "2026-10-19: none"
 python3 -I tools/bsp/tests/test_dotbsp.py            # 26 tests on maps written from scratch
+python3 -I tools/bsp/tests/test_lift.py              # the pieces lifted from the adapters (flood, classifier, props, lights, plan, .gma, guards)
 DOTBSP_TEST_MAPS=~/maps python3 -I tools/bsp/tests/test_dotbsp.py RealMaps   # and on real ones
 ```
 
@@ -25,6 +26,14 @@ The split is: dot-map reads the format and cuts brushes into boxes; the game dec
 | `dotbsp/boxes.py` | `decompose(planes, hull)`: a brush as boxes, the union of the converters' fixes |
 | `dotbsp/intermediate.py` | `build(bsp, credit)` writes the intermediate; `summary` is what `list` prints; `check(doc)` before trusting one |
 | `dotbsp/sources.py` | finding maps in folders and archives; which game a prefix belongs to; which maps the `*-maps` repositories already have |
+| `dotbsp/units.py` | the two scales (`VISUAL` 0.01905, `HULL` 0.0254), `to_game`, `from_metres` |
+| `dotbsp/entities.py` | the entity classifier (`classify_entity`), the brush classifier (`classify_brush`), `teleports` / `teleport_destination` / `pad_rect` |
+| `dotbsp/props.py` | `PropTable` and `placed_props`: a map's placed models (entities and static props) matched to a game's own, `model_census` |
+| `dotbsp/lights.py` | `to_game` (lights to metres, range and energy, suns apart), `thin`, `auto` |
+| `dotbsp/gamebox.py` | `model_boxes`: a model's brushes as game-metre boxes with the source material and kind |
+| `dotbsp/flood.py` | `Flood`: reachable space over boxes with step, jump, drop and head room; `floor_rects`, `keep_starts` |
+| `dotbsp/plan.py` | `extract`: a room plan from walls that do not close (seal, outside flood, doorway erosion, rooms on a coarse grid) |
+| `dotbsp/gma.py` | `.gma` workshop archives through fastgmad (`sources.find` and `bsp.py` take a `.gma` like a zip) |
 | `bsp.py` | the CLI |
 | `tests/` | `synth.py` writes a small VBSP file from scratch (v19, v20, v21 in both record orders, a brush entity); `test_dotbsp.py` |
 
@@ -44,6 +53,43 @@ The split is: dot-map reads the format and cuts brushes into boxes; the game dec
 | Slabs cut along the slope, each spanning the brush's own cross-section at its middle | zombie-zone-maps (the others cut along the longer axis, across the bounding box) |
 | A wedge is not a box: an axis box wants all eight corners | new here, found by the tests; three copies wrote a ramp as a block because a wedge's six corners are all box corners |
 
+## The pieces lifted out of the adapters (2026-10-20, nightly dot-map-bsp-import-1)
+
+Each maps repository grew these on its own. They are here now, each with a test in `tests/test_lift.py`; an adapter keeps only what a *game* decides (its materials, its spec keys, its document).
+
+**The flood** (`flood.Flood`) is zombie-zone-maps' `build_nav` with the module globals made parameters, and reproduces it exactly: on twelve runs over six committed zombie maps (with and without `wide`, both floor packers) the cells, parents, distances, links, surfaces and floor rectangles are identical. It works on boxes in metres, so any game's document can ask "can a body walk from the start to here?". Disagreement: prop-hunt, hide-n-seek and murder-mystery-maps each had a second, 0.1 m flat flood (`prune_pockets`) with one floor height; the cell flood is multi-storey, has the step, jump, drop and head-room limits and `wide`, so it is the one kept. `Flood(boxes, cell=0.1, head=1.4, step=0.3)` is the closest equivalent to the flat one; whether the bots' mesh erosion (0.35 m) is the adapter's to add on top was not settled, so `prune_pockets` is not deleted yet.
+
+**The classifiers** (`entities`). `classify_entity` merges the class lists of five adapters (the physics-prop and rotating-door/button classes were missing from some). `classify_brush` is zombie-zone's: tools-only brushes are invisible or sky, clip contents are invisible, the *top* face's material names a solid. Prop-hunt's and hide-n-seek's `classify(name)` are material-name to surface-kind tables; those are the game's and stay in the adapter.
+
+**Prop matching** (`props`) is case-blind and slash-blind for entities *and* static props. zombie-zone-maps lower-cased the table for static props but matched entities exactly first; one rule now.
+
+**Lights** (`lights`) keep zombie-zone-maps' range and energy formulas (three games were tuned against them) as defaults. `thin` is murder-mystery-maps' `--max-lights`, made deterministic (brightest first, optional minimum spacing). A `light_environment` is a sun with a direction, not a lamp at its origin; its `pitch` is the direction itself (-90 is straight down), the opposite sign of a camera's.
+
+**`.gma`**: fastgmad does the reading (nothing was written, on purpose). It extracts into a fresh temporary directory; only `*.bsp` files are read back into memory; the directory is removed before the call returns. `bsp.py list` and `convert` take a `.gma`; an unreadable archive is one `unreadable:` line, not the end of a listing. dot-bootstrap must install fastgmad (not done here; it is another repository).
+
+**Reader guards.** `game_lumps` returned a `struct.error` on an empty or short lump; it now returns `{}` for a lump too short for its own directory, an entry pointing outside the file, or a bad LZMA stream (zombie-zone-maps caught every exception instead). Separately `load()` now refuses a file whose lump table points past its end with a message naming the lumps. **Helix's "model brush crash" was neither**: `deathrun_helix_b8.bsp` in `~/mapsrc/deathrun/126992/x` is a 4.2 MB piece of a 23 MB file (an incomplete extraction), and the traceback was the game lump on a cut-off file. `deathrun_helix_b8-1.bsp` (23 MB, the complete one) reads and converts: 3797 brushes, 1076 entities, 45 spawns, with brush models. Re-extract the .rar rather than looking for a model-brush bug.
+
+**Scale.** `intermediate.build(scale=)` and `bsp.py convert --scale visual|hull|<number>` write `units.metres_per_unit` (default 0.01905, unchanged geometry). Both scales stay: 0.01905 is what the art was modelled to and what the box games keep, 0.0254 is what makes the 72-unit player hull 1.83 m, which deathrun's timings and look-at-me's room sizes need. A document never mixes them. Box slabs are given in metres through `gamebox.model_boxes(slab_m=, scale=)` so a 0.0254 game gets the same physical slab.
+
+**Teleports.** `entities.teleports(doc)` resolves every `trigger_teleport` to its destination (the `info_teleport_destination` first when a decoy shares the targetname), returns `None` rather than raising when the map names one that does not exist, and carries a landmark. `pad_rect` widens a thin trigger to a stride. The *pad itself* (the game piece) is GDScript and not lifted.
+
+**Plan from open walls** (`plan.extract`) is look-at-me's `bsp_layout.py` without numpy and scipy, plus: walls from brush entities of chosen classes (`func_brush` by default), explicit rectangles, and static props by model name with a footprint; and a *seal* that grows the walls before the outside is flooded, so doorways and broken windows narrower than twice the seal do not let the outside in (without it the whole building is "outside" and the plan comes back empty, which the test shows).
+
+### What each adapter can now delete
+
+Deleted nowhere yet: the maps repositories were being edited by conversion agents, so these are the statements for the per-repo builders.
+
+| Repository | Can delete, using |
+| --- | --- |
+| zombie-zone-maps `tools/import_bsp.py` | `_safe_game_lumps` and the `reader.Bsp.game_lumps` patch; `Brush`, `read_brush`, `classify`, `boxes_from_brush`, `model_boxes` (to `gamebox.model_boxes` + its `material_for`); `inside_box`, `cell_index`, `_thin_wall_over`, `surfaces_at`, `build_nav`, `floor_at` and the `CELL`/`DROP`/`JUMP`/`STEP`/`HEAD`/`THIN_*`/`GREEDY_FLOORS`/`MIN_FLOOR_Y` globals (to `flood.Flood`); the prop-model matching of entities and static props (`props.placed_props`); the light loop and `auto_lights` (`lights.to_game`/`thin`/`auto`); the `gate_classes`/`solid_classes` defaults (`entities`) |
+| mg-deathrun-maps `tools/bsp_to_course.py` | `planes_of`, `z_range`, `box_in_frame`, `turned_box`, `prism_box`, `brush_boxes` (to `boxes.decompose`, converting with `units.HULL`); the `trigger_teleport` / `info_teleport_destination` lookups with `next()` (to `entities.teleports`, `pad_rect`); `bsp_read.py` shim once it imports `dotbsp` directly. Helix: re-extract `deathrun_helix_b8` from the .rar |
+| hide-n-seek-maps `tools/import_bsp.py` | `planes_of`, `z_range`, `box_in_frame`, `turned_box`, `prism_box`, `brush_boxes`, `terrain_boxes` (`boxes.terrain_cells`); `prune_pockets`'s flood after a trial on `flood.Flood`; the prop-model lookup (`PropTable`); the light loop; the `prop_door_rotating`/door class tests (`entities`) |
+| mg-prop-hunt-maps `tools/import_bsp.py`, `bsp_read.py` | the same as hide-n-seek-maps (the two are copies); `bsp_read.py` becomes the shim |
+| murder-mystery-maps `tools/import_bsp.py` | the box helpers (`dboxes.decompose`); `--max-lights` thinning (`lights.thin`); the start filter (`Flood.keep_starts`); `prune_pockets`; the prop lookups; the light loop |
+| game-playground-maps `tools/import_bsp.py` | `planes_of`, `z_range`, `box_in_frame`, `turned_box`, `prism_box`, `ramp_box`, `brush_boxes` (to `boxes.decompose(tilt=True)`); light conversion; entity class tests |
+| mg-wipeout-maps | no importer yet (`tools/build.py` only): start from `gamebox`, `entities`, `props`, `lights`; `bsp.py convert` takes the workshop `.gma` directly |
+| mg-look-at-me (a game, not a maps repo) | `tools/bsp_layout.py` becomes a call to `plan.extract` (and `plan.ascii_plan` for `--ascii`); numpy and scipy go |
+
 ## The intermediate (`dot-bsp-intermediate`, version 1)
 
 One JSON object. Map units and map axes throughout (Z up, 1 unit = 0.01905 m, Godot = (x, z, -y), yaw about +Z from +X); a game converts on the way out, so one document serves games with different scales.
@@ -51,7 +97,7 @@ One JSON object. Map units and map axes throughout (Z up, 1 unit = 0.01905 m, Go
 | Key | Holds |
 | --- | --- |
 | `format`, `version` | `"dot-bsp-intermediate"`, `1`. A reader refuses a newer version (`intermediate.check`) |
-| `units` | the conventions above, in words |
+| `units` | the conventions above, in words, and `metres_per_unit` (0.01905 by default; `--scale hull` writes 0.0254) |
 | `source` | `name`, `file`, `bytes`, `sha256`, `bsp_version`, `revision`: which download this was |
 | `credit` | `author`, `page`, `licence`, `no_share_check` (when and what the page said about sharing), `notes`, and any other key the caller passed (a credit line for the map-change screen). `convert` warns when there is no author or page |
 | `world` | `mins`, `maxs`, and the worldspawn `keys` (sky name and so on) |
