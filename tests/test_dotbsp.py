@@ -4,6 +4,8 @@ Every map here is written by tests/synth.py. Set DOTBSP_TEST_MAPS to a directory
 .bsp files to also convert each and check the document (slow; not run by default).
 """
 
+import copy
+import importlib.util
 import io
 import json
 import math
@@ -11,6 +13,7 @@ import os
 import sys
 import tempfile
 import unittest
+import subprocess
 import zipfile
 from contextlib import redirect_stderr, redirect_stdout
 
@@ -20,7 +23,7 @@ sys.path.insert(0, HERE)
 
 import bsp as cli                                     # noqa: E402
 import synth                                          # noqa: E402
-from dotbsp import boxes, intermediate, reader, sources  # noqa: E402
+from dotbsp import boxes, docboxes, gma, intermediate, lights, reader, sources  # noqa: E402
 
 
 def cube_planes(x0, y0, z0, x1, y1, z1):
@@ -260,6 +263,345 @@ class Cli(unittest.TestCase):
         self.assertEqual(sources.target("bhop_x"), "game-g2gfast")
         self.assertEqual(sources.target("ph_x"), "mg-prop-hunt")
         self.assertIsNone(sources.target("unknown_x"))
+
+
+# ---- the helpers moved out of the maps repositories' importers --------------------------------
+#
+# Each test loads a repository's own copy straight from its checkout (they sit beside dot-map in
+# ~/godot) and compares on that repository's committed documents. A checkout that is not there
+# skips its comparison; the fixtures below run everywhere.
+
+GODOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
+
+
+def repo_importer(repo):
+    """The repository's tools/import_bsp.py as a module, or None when it is not checked out."""
+    path = os.path.join(GODOT, repo, "tools", "import_bsp.py")
+    if not os.path.isfile(path):
+        return None
+    tools = os.path.dirname(path)
+    sys.path.insert(0, tools)
+    sys.modules.pop("build_maps", None)
+    try:
+        spec = importlib.util.spec_from_file_location("copy_" + repo.replace("-", "_"), path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+    finally:
+        sys.path.remove(tools)
+    return mod
+
+
+def repo_docs(repo, limit=None):
+    d = os.path.join(GODOT, repo, "maps")
+    if not os.path.isdir(d):
+        return []
+    out = []
+    for n in sorted(os.listdir(d)):
+        if n.endswith(".json"):
+            with open(os.path.join(d, n)) as fh:
+                doc = json.load(fh)
+            if isinstance(doc, dict) and "boxes" in doc:
+                out.append((n, doc))
+    return out[:limit]
+
+
+COPIES = ("hide-n-seek-maps", "mg-prop-hunt-maps", "murder-mystery-maps")
+
+
+class DocBoxes(unittest.TestCase):
+    def each_copy(self):
+        found = 0
+        for repo in COPIES:
+            mod = repo_importer(repo)
+            if mod is not None:
+                found += 1
+                yield repo, mod
+        if not found:
+            self.skipTest("no maps repository is checked out beside dot-map")
+
+    def test_within_and_suburban_surface_match_every_copy(self):
+        for repo, mod in self.each_copy():
+            for _n, doc in repo_docs(repo, 3):
+                for b in doc["boxes"][:60]:
+                    for x, z in ((b["at"][0], b["at"][2]), (b["at"][0] + 1.3, b["at"][2] - 0.7), (-3.0, 4.0)):
+                        for slack in (0.0, 0.2):
+                            self.assertEqual(docboxes.within(b, x, z, slack), mod.within(b, x, z, slack), repo)
+                    self.assertEqual(docboxes.suburban_surface(b["at"], b["size"]), mod.suburban_surface(b["at"], b["size"]), repo)
+        for w, h, d, y, z in ((10, 0.3, 4, 6, 1), (10, 0.3, 4, 0, 1), (0.2, 2.5, 5, 0, 0), (3, 9, 8, 4, -2),
+                              (3, 9, 8, 4, 2), (8, 9, 3, 4, 2), (3, 5, 3, 0, 0), (1, 1, 1, 0, 0), (1, 3, 2, 0, 0)):
+            for _repo, mod in self.each_copy():
+                at = [0.0, y, z]
+                self.assertEqual(docboxes.suburban_surface(at, [w, h, d]), mod.suburban_surface(at, [w, h, d]))
+
+    def test_widen_doors_matches_every_copy_and_does_something(self):
+        widened = 0
+        for repo, mod in self.each_copy():
+            for name, doc in repo_docs(repo):
+                a, b = copy.deepcopy(doc), copy.deepcopy(doc)
+                with_doors = "doors" in mod.widen_doors.__code__.co_varnames[:mod.widen_doors.__code__.co_argcount]
+                if with_doors:
+                    n1 = docboxes.widen_doors(a["boxes"], doors=a.get("doors", []))
+                    n2 = mod.widen_doors(b["boxes"], doors=b.get("doors", []))
+                    self.assertEqual(a.get("doors"), b.get("doors"), repo + " " + name)
+                else:
+                    n1, n2 = docboxes.widen_doors(a["boxes"]), mod.widen_doors(b["boxes"])
+                self.assertEqual((n1, a["boxes"]), (n2, b["boxes"]), repo + " " + name)
+                widened += n1
+        self.assertGreaterEqual(widened, 0)
+
+    def test_widen_doors_on_a_wall_with_a_one_metre_gap(self):
+        def wall(x, w):
+            return {"at": [x, 1.25, 0.0], "size": [w, 2.5, 0.2], "mat": "plaster"}
+        boxes_ = [wall(-2.0, 4.0), wall(3.0, 4.0)]          # ends at 0.0 and 1.0: a one metre gap
+        door = {"at": [0.5, 1.0, 0.0], "size": [0.9, 2.0, 0.05]}
+        self.assertEqual(docboxes.widen_doors(boxes_, 1.4, doors=[door]), 1)
+        gap = (boxes_[1]["at"][0] - boxes_[1]["size"][0] / 2) - (boxes_[0]["at"][0] + boxes_[0]["size"][0] / 2)
+        self.assertAlmostEqual(gap, 1.4, places=3)
+        self.assertAlmostEqual(door["size"][0], 1.38, places=3)
+        for repo, mod in self.each_copy():
+            if "doors" in mod.widen_doors.__code__.co_varnames:
+                ref = [wall(-2.0, 4.0), wall(3.0, 4.0)]
+                d2 = {"at": [0.5, 1.0, 0.0], "size": [0.9, 2.0, 0.05]}
+                mod.widen_doors(ref, 1.4, doors=[d2])
+                self.assertEqual((ref, d2), (boxes_, door), repo)
+
+    def test_drop_door_leaves_matches_every_copy(self):
+        class M:
+            def __init__(self, boxes_):
+                self.boxes = boxes_
+        leaf = {"at": [0, 1.0, 0], "size": [0.9, 2.0, 0.05], "mat": "wood"}
+        dropped_any = False
+        for repo, mod in self.each_copy():
+            docs = [doc for _n, doc in repo_docs(repo)] + [{"boxes": [leaf, dict(leaf, mat="concrete"), dict(leaf, size=[0.9, 2.5, 0.05])]}]
+            for doc in docs:
+                a, b = copy.deepcopy(doc["boxes"]), M(copy.deepcopy(doc["boxes"]))
+                n1, n2 = docboxes.drop_door_leaves(a), mod.drop_door_leaves(b)
+                self.assertEqual((n1, a), (n2, b.boxes), repo)
+                dropped_any = dropped_any or n1 > 0
+        self.assertTrue(dropped_any)
+
+    def test_prune_far_scenery_matches_every_copy(self):
+        for repo, mod in self.each_copy():
+            for name, doc in repo_docs(repo):
+                starts = [tuple(s["at"]) for s in next(iter(doc["spawns"].values()))[:2]]
+                far = {"at": [400.0, 1.0, 400.0], "size": [3.0, 2.0, 3.0], "mat": "concrete"}
+                a = copy.deepcopy(doc["boxes"]) + [far]
+
+                class M:
+                    boxes = copy.deepcopy(a)
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    mod.prune_far_scenery(M, starts)
+                msgs = []
+                n = docboxes.prune_far_scenery(a, starts, log=msgs.append)
+                self.assertEqual(a, M.boxes, repo + " " + name)
+                self.assertGreaterEqual(n, 1)
+                self.assertEqual(out.getvalue().strip(), msgs[0])
+        self.assertEqual(docboxes.prune_far_scenery([{"at": [0, 0, 0], "size": [1, 1, 1]}], []), 0)
+
+    def test_prune_pockets_matches_every_copy(self):
+        for repo, mod in self.each_copy():
+            spawn_key = "hiders" if "hide" in repo else ("props" if "prop" in repo else "players")
+            for name, doc in repo_docs(repo)[:2]:
+                a, b = copy.deepcopy(doc), copy.deepcopy(doc)
+                # A prop hard against a wall of its own room is the case the pass exists for.
+                n1 = docboxes.prune_pockets(a, mod.build_maps.size_of, mod.build_maps.footprint, spawn_key=spawn_key)
+                n2 = mod.prune_pockets(b)
+                self.assertEqual((n1, a["props"]), (n2, b["props"]), repo + " " + name)
+
+    def test_prune_pockets_drops_a_prop_in_a_sealed_closet(self):
+        def box(x, z, w, d, h=2.5):
+            return {"at": [x, h / 2, z], "size": [w, h, d], "mat": "concrete"}
+        floor = {"at": [0, -0.1, 0], "size": [12, 0.2, 6], "mat": "wood"}
+        closet = [box(4.0, 1.6, 3.4, 0.2), box(4.0, -1.6, 3.4, 0.2), box(2.4, 0, 0.2, 3.4), box(5.6, 0, 0.2, 3.4)]
+        doc = {"boxes": [floor] + closet, "props": [{"id": "cab", "at": [4.0, 0.0, 0.0], "yaw": 0.0}],
+               "spawns": {"hiders": [{"at": [-3.0, 0.0, 0.0]}]}}
+        size_of = lambda pid: (0.4, 1.2, 0.4)
+        footprint = lambda pid, yaw: (0.4, 0.4)
+        a = copy.deepcopy(doc)
+        self.assertEqual(docboxes.prune_pockets(a, size_of, footprint), 1)
+        self.assertEqual(a["props"], [])
+        b = copy.deepcopy(doc)
+        b["props"][0]["at"][0] = -1.0                            # in the open: nothing to drop
+        self.assertEqual(docboxes.prune_pockets(b, size_of, footprint), 0)
+        c = copy.deepcopy(doc)
+        c["spawns"] = {"props": c["spawns"]["hiders"]}            # the key is a parameter
+        self.assertEqual(docboxes.prune_pockets(c, size_of, footprint, spawn_key="props"), 1)
+
+    def test_scatter_cover_matches_every_copy(self):
+        class M:
+            def __init__(self):
+                self.placed = []
+
+            def spots(self, y, step, top):
+                return [(1.0 + (i * 7 % 5), float(i % 9) * 1.5, float(i // 9) * 1.5) for i in range(90)]
+
+            def prop(self, kind, x, z, yaw, y):
+                self.placed.append((kind, x, z, yaw, y))
+        for repo, mod in self.each_copy():
+            if not hasattr(mod, "scatter_cover"):
+                continue
+            a, b = M(), M()
+            n1 = docboxes.scatter_cover(a, 9, 7, mod.COVER_INDOOR, avoid=[(0.0, 0.0, 2.0)], avoid_r=0.0, clear=2.0)
+            n2 = mod.scatter_cover(b, 9, 7, avoid=[(0.0, 0.0, 2.0)], avoid_r=0.0, clear=2.0)
+            self.assertEqual((n1, a.placed), (n2, b.placed), repo)
+            self.assertGreater(n1, 0)
+
+    def test_terrain_cells_matches_the_copies_terrain_boxes(self):
+        tris = [((0.0, 0.0, 10.0), (200.0, 0.0, 12.0), (0.0, 200.0, 30.0)), ((200.0, 0.0, 12.0), (200.0, 200.0, 33.0), (0.0, 200.0, 30.0)),
+                ((400.0, 0.0, 5.0), (600.0, 0.0, 5.0), (400.0, 160.0, 5.0))]
+
+        class B:
+            def model_faces(self, i):
+                return [(0, 0, 0, 0, 0, 0, 1)]
+
+            def displacement_tris(self, f):
+                return tris
+        for repo, mod in self.each_copy():
+            if not hasattr(mod, "terrain_boxes"):
+                continue
+            # Their tuples are ((x0, x1), (height range), (y0, y1), mat); ours are dicts with the height under "z".
+            theirs = [t[:3] for t in mod.terrain_boxes(B())]
+            ours = boxes.terrain_cells(tris)
+            self.assertEqual([(o["x"], o["z"], o["y"]) for o in ours], theirs, repo)
+            self.assertGreater(len(ours), 1)
+
+    def test_material_helpers_match_every_copy(self):
+        class Bsp:
+            brushes = [(0, 4, 0)]
+            brushsides = [(0, 0, 0, 0), (0, 1, 0, 0), (0, 2, 0, 1), (0, 3, 0, 0), (0, -1, 0, 0)]
+            texinfo = [[0] * 17 + [i] for i in range(4)]
+            texdata = [(0, 0, 0, i) for i in range(4)]
+            texnames = ["dev/dev_measure", "Maps/ph_x/Wood/floor_1_2_3", "tools/toolsnodraw", "plaster/wall"]
+        for repo, mod in self.each_copy():
+            self.assertEqual(docboxes.brush_material_names(Bsp, 0), mod.brush_material(Bsp, 0), repo)
+            self.assertEqual(docboxes.classify_material("maps/ph_x/g/wood_floor_1_-2_3"), mod.classify("maps/ph_x/g/wood_floor_1_-2_3"))
+            if hasattr(mod, "pick_material"):
+                for names in (["WOOD/A"], ["TOOLS/X"], ["DEV/GRID", "BRICK/A", "BRICK/B"], ["DEV/GRID"], [], ["WOOD/B", "WOOD/A"]):
+                    self.assertEqual(docboxes.majority_material(names, mod.TEXTURE_MAP, ("flat", None)), mod.pick_material(names), repo)
+
+    def test_majority_tie_is_deterministic_across_hash_seeds(self):
+        table = [("ALPHA", "a", None), ("ZULU", "z", None)]
+        names = ["ZULU/1", "ALPHA/1", "ZULU/1", "ALPHA/1"]
+        self.assertEqual(docboxes.majority_material(names, table), ("a", None))      # the tie goes to the sorted-first name
+        self.assertEqual(docboxes.majority_material(list(reversed(names)), table), ("a", None))
+        code = ("import sys; sys.path.insert(0, %r); from dotbsp import docboxes; "
+                "print(docboxes.majority_material(%r, %r))" % (os.path.dirname(HERE), names, table))
+        outs = {subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True,
+                               env=dict(os.environ, PYTHONHASHSEED=str(seed))).stdout for seed in (0, 1, 2, 3, 4, 5)}
+        self.assertEqual(outs, {"('a', None)\n"})
+
+    def test_add_doors_matches_murder_mystery_including_skip(self):
+        def wall(x, z, w, d):
+            return {"at": [x, 1.25, z], "size": [w, 2.5, d], "mat": "plaster"}
+        doc = {"boxes": [wall(-2.0, 0, 4.0, 0.2), wall(3.0, 0, 4.0, 0.2), {"at": [0, -0.1, 0], "size": [12, 0.2, 6], "mat": "wood"}],
+               "props": [{"at": [0.4, 0.0, 0.6]}, {"at": [5.0, 0.0, 5.0]}], "doors": []}
+        # Door hinge at x 0.0 (finished), the leaf opening towards +x: map units are metres / 0.01905.
+        ents = [{"classname": "prop_door_rotating", "origin": "%f %f 0" % (0.0 / 0.01905, 0.0)},
+                {"classname": "prop_door_rotating", "origin": "%f %f 0" % (1.0 / 0.01905, -20.0 / 0.01905)},
+                {"classname": "light"}]
+        class M:
+            def __init__(self):
+                self.calls = []
+
+            def door(self, *a, **k):
+                self.calls.append((a, k))
+        mod = repo_importer("murder-mystery-maps")
+        if mod is None:
+            self.skipTest("murder-mystery-maps is not checked out")
+
+        class Bsp:
+            entities = ents
+        for skip in ([], [(0.0, 0.0)]):
+            a, b = M(), M()
+            da, db = copy.deepcopy(doc), copy.deepcopy(doc)
+            mod.SKIP_DOORS[:] = skip
+            out = io.StringIO()
+            with redirect_stdout(out):
+                n2 = mod.add_doors(b, db, Bsp, (0.0, 0.0, 0.0))
+            msgs = []
+            n1 = docboxes.add_doors(a, da, ents, (0.0, 0.0, 0.0), skip=skip, log=msgs.append)
+            mod.SKIP_DOORS[:] = []
+            self.assertEqual((n1, a.calls, da["props"]), (n2, b.calls, db["props"]))
+            self.assertEqual("\n".join(msgs) + "\n", out.getvalue())
+            self.assertEqual(n1, 0 if skip else 1, skip)
+
+
+class LightsEquivalence(unittest.TestCase):
+    @staticmethod
+    def original(lamps, max_lights):
+        """murder-mystery-maps' import_bsp.py loop, transcribed: (kept, gap)."""
+        gap = 0.0
+        kept_l = lamps
+        while len(kept_l) > max_lights:
+            gap += 0.5
+            kept_l = []
+            for l in lamps:
+                if all((l[0] - k[0]) ** 2 + (l[1] - k[1]) ** 2 + (l[2] - k[2]) ** 2 >= gap * gap for k in kept_l):
+                    kept_l.append(l)
+        return kept_l, gap
+
+    def test_thin_by_gap_is_the_original_loop(self):
+        import random
+        rng = random.Random(3)
+        for n, cap in ((10, 20), (60, 20), (200, 128), (300, 40)):
+            pts = [(rng.uniform(0, 30), rng.uniform(0, 3), rng.uniform(0, 30), 0.5, [1, 1, 1]) for _ in range(n)]
+            self.assertEqual(lights.thin_by_gap(pts, cap), self.original(pts, cap))
+            dicts = [{"at": list(p[:3]), "energy": p[3]} for p in pts]
+            kept, gap = lights.thin_by_gap(dicts, cap)
+            self.assertEqual([d["at"] for d in kept], [list(p[:3]) for p in self.original(pts, cap)[0]])
+            self.assertEqual(gap, self.original(pts, cap)[1])
+        self.assertEqual(lights.thin_by_gap([], 5), ([], 0.0))
+
+    def test_thin_by_gap_on_murder_mystery_lights(self):
+        mod = repo_importer("murder-mystery-maps")
+        if mod is None:
+            self.skipTest("murder-mystery-maps is not checked out")
+        docs = repo_docs("murder-mystery-maps")
+        self.assertTrue(docs)
+        for name, doc in docs:
+            pts = [tuple(l["at"]) + (l.get("energy", 1.0), l.get("colour")) for l in doc["lights"]]
+            for cap in (3, max(1, len(pts) // 2)):
+                self.assertEqual(lights.thin_by_gap(pts, cap), self.original(pts, cap), name)
+
+    def test_strengthen_is_the_originals_energy(self):
+        for en in (0.2, 0.9, 1.2):
+            for gap in (0.0, 0.5, 4.0):
+                self.assertEqual(lights.strengthen(en, gap), min(1.6, en * (1.0 + gap / 8.0)))
+
+
+class FastgmadLookup(unittest.TestCase):
+    def test_localappdata_is_searched_on_windows_only(self):
+        with tempfile.TemporaryDirectory() as t:
+            exe = os.path.join(t, "fastgmad", "fastgmad.exe")
+            os.makedirs(os.path.dirname(exe))
+            with open(exe, "w") as fh:
+                fh.write("x")
+            os.chmod(exe, 0o755)
+            keep = (gma._on_windows, os.environ.get("LOCALAPPDATA"), os.environ.get("DOTBSP_FASTGMAD"), os.environ.get("PATH"))
+            try:
+                os.environ["PATH"] = t                       # nothing named fastgmad here
+                os.environ.pop("DOTBSP_FASTGMAD", None)
+                os.environ["LOCALAPPDATA"] = t
+                gma._on_windows = lambda: True
+                found = gma.find_fastgmad()
+                home_hit = os.path.isfile(os.path.expanduser("~/.local/bin/fastgmad"))
+                self.assertEqual(found, exe if not home_hit else found)
+                self.assertIn(exe, gma._windows_candidates())
+                gma._on_windows = lambda: False               # elsewhere: a no-op
+                self.assertEqual(gma._windows_candidates(), [])
+                if not home_hit:
+                    self.assertIsNone(gma.find_fastgmad())
+                gma._on_windows = lambda: True
+                del os.environ["LOCALAPPDATA"]                 # unset: a no-op too
+                self.assertEqual(gma._windows_candidates(), [])
+            finally:
+                gma._on_windows = keep[0]
+                for k, v in zip(("LOCALAPPDATA", "DOTBSP_FASTGMAD", "PATH"), keep[1:]):
+                    if v is None:
+                        os.environ.pop(k, None)
+                    else:
+                        os.environ[k] = v
 
 
 @unittest.skipUnless(os.environ.get("DOTBSP_TEST_MAPS"), "set DOTBSP_TEST_MAPS to a folder of real maps")

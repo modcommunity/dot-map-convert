@@ -81,6 +81,32 @@ def thin(lamps, max_lights=100, min_spacing=0.0):
     return [lamps[i] for i in sorted(keep)]
 
 
+def thin_by_gap(points, max_lights, step=0.5):
+    """(kept, gap): murder-mystery-maps' `--max-lights`, exactly. Items stay in document order; the
+    minimum gap between kept ones starts at 0 and widens by `step` metres until at most `max_lights`
+    fit; an item is kept when it is at least `gap` from every one kept so far (3D, compared squared).
+    `points` are [x, y, z] sequences or lamp dicts with an `at` of three numbers (both are read)."""
+    def at(p):
+        return p["at"] if isinstance(p, dict) else p
+
+    gap = 0.0
+    kept = list(points)
+    while len(kept) > max_lights:
+        gap += step
+        kept = []
+        for l in points:
+            a = at(l)
+            if all((a[0] - at(k)[0]) ** 2 + (a[1] - at(k)[1]) ** 2 + (a[2] - at(k)[2]) ** 2 >= gap * gap for k in kept):
+                kept.append(l)
+    return kept, gap
+
+
+def strengthen(energy, gap, cap=1.6, per_metre=1 / 8.0):
+    """A kept lamp's energy after thinning to `gap`: a little stronger for those it stood for
+    (murder-mystery-maps: `min(1.6, e * (1 + gap / 8))`). Its range is `9 + gap` there."""
+    return min(cap, energy * (1.0 + gap * per_metre))
+
+
 def auto(cells, cell=0.5, spacing=6.0, height=2.3, maximum=100, range_=7.0, energy=0.9, colour=(1.0, 0.93, 0.8)):
     """Lamps for a map with none. `cells` is {(ix, iz): floor y} (or an iterable of (ix, iz, y))
     of `cell`-metre ground cells, which the caller has already limited to the ground it wants lit

@@ -24,12 +24,13 @@ The split is: dot-map reads the format and cuts brushes into boxes; the game dec
 | --- | --- |
 | `dotbsp/reader.py` | `Bsp`: lumps (LZMA too), brushes and hulls, the BSP-tree walk to a model's brushes, faces, displacements, static props, the packed zip; unit and axis helpers |
 | `dotbsp/boxes.py` | `decompose(planes, hull)`: a brush as boxes, the union of the converters' fixes |
+| `dotbsp/docboxes.py` | the importers' shared passes over a *document's* boxes (metres, Godot axes): `within`, `classify_material`, `brush_material_names`, `majority_material`, `suburban_surface`, `widen_doors`, `drop_door_leaves`, `add_doors`, `prune_far_scenery`, `prune_pockets`, `scatter_cover` |
 | `dotbsp/intermediate.py` | `build(bsp, credit)` writes the intermediate; `summary` is what `list` prints; `check(doc)` before trusting one |
 | `dotbsp/sources.py` | finding maps in folders and archives; which game a prefix belongs to; which maps the `*-maps` repositories already have |
 | `dotbsp/units.py` | the two scales (`VISUAL` 0.01905, `HULL` 0.0254), `to_game`, `from_metres` |
 | `dotbsp/entities.py` | the entity classifier (`classify_entity`), the brush classifier (`classify_brush`), `teleports` / `teleport_destination` / `pad_rect` |
 | `dotbsp/props.py` | `PropTable` and `placed_props`: a map's placed models (entities and static props) matched to a game's own, `model_census` |
-| `dotbsp/lights.py` | `to_game` (lights to metres, range and energy, suns apart), `thin`, `auto` |
+| `dotbsp/lights.py` | `to_game` (lights to metres, range and energy, suns apart), `thin`, `thin_by_gap` and `strengthen` (the `--max-lights` loop exactly), `auto` |
 | `dotbsp/gamebox.py` | `model_boxes`: a model's brushes as game-metre boxes with the source material and kind |
 | `dotbsp/flood.py` | `Flood`: reachable space over boxes with step, jump, drop and head room; `floor_rects`, `keep_starts` |
 | `dotbsp/plan.py` | `extract`: a room plan from walls that do not close (seal, outside flood, doorway erosion, rooms on a coarse grid) |
@@ -157,8 +158,28 @@ Nothing in the two folders belongs to zombie-zone, prop-hunt, hide-n-seek, death
 Compared function by function against the importers it came from (follow-up to the first lift):
 
 - `plan.extract` against mg-look-at-me's `bsp_layout.py`: the same rasteriser, 4-neighbour erosion with the raster edge counted empty (scipy's `border_value=0`), per-blob growth cut to the building afterwards, 60% fill and greedy rectangles. Differences: pure Python (no scipy, so slower on a large bbox), `seal_m` (default 0, the original had none), `wall_classes` / `wall_rects` / `wall_props` as extra wall sources (the original read only world brushes), and `ascii_plan` takes its 12% threshold from the original.
-- `lights.thin` against murder-mystery-maps: NOT equivalent. The original keeps lights in document order and widens a minimum gap by 0.5 m until at most `max_lights` fit, then raises range and energy of the survivors; `thin` keeps the brightest first at a fixed spacing. An adapter that wants the original result keeps its own loop.
+- `lights.thin` against murder-mystery-maps: `thin` (brightest first, fixed spacing) is a different, deterministic policy and stays. The original is now `lights.thin_by_gap(lamps, max_lights)` -> `(kept, gap)` plus `lights.strengthen(energy, gap)` (the survivors' range is `9 + gap` in that game); byte-identical output on Hollow Hill with `--max-lights=6` (below).
 - `Flood.keep_starts` against murder-mystery-maps' start filter: the same "8 m below the median start" rule, plus a dropped start with no floor under it.
 - `PropTable` against prop-hunt-maps' `PROP_MAP`: that table keys by file stem; a key with no "/" now matches that way, a key with a folder matches the whole path.
-- `Flood.prune_pockets` against hide-n-seek-maps: not equivalent (see the table above); the original uses a 0.1 m grid.
+- `prune_pockets` against hide-n-seek-maps, prop-hunt-maps and murder-mystery-maps: `docboxes.prune_pockets(doc, size_of, footprint, spawn_key=)` is the original 0.1 m flat flood moved unchanged (the three copies differed only in the spawn list the flood starts from: `hiders`, `props`, `players`). `flood.Flood` is still not a drop-in for it (see the table above).
 - wipeout has no importer, only `tools/build.py`: nothing to compare.
+
+## The document-box passes (`docboxes`, 2026-10-20)
+
+hide-n-seek-maps, mg-prop-hunt-maps and murder-mystery-maps carried copies of the same passes over a finished document; the copies were identical except where a parameter now stands. Each function is tested against the repositories' own copy on their committed documents (`tests/test_dotbsp.py`, `DocBoxes`), and murder-mystery-maps' importer was rewired in a scratch copy: `mu_silence.bsp` re-imports **byte-identical** to the unmodified importer's output, with and without `--prune-pockets --terrain --max-lights=6` (the committed `mm_silence_hollow.json` was edited by hand afterwards, so it is not the comparison).
+
+| Function | Replaces (in) | Parameters where the copies differ |
+| --- | --- | --- |
+| `within(box, x, z, slack)` | `within` (all three) | none |
+| `classify_material`, `brush_material_names`, `majority_material(names, table, default)` | `classify`, `brush_material`, `pick_material` (all three; `classify` and the same majority pick also in game-playground-maps' `material_for`) | the table and the default: `("flat", None)` or a config's own. The pick is `classify(max(sorted(set(pool)), key=pool.count))`: a tie follows the sorted name, not the hash seed |
+| `suburban_surface(at, size, palette)` | `suburban_surface` and its five colour constants (all three) | `palette` |
+| `widen_doors(boxes, want, doors)` | `widen_doors` (all three) | prop-hunt's has no `doors`; the default `()` is its behaviour |
+| `drop_door_leaves(boxes)` | `drop_door_leaves` (all three) | takes `m.boxes`, not the map |
+| `add_doors(m, doc, entities, shift, slide, scale, skip, log)` | `add_doors` (hide-n-seek, murder-mystery) | `skip` is murder-mystery's `SKIP_DOORS`; `scale` the importer's `S`; `log` replaces `print` |
+| `prune_far_scenery(boxes, starts, reach, log)` | `prune_far_scenery` (all three) | takes `m.boxes`; returns the count |
+| `prune_pockets(doc, size_of, footprint, rounds, spawn_key)` | `prune_pockets` (all three) | the catalogue's `size_of` / `footprint` (the repo's `build_maps`), and `spawn_key` |
+| `scatter_cover(m, count, seed, kinds, ...)` | `scatter_cover` (hide-n-seek, murder-mystery) | `kinds` (their `COVER_INDOOR`) is now required |
+| `boxes.terrain_cells(tris, ...)` (already there) | `terrain_boxes` (all three) | the importer keeps the three lines that collect the triangles; the cells have the same order |
+| `lights.thin_by_gap`, `lights.strengthen` | the `--max-lights` loop (murder-mystery) | `step`, `cap`, `per_metre` |
+
+Not moved: deathrun's `merge` (one copy, and it keys on that importer's `invisible`, `tint` and `top`), the material tables (`TEXTURE_MAP`, `PROP_MAP`, the palette's use) and `classify` in zombie-zone-maps (a different function, on a brush). `fastgmad` is also looked up under `%LOCALAPPDATA%\fastgmad`, `%LOCALAPPDATA%\Programs\fastgmad` and `%LOCALAPPDATA%` on Windows (`gma.find_fastgmad`), and nowhere else.

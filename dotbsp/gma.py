@@ -14,6 +14,7 @@ on disk and no path inside it is used as a path anywhere else.
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 
 TIMEOUT = 600
@@ -28,10 +29,24 @@ class GmaMissing(GmaError):
     reads as "0 maps", which is a lie about the folder."""
 
 
+def _on_windows():
+    return sys.platform == "win32"
+
+
+def _windows_candidates():
+    """Where a Windows install puts it: under %LOCALAPPDATA% (a per-user install needs no admin and
+    is not on PATH). Empty anywhere else, and when the variable is unset, so it is a no-op there."""
+    base = os.environ.get("LOCALAPPDATA")
+    if not _on_windows() or not base:
+        return []
+    return [os.path.join(base, *p) for p in (("fastgmad", "fastgmad.exe"), ("Programs", "fastgmad", "fastgmad.exe"),
+                                            ("Programs", "fastgmad.exe"), ("fastgmad.exe",))]
+
+
 def find_fastgmad():
     """The fastgmad binary, or None."""
     env = os.environ.get("DOTBSP_FASTGMAD")
-    for c in (env, shutil.which("fastgmad"), os.path.expanduser("~/.local/bin/fastgmad")):
+    for c in (env, shutil.which("fastgmad"), os.path.expanduser("~/.local/bin/fastgmad"), *_windows_candidates()):
         if c and os.path.isfile(c) and os.access(c, os.X_OK):
             return c
     return None
