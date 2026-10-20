@@ -29,19 +29,26 @@ class PropTable:
 
     def __init__(self, mapping):
         self.map = {norm_model(k): v for k, v in (mapping or {}).items()}
+        # prop-hunt-maps' PROP_MAP and its siblings key by file stem ("chair_office"), because
+        # authors spell one model under several folders; a key with no "/" matches that way.
+        self.stems = {k.rsplit(".", 1)[0] if k.endswith(".mdl") else k: v for k, v in self.map.items() if "/" not in k}
 
     def __len__(self):
         return len(self.map)
 
     def get(self, model, default=None):
-        return self.map.get(norm_model(model), default)
+        n = norm_model(model)
+        if n in self.map:
+            return self.map[n]
+        stem = n.rsplit("/", 1)[-1]
+        return self.stems.get(stem.rsplit(".", 1)[0], default)
 
     def unmatched(self, models):
         """Sorted, counted model paths not in the table: what an author still has to map."""
         out = {}
         for m in models:
             n = norm_model(m)
-            if n and n not in self.map:
+            if n and self.get(n) is None:
                 out[n] = out.get(n, 0) + 1
         return sorted(out.items(), key=lambda kv: (-kv[1], kv[0]))
 

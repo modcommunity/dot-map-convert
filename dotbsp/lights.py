@@ -81,14 +81,18 @@ def thin(lamps, max_lights=100, min_spacing=0.0):
     return [lamps[i] for i in sorted(keep)]
 
 
-def auto(cells, spacing=6.0, height=2.3, maximum=100, range_=7.0, energy=0.9, colour=(1.0, 0.93, 0.8)):
-    """Lamps for a map with none: `cells` is [(x, y, z)] floor points in metres (the flood's
-    reachable cells). One lamp per `spacing` metre square per floor height, taken in sorted
-    order so the same map always gets the same lamps, `height` above the floor."""
+def auto(cells, cell=0.5, spacing=6.0, height=2.3, maximum=100, range_=7.0, energy=0.9, colour=(1.0, 0.93, 0.8)):
+    """Lamps for a map with none. `cells` is {(ix, iz): floor y} (or an iterable of (ix, iz, y))
+    of `cell`-metre ground cells, which the caller has already limited to the ground it wants lit
+    (the flood's main area). One lamp per `spacing` metre square per floor height, `height` above
+    the floor, taken in (ix, iz) order so the same map always gets the same lamps; this is
+    zombie-zone-maps' order, and sorting by position instead lights different cells."""
+    items = cells.items() if isinstance(cells, dict) else (((ix, iz), h) for ix, iz, h in cells)
     taken = {}
-    for x, y, z in sorted(cells):
-        key = (int(math.floor(x / spacing)), int(math.floor(z / spacing)), round(y))
+    for (ix, iz), h in sorted(items):
+        cx, cz = (ix + 0.5) * cell, (iz + 0.5) * cell
+        key = (int(math.floor(cx / spacing)), int(math.floor(cz / spacing)), round(h))
         if key not in taken:
-            taken[key] = [_r3(x), _r3(y + height), _r3(z)]
+            taken[key] = [_r3(cx), _r3(h + height), _r3(cz)]
     return [{"at": at, "range": range_, "energy": energy, "colour": list(colour)}
             for at in list(taken.values())[:maximum]]

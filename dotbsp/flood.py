@@ -161,9 +161,28 @@ class Flood:
         """{(ix, iz)} walked, any height."""
         return {(a, b) for a, b, _ in self.seen}
 
-    def points(self):
-        """[(x, floor y, z)] at every walked cell's centre, for `lights.auto`."""
-        return [(self.centre_of(ix, iz)[0], h, self.centre_of(ix, iz)[1]) for ix, iz, h in self.seen]
+    def deep_cells(self, margin=2):
+        """{(ix, iz): floor y} of walked cells whose whole (2*margin+1)-cell neighbourhood is
+        walked at a step-reachable height: the ground away from walls, where a lamp or a prop
+        belongs (zombie-zone-maps' `deep`). A cell on two floors takes the lowest, where the
+        original took whichever its set iterated first."""
+        out = {}
+        for ix, iz, h in sorted(self.seen):
+            if (ix, iz) in out:
+                continue
+            if all(any((ix + dx, iz + dz, h2) in self.seen and abs(h2 - h) <= self.step
+                       for h2 in self.surf.get((ix + dx, iz + dz), ()))
+                   for dx in range(-margin, margin + 1) for dz in range(-margin, margin + 1)):
+                out[(ix, iz)] = h
+        return out
+
+    def top_cells(self):
+        """{(ix, iz): highest walked floor y}, the shape `lights.auto` takes."""
+        out = {}
+        for ix, iz, h in self.seen:
+            if h > out.get((ix, iz), -1e9):
+                out[(ix, iz)] = h
+        return out
 
     def lost(self, other):
         """Cells `other` (an earlier flood) reached that this one did not: a prop that cut a

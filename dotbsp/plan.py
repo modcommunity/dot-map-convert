@@ -177,7 +177,7 @@ def walls(doc, raster, scale, zs, wall_height=60.0, wall_classes=DEFAULT_WALL_CL
     return n
 
 
-def extract(doc, bbox, zs, scale=_units.HULL, res=0.25, erode_m=0.75, min_area=24.0, seal_m=0.5,
+def extract(doc, bbox, zs, scale=_units.HULL, res=0.25, erode_m=0.75, min_area=24.0, seal_m=0.0,
             cell=CELL_M, fill=0.6, wall_height=60.0, wall_classes=DEFAULT_WALL_CLASSES,
             wall_rects=(), wall_props=None):
     """The plan of the building inside `bbox` (x0, y0, x1, y1 metres at `scale`) as a dict:
@@ -215,7 +215,9 @@ def extract(doc, bbox, zs, scale=_units.HULL, res=0.25, erode_m=0.75, min_area=2
         seed = bytearray(nx * ny)
         for i in members[k]:
             seed[i] = 1
-        m = dilate(seed, nx, ny, r, inside)
+        # grown freely and then cut to the building, as the original did: growing only through
+        # `inside` would not reach a cell the far side of a thin wall within r cells
+        m = bytearray(a and b for a, b in zip(dilate(seed, nx, ny, r), inside))
         cells = {}
         for j in range(0, ny, per):
             for i in range(0, nx, per):

@@ -151,3 +151,14 @@ Sourcing rule (2026-10-19): maps from the community map sites may be converted i
 | 9 | bhop_shutdown2 | game-g2gfast | 308.8 | 6576 | 480 displacements, 1173 props, 3337 packed files: the largest | https://gamebanana.com/mods/125964 | sodawater, Benchmarked, wet | CC BY-NC-ND 4.0 | checked, none |
 
 Nothing in the two folders belongs to zombie-zone, prop-hunt, hide-n-seek, deathrun or playground that is not already converted; a new batch for those starts with a new download and `list --converted`.
+
+## Where a lift differs from its original
+
+Compared function by function against the importers it came from (follow-up to the first lift):
+
+- `plan.extract` against mg-look-at-me's `bsp_layout.py`: the same rasteriser, 4-neighbour erosion with the raster edge counted empty (scipy's `border_value=0`), per-blob growth cut to the building afterwards, 60% fill and greedy rectangles. Differences: pure Python (no scipy, so slower on a large bbox), `seal_m` (default 0, the original had none), `wall_classes` / `wall_rects` / `wall_props` as extra wall sources (the original read only world brushes), and `ascii_plan` takes its 12% threshold from the original.
+- `lights.thin` against murder-mystery-maps: NOT equivalent. The original keeps lights in document order and widens a minimum gap by 0.5 m until at most `max_lights` fit, then raises range and energy of the survivors; `thin` keeps the brightest first at a fixed spacing. An adapter that wants the original result keeps its own loop.
+- `Flood.keep_starts` against murder-mystery-maps' start filter: the same "8 m below the median start" rule, plus a dropped start with no floor under it.
+- `PropTable` against prop-hunt-maps' `PROP_MAP`: that table keys by file stem; a key with no "/" now matches that way, a key with a folder matches the whole path.
+- `Flood.prune_pockets` against hide-n-seek-maps: not equivalent (see the table above); the original uses a 0.1 m grid.
+- wipeout has no importer, only `tools/build.py`: nothing to compare.

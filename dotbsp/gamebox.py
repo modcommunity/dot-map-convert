@@ -37,12 +37,20 @@ def model_boxes(doc, model=0, scale=_units.VISUAL, y0=0.0, slab_m=0.4, min_m=0.0
         conv = []
         for b in made:
             sx, sy, sz = _boxes.size(b)
-            conv.append({"at": list(_units.to_game(_boxes.centre(b), scale, y0)), "size": [sx * scale, sz * scale, sy * scale],
-                         "yaw": b["phi"] % 90.0, "shape": b["kind"], "kind": kind, "material": mat, "brush": bid})
+            # 3 decimals and a 2 cm floor on every size: a zero-thickness slab (a ramp's edge) is a
+            # box the document and the physics both refuse (zombie-zone-maps' r3 / max(v, 0.02)).
+            box = {"at": [round(v, 3) for v in _units.to_game(_boxes.centre(b), scale, y0)],
+                   "size": [round(max(v * scale, 0.02), 3) for v in (sx, sz, sy)],
+                   "yaw": round(b["phi"] % 90.0, 3), "shape": b["kind"], "kind": kind, "material": mat, "brush": bid}
+            if kind in ("invisible", "sky"):
+                box["visible"] = False       # the flood still sees an invisible wall as solid
+            if kind == "sky":
+                box["_sky"] = True           # the world's own box: Flood leaves it out
+            conv.append(box)
         rise = 0.0
         if conv and all(c["shape"] == "slab" for c in conv):
             rise = max(c["at"][1] + c["size"][1] / 2 for c in conv) - min(c["at"][1] - c["size"][1] / 2 for c in conv)
         for c in conv:
-            c["rise"] = rise
+            c["rise"] = round(rise, 3)
         out.extend(conv)
     return out

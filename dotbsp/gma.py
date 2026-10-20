@@ -23,6 +23,11 @@ class GmaError(OSError):
     pass
 
 
+class GmaMissing(GmaError):
+    """fastgmad is not installed. Never swallowed: a listing that skips every .gma for this reason
+    reads as "0 maps", which is a lie about the folder."""
+
+
 def find_fastgmad():
     """The fastgmad binary, or None."""
     env = os.environ.get("DOTBSP_FASTGMAD")
@@ -39,7 +44,7 @@ def read_bsps(path):
     """
     exe = find_fastgmad()
     if not exe:
-        raise GmaError("fastgmad was not found; install it (dot-bootstrap does) or set DOTBSP_FASTGMAD")
+        raise GmaMissing("fastgmad was not found; install it (dot-bootstrap does) or set DOTBSP_FASTGMAD")
     tmp = tempfile.mkdtemp(prefix="dotbsp-gma-")
     try:
         out = os.path.join(tmp, "x")

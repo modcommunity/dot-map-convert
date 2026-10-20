@@ -30,6 +30,15 @@ def doc_of(**kw):
     return intermediate.build(reader.Bsp("t.bsp", data=synth.build(**kw)).load(), credit=credit, scale=scale)
 
 
+class StemKeys(unittest.TestCase):
+    def test_a_key_without_a_folder_matches_by_stem(self):
+        tb = props.PropTable({"chair_office": "chair", "models/props/couch.mdl": "couch"})
+        self.assertEqual(tb.get("models/Props_Interiors/Chair_Office.mdl"), "chair")
+        self.assertEqual(tb.get("models/props/couch.mdl"), "couch")
+        self.assertIsNone(tb.get("models/other/couch.mdl"))
+        self.assertEqual(tb.unmatched(["models/x/chair_office.mdl", "models/q/z.mdl"]), [("models/q/z.mdl", 1)])
+
+
 class GameLump(unittest.TestCase):
     def test_empty_and_short_lumps_are_no_props(self):
         for raw in (b"", b"\x00\x00", struct.pack("<i", 0)):
@@ -227,11 +236,15 @@ class Lights(unittest.TestCase):
         self.assertEqual(len(lights.thin(lamps, max_lights=10)), 3)
 
     def test_auto_lights(self):
-        cells = [(x + 0.25, 0.0, z + 0.25) for x in range(0, 13) for z in range(0, 13)]
+        cells = {(ix, iz): 0.0 for ix in range(0, 26) for iz in range(0, 26)}     # 13 m square of 0.5 m cells
         out = lights.auto(cells, spacing=6.0, height=2.3, maximum=100)
         self.assertEqual(len(out), 9)                           # 3 x 3 squares of 6 m over 13 m
-        self.assertEqual(out[0]["at"][1], 2.3)
+        self.assertEqual(out[0]["at"], [0.25, 2.3, 0.25])       # (ix, iz) order: cell (0, 0) first
         self.assertEqual(len(lights.auto(cells, maximum=4)), 4)
+        # order is by cell, not by position: with x-major cells the first four lamps are the x = 0 column
+        first = lights.auto(cells, maximum=3)
+        self.assertEqual([l["at"][0] for l in first], [0.25, 0.25, 0.25])
+        self.assertEqual(lights.auto([(0, 0, 1.0), (0, 0, 1.0)], maximum=5)[0]["at"], [0.25, 3.3, 0.25])
 
 
 def floor_box(x0, z0, x1, z1, y_top, thick=0.2):
@@ -310,6 +323,36 @@ class Flood(unittest.TestCase):
         self.assertEqual(dropped, starts[3:])
         self.assertEqual(f.keep_starts([]), ([], []))
 
+    def test_deep_cells_skip_the_edge(self):
+        f = flood.Flood([floor_box(0, 0, 6, 6, 0.0)]).run([(3, 0, 3)])
+        deep = f.deep_cells()
+        self.assertEqual(len(f.cells()), 144)
+        self.assertEqual(len(deep), 64)                 # 12 x 12 cells, 2 cells in from each side
+        self.assertEqual(len(f.top_cells()), 144)
+
+    def test_sky_shell_from_model_boxes_stays_out_of_the_flood(self):
+        d = doc_of(boxes=((0, 0, 0, 400, 400, 8), (-8, -8, 200, 408, 408, 208)),
+                   materials=("brick/wall", "tools/toolsskybox"), contents=1)
+        # brush 1 uses only the skybox material on every side; brush 0 mixes, so give it its own
+        d["brushes"][0]["sides"] = [dict(s, material=0) for s in d["brushes"][0]["sides"]]
+        d["brushes"][1]["sides"] = [dict(s, material=1) for s in d["brushes"][1]["sides"]]
+        out = gamebox.model_boxes(d, 0, scale=0.0254)
+        sky = [b for b in out if b["kind"] == "sky"]
+        self.assertEqual(len(sky), 1)
+        self.assertTrue(sky[0]["_sky"] and sky[0]["visible"] is False)
+        f = flood.Flood(out).run([(2.0, 0.3, -2.0)])
+        self.assertGreater(len(f.cells()), 0)
+        self.assertEqual(len({h for _, _, h in f.seen}), 1)   # one floor: never the sky lid on top
+
+    def test_zero_thickness_slab_is_clamped_and_rounded(self):
+        d = doc_of(boxes=((0, 0, 0, 100, 100, 1),))
+        out = gamebox.model_boxes(d, 0, scale=0.01, min_m=0.0)      # 1 unit = 1 cm: a 1 cm slab
+        self.assertTrue(out)
+        for b in out:
+            self.assertGreaterEqual(min(b["size"]), 0.02)
+            for v in b["at"] + b["size"] + [b["yaw"]]:
+                self.assertEqual(v, round(v, 3))
+
     def test_min_floor_y_drops_a_sump(self):
         f = flood.Flood([floor_box(0, 0, 4, 4, -2.0)], min_floor_y=-1.0)
         self.assertEqual(f.surf, {})
@@ -321,7 +364,7 @@ class Flood(unittest.TestCase):
         self.assertEqual(len(out), 2)
         floor = out[0]
         self.assertAlmostEqual(floor["size"][0], 200 * 0.0254, 3)
-        self.assertAlmostEqual(floor["at"][1], 4 * 0.0254, 4)
+        self.assertAlmostEqual(floor["at"][1], 4 * 0.0254, 3)
         self.assertEqual(floor["kind"], "solid")
         self.assertEqual(len(gamebox.model_boxes(d, 1)), 1)
         f = flood.Flood(gamebox.model_boxes(d, 0, scale=0.0254)).run([(2.0, 0.3, -2.0)])
@@ -454,6 +497,27 @@ class Gma(unittest.TestCase):
             except gma.GmaError:
                 pass
             self.assertFalse(os.path.exists(os.path.join(os.path.dirname(t), "escape.bsp")))
+
+    def test_missing_fastgmad_exits_nonzero_in_list_and_convert(self):
+        import contextlib, io
+        with tempfile.TemporaryDirectory() as t:
+            p = os.path.join(t, "a.gma")
+            make_gma(p, [("maps/dr_a.bsp", synth.build())])
+            old = {k: os.environ.get(k) for k in ("PATH", "DOTBSP_FASTGMAD", "HOME")}
+            try:
+                os.environ["PATH"], os.environ["HOME"] = "/nonexistent", "/nonexistent"
+                os.environ.pop("DOTBSP_FASTGMAD", None)
+                for argv in (["bsp.py", "list", t], ["bsp.py", "list", p], ["bsp.py", "convert", p, "--out", os.path.join(t, "o.json")]):
+                    err = io.StringIO()
+                    with contextlib.redirect_stderr(err):
+                        self.assertEqual(cli.main(argv), 2, argv)
+                    self.assertIn("fastgmad", err.getvalue())
+            finally:
+                for k, v in old.items():
+                    if v is None:
+                        os.environ.pop(k, None)
+                    else:
+                        os.environ[k] = v
 
     def test_missing_fastgmad_is_a_clear_error(self):
         old = os.environ.get("PATH"), os.environ.get("DOTBSP_FASTGMAD"), os.environ.get("HOME")

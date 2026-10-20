@@ -68,6 +68,8 @@ def in_archive(path):
         try:
             for member, data in gma.read_bsps(path):
                 out.append(Source(_stem(member), path, member, len(data), lambda d=data: d))
+        except gma.GmaMissing:
+            raise
         except gma.GmaError as e:
             raise OSError(str(e))
         return out
@@ -127,6 +129,8 @@ def find(paths):
         if isinstance(s, tuple):
             try:
                 res.extend(in_archive(s[1]))
+            except gma.GmaMissing:
+                raise                  # not this archive's fault: say so, do not list 0 maps
             except OSError as e:       # one unreadable archive does not end a listing
                 print("unreadable: %s: %s" % (s[1], e), file=sys.stderr)
         else:

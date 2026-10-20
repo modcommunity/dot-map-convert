@@ -19,7 +19,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import intermediate, reader, sources  # noqa: E402
+from dotbsp import gma, intermediate, reader, sources  # noqa: E402
 
 
 def _credit(args):
@@ -150,7 +150,11 @@ def main(argv):
     lst.add_argument("--converted", metavar="ROOT", help="the directory holding the *-maps repositories")
     lst.add_argument("--queue", action="store_true", help="leave out maps already converted")
     args = ap.parse_args(argv[1:])
-    return cmd_convert(args) if args.cmd == "convert" else cmd_list(args)
+    try:
+        return cmd_convert(args) if args.cmd == "convert" else cmd_list(args)
+    except gma.GmaMissing as e:
+        print("bsp.py: %s" % e, file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":
