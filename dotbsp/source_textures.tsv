@@ -229,3 +229,120 @@ RNDECALS/*	flat
 LIGHTS/*	flat
 THS_ART/*	wallpaper
 T_WOOD/*	wood_planks
+
+# --- added for zombie-zone-maps' 14 converted maps (2026-10-20): the textures its old table knew by substring, and the families of its escape and mall maps
+# Space-station and film-set hull plating (a folder per set), pipes, grates and panels
+SENNE/SPACE/*	metal
+*WARS/*	metal
+*WARS/CAIRN/C_CRATE	wood_planks
+*WARS/YAVIN/CRATE01	wood_planks
+*WARS/*/*DOOR*	metal
+*WARS/NAR_STREETS/*	concrete
+HALFLIFE/*	metal
+CS_ITALY/IRONMETAL*	metal
+CS_ITALY/PIPE_WALL*	metal
+DE_PRODIGY/METAL*	metal
+DE_PIRANESI/PI_GRNMETAL*	metal
+CS_HAVANA/MTLA	metal
+CS_HAVANA/{FENCE*	metal
+MODELS/GIBS/*	metal
+MODELS/BUGGY/*	metal
+MODELS/CHOPPER/*	metal
+MODELS/COMBINE_HELICOPTER/*	metal
+MODELS/PROPS_C17/*	metal
+MODELS/PROPS_COMBINE/METAL*	metal
+MODELS/PROPS/DE_NUKE/*	metal
+PROPS/DOORBUTTON*	metal
+PROPS/ELEVATORBUTTON*	metal
+# --- wood
+PRAWN_WOOD_TEXTURES/*	wood_planks
+CUSTOM/PRAWN_WOOD*	wood_planks
+CS_ITALY/CR_MISCWOOD*	wood_planks
+DE_CBBLE/CRATESM*	wood_planks
+DE_CHATEAU/WOODM	wood_planks
+PROPS/WOODDRIFT*	wood_planks
+PROPS/MAILBOXWOOD*	wood_planks
+FDA/WOOD/*	wood_planks
+MODELS/PROPS_WASTELAND/WOOD_FENCE*	wood_planks
+MODELS/PROPS/DE_INFERNO/WOODFLOOR*	wood_floor
+REALWORLDTEXTURES/FLOOR/WOOD_FLOOR*	wood_floor
+DE_CBBLE/DOOR*	door_wood
+CUSTOM/FG_DOORBOLD	door_wood
+# --- concrete, plaster, paint
+FDA/CONCRETE/*	concrete
+MODELS/PROPS_DEBRIS/CONCRETEFLOOR*	concrete
+NATURE/BLENDCONCRETEDIRT*	concrete
+CUSTOM/FG_GARGEPAVE	concrete
+CUSTOM/FG_SIDEWALK	concrete
+FDA/WALL/*	plaster_painted
+FDA/STEVE/*	plaster_painted
+CS_HAVANA/WHITE	plaster_painted
+CS_ITALY/WHITE	plaster_painted
+CS_ITALY/MARKETWALL*	plaster_painted
+CS_ITALY/PLASTERWALL*	plaster_worn
+CS_ITALY/CELLARWALL*	plaster_worn
+CS_ITALY/CUWLLG	plaster_painted
+MODELS/PROPS_DEBRIS/PLASTERWALL*	plaster_worn
+CS_HAVANA/WLLK*	plaster_painted
+CS_HAVANA/BLDB	plaster_painted
+CS_HAVANA/BUILDING*	plaster_painted
+CUSTOM/WALL_01	plaster_painted
+OFFICE/TAN_WALL	plaster_painted
+PARK/SOLID*	plaster_painted
+ZE_LEGOFUN/*	plaster_painted
+STOREFRONT_TEMPLATE/*	plaster_painted
+AAATIX/*	plaster_painted
+# --- stone, brick, roof
+DE_AZTEC/STONEWORK*	stone_wall
+DE_AZTEC/STAIRSFAKE*	stone_wall
+CS_HAVANA/ROCKWALL*	stone_wall
+CS_HAVANA/STONEFLOOR*	stone_wall
+SKYBOX/STONEFLOOR*	stone_wall
+DE_CHATEAU/ROCKF	stone_wall
+NATURE/ROCKWALL*	stone_wall
+NATURE/BLENDCLIFF*	stone_wall
+DE_PIRANESI/STAIRMARBLE*	tile_floor
+DE_PIRANESI/PI_STEPTOP*	stone_wall
+CS_ITALY/BRICKWALL*	brick_red
+FDA/BRICK/*	brick_red
+CS_ITALY/TILEROOF*	roof_tiles
+DE_CHATEAU/ROOFA	roof_tiles
+TILE/INFROOFB	roof_tiles
+PROPS/RUBBERROOF*	roof_tiles
+MODELS/PROPS/CS_MILITIA/ROOFENDS	roof_tiles
+# --- tile and carpet
+TILE/TILEWALL*	tile_floor
+TILE/PRODFLR*	tile_floor
+MODELS/PROPS_DEBRIS/TILEFLOOR*	tile_floor
+DEVELOPMENT/*TILE*	tile_floor
+DE_PIRANESI/PI_RUG*	carpet
+NIPPERTEXTURES/CLUE/*CARP*	carpet
+CUSTOMTEXT/GC TEXTURES/CARPET/*	carpet
+# --- ground, plants, water, snow
+CS_HAVANA/GROUND*	mud
+CS_HAVANA/SWAMP*	mud
+NATURE/SANDFLOOR*	mud
+NATURE/MUDFLOOR*	mud
+NATURE/DIRTFLOOR*	mud
+NATURE/BLEND*DIRT*	mud
+DE_CBBLE/GROUNDDIRT	mud
+NATURE/TRASH*	mud
+NATURE/BLENDPRODDIRTGRASS	grass
+NATURE/BLENDCLIFFGRASS*	grass
+NATURE/RED_GRASS*	grass
+CUSTOM/FG_GRASS	grass
+MODELS/PROPS/DE_INFERNO/PRODGRASS*	grass
+NATURE/SNOW*	snow
+NATURE/SEWER_WATER*	water
+CUSTOM/SRWATER	water
+SHADERTEST/GOOINGLASS	glass
+# --- never a surface a player reads: sprites, screens, cables, lights
+SPRITES/*	flat
+VGUI/*	flat
+CABLE/*	flat
+CS_HAVANA/LIGHTB	flat
+CS_ITALY/CULIGHTA	flat
+NEW/BLACK	flat	0.1,0.1,0.1
+MODELS/PROPS/DE_PRODIGY/TIRESTACK	flat	0.1,0.1,0.1
+NATURE/BLENDDIRTGRASS*	grass
+*GRASS*	grass
