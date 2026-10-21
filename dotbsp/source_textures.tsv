@@ -346,3 +346,52 @@ NEW/BLACK	flat	0.1,0.1,0.1
 MODELS/PROPS/DE_PRODIGY/TIRESTACK	flat	0.1,0.1,0.1
 NATURE/BLENDDIRTGRASS*	grass
 *GRASS*	grass
+
+# --- generic words (2026-10-20, from `bsp.py unmapped` over ~/mapsrc): a texture is named for what it is, whatever folder the mapper put it in.
+# Every glob here is shorter than the rows above, so any folder- or family-specific row still wins. Deliberately NOT mapped: brand and
+# character textures (a cartoon's or a film's skin), posters and signs, arcade and shop decals, model skins (MODELS/*), swatch
+# palettes (COLOR/*, COLORS_PACK/*) and developer numbers; a game that wants those draws them itself.
+*METAL*	metal
+*STEEL*	metal
+*GRATE*	metal
+*IRON*	metal
+*RUST*	metal
+*FENCE*	metal
+*PLANKS*	wood_planks
+*PLANK*	wood_planks
+*WOODSIDING*	wood_planks
+*WOOD*	wood_planks
+*BAMBOO*	wood_planks
+*WOODFLOOR*	wood_floor
+*WOODEN*	wood_planks
+*PARQUET*	parquet
+*CONCRETE*	concrete
+*CEMENT*	concrete
+*ASPHALT*	concrete
+*PAVEMENT*	concrete
+*SIDEWALK*	concrete
+*ROAD*	concrete
+*BRICK*	brick_red
+*COBBLE*	stone_wall
+*STONE*	stone_wall
+*ROCK*	stone_wall
+*MARBLE*	stone_wall
+*GRANITE*	stone_wall
+*SLATE*	stone_wall
+*PLASTER*	plaster_painted
+*STUCCO*	plaster_worn
+*WALLPAPER*	wallpaper
+*CARPET*	carpet
+*TILE*	tile_floor
+*ROOF*	roof_tiles
+*SHINGLE*	roof_tiles
+*GLASS*	glass
+*WINDOW*	glass
+*WATER*	water
+*SNOW*	snow
+*DIRT*	mud
+*SAND*	mud
+*MUD*	mud
+*GRAVEL*	mud
+*GROUND*	mud
+*DOOR*	door_wood

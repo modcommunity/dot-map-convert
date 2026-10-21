@@ -305,22 +305,49 @@ def repo_docs(repo, limit=None):
     return out[:limit]
 
 
+def own_copy(mod, name):
+    """True when the importer defines `name` itself, False when it is missing or comes from dotbsp."""
+    f = getattr(mod, name, None)
+    if f is None:
+        return False
+    return not str(getattr(f, "__module__", "") or "").startswith("dotbsp")
+
+
 COPIES = ("hide-n-seek-maps", "mg-prop-hunt-maps", "murder-mystery-maps")
 
 
 class DocBoxes(unittest.TestCase):
-    def each_copy(self):
+    def test_own_copy_tells_shared_from_local(self):
+        import types
+        local = types.ModuleType("copy_x")
+        exec("def within(b, x, z, slack=0.0):\n    return True\n", local.__dict__)
+        local.within.__module__ = "copy_x"
+        shared = types.ModuleType("copy_y")
+        shared.within = docboxes.within                  # imported from dotbsp
+        self.assertTrue(own_copy(local, "within"))
+        self.assertFalse(own_copy(shared, "within"))
+        self.assertFalse(own_copy(shared, "no_such_helper"))
+
+    def each_copy(self, *needs):
+        """The repositories whose importer still has its OWN copy of every helper in `needs`.
+
+        A repository that imports a helper from dotbsp, or no longer defines it, already uses the
+        shared one: there is nothing to compare, and that is the goal, not an error. A repository that
+        still defines its own copy is compared, so a copy that drifts still fails. The skip only
+        fires when no repository is checked out at all."""
         found = 0
         for repo in COPIES:
             mod = repo_importer(repo)
-            if mod is not None:
-                found += 1
+            if mod is None:
+                continue
+            found += 1
+            if all(own_copy(mod, n) for n in needs):
                 yield repo, mod
         if not found:
             self.skipTest("no maps repository is checked out beside dot-map")
 
     def test_within_and_suburban_surface_match_every_copy(self):
-        for repo, mod in self.each_copy():
+        for repo, mod in self.each_copy("within", "suburban_surface"):
             for _n, doc in repo_docs(repo, 3):
                 for b in doc["boxes"][:60]:
                     for x, z in ((b["at"][0], b["at"][2]), (b["at"][0] + 1.3, b["at"][2] - 0.7), (-3.0, 4.0)):
@@ -329,13 +356,13 @@ class DocBoxes(unittest.TestCase):
                     self.assertEqual(docboxes.suburban_surface(b["at"], b["size"]), mod.suburban_surface(b["at"], b["size"]), repo)
         for w, h, d, y, z in ((10, 0.3, 4, 6, 1), (10, 0.3, 4, 0, 1), (0.2, 2.5, 5, 0, 0), (3, 9, 8, 4, -2),
                               (3, 9, 8, 4, 2), (8, 9, 3, 4, 2), (3, 5, 3, 0, 0), (1, 1, 1, 0, 0), (1, 3, 2, 0, 0)):
-            for _repo, mod in self.each_copy():
+            for _repo, mod in self.each_copy("suburban_surface"):
                 at = [0.0, y, z]
                 self.assertEqual(docboxes.suburban_surface(at, [w, h, d]), mod.suburban_surface(at, [w, h, d]))
 
     def test_widen_doors_matches_every_copy_and_does_something(self):
         widened = 0
-        for repo, mod in self.each_copy():
+        for repo, mod in self.each_copy("widen_doors"):
             for name, doc in repo_docs(repo):
                 a, b = copy.deepcopy(doc), copy.deepcopy(doc)
                 with_doors = "doors" in mod.widen_doors.__code__.co_varnames[:mod.widen_doors.__code__.co_argcount]
@@ -358,7 +385,7 @@ class DocBoxes(unittest.TestCase):
         gap = (boxes_[1]["at"][0] - boxes_[1]["size"][0] / 2) - (boxes_[0]["at"][0] + boxes_[0]["size"][0] / 2)
         self.assertAlmostEqual(gap, 1.4, places=3)
         self.assertAlmostEqual(door["size"][0], 1.38, places=3)
-        for repo, mod in self.each_copy():
+        for repo, mod in self.each_copy("widen_doors"):
             if "doors" in mod.widen_doors.__code__.co_varnames:
                 ref = [wall(-2.0, 4.0), wall(3.0, 4.0)]
                 d2 = {"at": [0.5, 1.0, 0.0], "size": [0.9, 2.0, 0.05]}
@@ -371,7 +398,7 @@ class DocBoxes(unittest.TestCase):
                 self.boxes = boxes_
         leaf = {"at": [0, 1.0, 0], "size": [0.9, 2.0, 0.05], "mat": "wood"}
         dropped_any = False
-        for repo, mod in self.each_copy():
+        for repo, mod in self.each_copy("drop_door_leaves"):
             docs = [doc for _n, doc in repo_docs(repo)] + [{"boxes": [leaf, dict(leaf, mat="concrete"), dict(leaf, size=[0.9, 2.5, 0.05])]}]
             for doc in docs:
                 a, b = copy.deepcopy(doc["boxes"]), M(copy.deepcopy(doc["boxes"]))
@@ -381,7 +408,7 @@ class DocBoxes(unittest.TestCase):
         self.assertTrue(dropped_any)
 
     def test_prune_far_scenery_matches_every_copy(self):
-        for repo, mod in self.each_copy():
+        for repo, mod in self.each_copy("prune_far_scenery"):
             for name, doc in repo_docs(repo):
                 starts = [tuple(s["at"]) for s in next(iter(doc["spawns"].values()))[:2]]
                 far = {"at": [400.0, 1.0, 400.0], "size": [3.0, 2.0, 3.0], "mat": "concrete"}
@@ -400,7 +427,7 @@ class DocBoxes(unittest.TestCase):
         self.assertEqual(docboxes.prune_far_scenery([{"at": [0, 0, 0], "size": [1, 1, 1]}], []), 0)
 
     def test_prune_pockets_matches_every_copy(self):
-        for repo, mod in self.each_copy():
+        for repo, mod in self.each_copy("prune_pockets"):
             spawn_key = "hiders" if "hide" in repo else ("props" if "prop" in repo else "players")
             for name, doc in repo_docs(repo)[:2]:
                 a, b = copy.deepcopy(doc), copy.deepcopy(doc)
@@ -438,9 +465,7 @@ class DocBoxes(unittest.TestCase):
 
             def prop(self, kind, x, z, yaw, y):
                 self.placed.append((kind, x, z, yaw, y))
-        for repo, mod in self.each_copy():
-            if not hasattr(mod, "scatter_cover"):
-                continue
+        for repo, mod in self.each_copy("scatter_cover"):
             a, b = M(), M()
             n1 = docboxes.scatter_cover(a, 9, 7, mod.COVER_INDOOR, avoid=[(0.0, 0.0, 2.0)], avoid_r=0.0, clear=2.0)
             n2 = mod.scatter_cover(b, 9, 7, avoid=[(0.0, 0.0, 2.0)], avoid_r=0.0, clear=2.0)
@@ -457,9 +482,7 @@ class DocBoxes(unittest.TestCase):
 
             def displacement_tris(self, f):
                 return tris
-        for repo, mod in self.each_copy():
-            if not hasattr(mod, "terrain_boxes"):
-                continue
+        for repo, mod in self.each_copy("terrain_boxes"):
             # Their tuples are ((x0, x1), (height range), (y0, y1), mat); ours are dicts with the height under "z".
             theirs = [t[:3] for t in mod.terrain_boxes(B())]
             ours = boxes.terrain_cells(tris)
@@ -473,10 +496,10 @@ class DocBoxes(unittest.TestCase):
             texinfo = [[0] * 17 + [i] for i in range(4)]
             texdata = [(0, 0, 0, i) for i in range(4)]
             texnames = ["dev/dev_measure", "Maps/ph_x/Wood/floor_1_2_3", "tools/toolsnodraw", "plaster/wall"]
-        for repo, mod in self.each_copy():
+        for repo, mod in self.each_copy("brush_material", "classify"):
             self.assertEqual(docboxes.brush_material_names(Bsp, 0), mod.brush_material(Bsp, 0), repo)
             self.assertEqual(docboxes.classify_material("maps/ph_x/g/wood_floor_1_-2_3"), mod.classify("maps/ph_x/g/wood_floor_1_-2_3"))
-            if hasattr(mod, "pick_material"):
+            if own_copy(mod, "pick_material"):
                 for names in (["WOOD/A"], ["TOOLS/X"], ["DEV/GRID", "BRICK/A", "BRICK/B"], ["DEV/GRID"], [], ["WOOD/B", "WOOD/A"]):
                     self.assertEqual(docboxes.majority_material(names, mod.TEXTURE_MAP, ("flat", None)), mod.pick_material(names), repo)
 
@@ -509,6 +532,8 @@ class DocBoxes(unittest.TestCase):
         mod = repo_importer("murder-mystery-maps")
         if mod is None:
             self.skipTest("murder-mystery-maps is not checked out")
+        if not own_copy(mod, "add_doors"):
+            return      # it imports the shared pass: nothing to compare
 
         class Bsp:
             entities = ents
@@ -557,6 +582,8 @@ class LightsEquivalence(unittest.TestCase):
         mod = repo_importer("murder-mystery-maps")
         if mod is None:
             self.skipTest("murder-mystery-maps is not checked out")
+        if not own_copy(mod, "add_doors"):
+            return      # it imports the shared pass: nothing to compare
         docs = repo_docs("murder-mystery-maps")
         self.assertTrue(docs)
         for name, doc in docs:
