@@ -6,6 +6,8 @@ Reads community maps in the VBSP v19-21 format, inventories a folder of them, an
 python3 -I tools/bsp/bsp.py list ~/godot/inspirations/g2gfast --converted ~/godot --markdown
 python3 -I tools/bsp/bsp.py convert map.zip --out map.json --author "A" --page https://... --licence "CC BY-NC-ND 4.0" --no-share-check "2026-10-19: none"
 python3 -I tools/bsp/tests/test_dotbsp.py            # 26 tests on maps written from scratch
+python3 -I tools/bsp/tests/test_texturemap.py        # the shared texture list: specificity, tints, the unmapped report
+python3 -I tools/bsp/bsp.py unmapped ~/mapsrc --top 40   # every texture that hits no row of source_textures.tsv, with face counts
 python3 -I tools/bsp/tests/test_lift.py              # the pieces lifted from the adapters (flood, classifier, props, lights, plan, .gma, guards)
 DOTBSP_TEST_MAPS=~/maps python3 -I tools/bsp/tests/test_dotbsp.py RealMaps   # and on real ones
 ```
@@ -35,6 +37,7 @@ The split is: dot-map reads the format and cuts brushes into boxes; the game dec
 | `dotbsp/flood.py` | `Flood`: reachable space over boxes with step, jump, drop and head room; `floor_rects`, `keep_starts` |
 | `dotbsp/plan.py` | `extract`: a room plan from walls that do not close (seal, outside flood, doorway erosion, rooms on a coarse grid) |
 | `dotbsp/gma.py` | `.gma` workshop archives through fastgmad (`sources.find` and `bsp.py` take a `.gma` like a zip) |
+| `dotbsp/texturemap.py`, `dotbsp/source_textures.tsv` | the one list of source texture names to generic material ids (`wood_floor`, `carpet`, `brick_red`...) with an optional tint, most specific row first; `bsp.py unmapped` lists what it misses |
 | `bsp.py` | the CLI |
 | `tests/` | `synth.py` writes a small VBSP file from scratch (v19, v20, v21 in both record orders, a brush entity); `test_dotbsp.py` |
 
@@ -183,3 +186,16 @@ hide-n-seek-maps, mg-prop-hunt-maps and murder-mystery-maps carried copies of th
 | `lights.thin_by_gap`, `lights.strengthen` | the `--max-lights` loop (murder-mystery) | `step`, `cap`, `per_metre` |
 
 Not moved: deathrun's `merge` (one copy, and it keys on that importer's `invisible`, `tint` and `top`), the material tables (`TEXTURE_MAP`, `PROP_MAP`, the palette's use) and `classify` in zombie-zone-maps (a different function, on a brush). `fastgmad` is also looked up under `%LOCALAPPDATA%\fastgmad`, `%LOCALAPPDATA%\Programs\fastgmad` and `%LOCALAPPDATA%` on Windows (`gma.find_fastgmad`), and nowhere else.
+
+## The shared texture list (2026-10-20)
+
+Every importer carried its own `TEXTURE_MAP` (a substring table in its own file), so each new conversion relearned that `PLASTER/OFFWLL*` is a painted wall and `CARPET/*` a carpet. `dotbsp/source_textures.tsv` is the one list: `pattern<TAB>material<TAB>tint`, reviewable as a diff.
+
+* `pattern` is a source texture name (matching ignores case) with `*` and `?` wildcards. The map's own folder (`MAPS/<map>/`) and a cubemap suffix are stripped first.
+* `material` is a generic id, what the surface *is*: `wood_floor`, `parquet`, `carpet`, `tile_floor`, `tile_wall`, `plaster_painted`, `plaster_worn`, `wallpaper`, `concrete`, `brick_red`, `stone_wall`, `wood_planks`, `ceiling`, `roof_tiles`, `snow`, `mud`, `metal`, `door_wood`, `glass`, `grass`, `water`, `flat`. A game draws each id from its own art; an id it does not know is drawn flat.
+* `tint` (`r,g,b` in 0..1 or `#rrggbb`) keeps the colour the mapper meant, so one carpet is a blue office and a red hall.
+* The **most specific row wins**, not the first: an exact name beats any glob, a glob with more literal characters beats a shorter one, a tie goes to the earlier line. Order in the file is for the reader.
+
+`texturemap.load()` returns a `TextureMap`; `docboxes.majority_material(names, table, default)` takes it where it took the old list. `python3 -I tools/bsp/bsp.py unmapped <maps...>` (`--top N`, `--json`, `--strict`) lists every texture of the given maps that hits no row, with face counts and the maps it is in. A texture that turns up there gets a row in the list, not a line in an importer.
+
+Used by murder-mystery-maps' `import_bsp.py`. **Next (not done): the other importers keep their own `TEXTURE_MAP`s and still work** (hide-n-seek-maps, mg-prop-hunt-maps, mg-deathrun-maps, mg-wipeout-maps, zombie-zone-maps, g2gfast-maps, game-playground-maps), because each names its own game's material ids (`paint`, `plaster`, `tile`...). Moving one is a mapping from the generic ids to that game's ids in its adapter, then deleting its table; `test_material_helpers_match_every_copy` compares the old tables, so it goes with them.

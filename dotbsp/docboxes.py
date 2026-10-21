@@ -32,6 +32,12 @@ SUBURBAN_PALETTE = {
 }
 
 
+# Materials a door leaf or a trim post is made of, in the games' own ids and the shared list's
+# (`source_textures.tsv`): `wood` and `parquet` are the older ids, the rest the generic ones.
+LEAF_MATERIALS = ("wood", "parquet", "door_wood", "wood_planks", "wood_floor")
+TRIM_MATERIALS = ("concrete", "stone_wall") + LEAF_MATERIALS
+
+
 def classify_material(name):
     """A source material name without its per-map folder and cubemap suffix. A map-patched material
     is MAPS/<map>/<group>/<name>_<x>_<y>_<z>; the folder carries the map's own name, which must not
@@ -61,7 +67,8 @@ def majority_material(names, table, default=None, classify=classify_material):
 
     Developer-grid sides are ignored when anything else is there. `table` is [(substring, material,
     tint)] tried in order against the classified name; `default` is returned when none matches
-    (importers used ("flat", None) or a config's own).
+    (importers used ("flat", None) or a config's own). `table` may instead be a `texturemap.TextureMap`
+    (the shared `source_textures.tsv`), whose most specific row wins rather than the first.
 
     [b]A tie is broken by the sorted name[/b], not by set order, which follows the hash seed: the same
     map converted twice must give the same boxes.
@@ -71,6 +78,8 @@ def majority_material(names, table, default=None, classify=classify_material):
         return None
     pool = [n for n in real if not n.startswith("DEV/")] or real
     best = classify(max(sorted(set(pool)), key=pool.count))
+    if hasattr(table, "lookup"):
+        return table.lookup(best) or default
     for key, mat, tint in table:
         if key in best:
             return mat, tint
@@ -156,7 +165,7 @@ def widen_doors(boxes, want=1.4, doors=()):
                 if b["at"][1] - h / 2 > 1.8 and abs(b["size"][axis] - gap) < 0.1 and b["size"][cross] <= 0.4:
                     b["size"][axis] = round(want, 3)               # the header over the door
                     b["at"][axis] = round(mid, 3)
-                elif b["mat"] in ("concrete", "wood", "parquet") and (min(w, d) < 0.1) and b["at"][1] - h / 2 < 2.2:
+                elif b["mat"] in TRIM_MATERIALS and (min(w, d) < 0.1) and b["at"][1] - h / 2 < 2.2:
                     boxes.remove(b)                                 # a trim post or lintel
             # A door already hung in that gap (this runs after add_doors, which needs the author's
             # narrow doorway to find the hinge's wall) grows with it, or its panel would leave a
@@ -182,7 +191,7 @@ def drop_door_leaves(boxes):
         w, h, d = b["size"]
         thin, wide = sorted((w, d))
         # A hotel's double doors are two half leaves (0.4 m each, in wood or parquet).
-        if b.get("mat") in ("wood", "parquet") and 1.9 <= h <= 2.3 and thin < 0.15 and 0.35 <= wide <= 1.1:
+        if b.get("mat") in LEAF_MATERIALS and 1.9 <= h <= 2.3 and thin < 0.15 and 0.35 <= wide <= 1.1:
             dropped += 1
             continue
         kept.append(b)

@@ -5,6 +5,8 @@
             [--credit credit.json | --author A --page URL --licence L] [--faces] [--displacements]
     python3 -I tools/bsp/bsp.py list <dir | file>... [--json] [--markdown] [--converted ROOT] [--queue]
     python3 -I tools/bsp/bsp.py --list <dir>...           (the same as `list`)
+    python3 -I tools/bsp/bsp.py unmapped <dir | file>... [--table source_textures.tsv] [--top N] [--json] [--strict]
+    python3 -I tools/bsp/bsp.py --unmapped <dir | file>...   (the same as `unmapped`)
 
 `convert` writes the intermediate JSON (README.md, "The intermediate") that every game's
 adapter reads. `list` prints one line a map: name, BSP version, size, entity and spawn
@@ -19,7 +21,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import gma, intermediate, reader, sources  # noqa: E402
+from dotbsp import docboxes, gma, intermediate, reader, sources, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -124,9 +126,49 @@ def cmd_list(args):
     return 0
 
 
+def cmd_unmapped(args):
+    """Every texture of the given maps that hits no row of the shared list, with face counts."""
+    try:
+        tmap = texturemap.load(args.table)
+    except (ValueError, OSError) as e:
+        print("unmapped: %s" % e, file=sys.stderr)
+        return 2
+    total, per_map, failed, seen = {}, {}, [], set()
+    maps = 0
+    for src in sources.find(args.paths):
+        try:
+            data = src.read()
+            key = (src.name, len(data))
+            if key in seen:      # one map can arrive twice (loose and archived)
+                continue
+            seen.add(key)
+            found = texturemap.unmapped(reader.Bsp(src.member or src.origin, data=data).load(), tmap, docboxes.classify_material)
+        except (ValueError, OSError, IndexError) as e:
+            failed.append((src.label(), str(e)))
+            continue
+        maps += 1
+        for name, n in found.items():
+            total[name] = total.get(name, 0) + n
+            per_map.setdefault(name, []).append(src.name)
+    rows = sorted(total.items(), key=lambda kv: (-kv[1], kv[0]))
+    if args.json:
+        json.dump({"maps": maps, "unmapped": [{"texture": n, "faces": f, "maps": sorted(per_map[n])} for n, f in rows],
+                   "failed": failed}, sys.stdout, indent=1)
+        print()
+    else:
+        for name, n in rows[:args.top] if args.top else rows:
+            ms = sorted(per_map[name])
+            print("%6d  %-56s %s" % (n, name, ", ".join(ms[:3]) + (" +%d" % (len(ms) - 3) if len(ms) > 3 else "")))
+    for label, err in failed:
+        print("unreadable: %s: %s" % (label, err), file=sys.stderr)
+    print("%d maps, %d unmapped textures (%d faces), %d unreadable; table %s (%d rows)" % (
+        maps, len(rows), sum(total.values()), len(failed), tmap.path, len(tmap.rows)), file=sys.stderr)
+    return 1 if args.strict and rows else 0
+
+
 def main(argv):
-    if len(argv) > 1 and argv[1] == "--list":
-        argv = [argv[0], "list"] + argv[2:]
+    if len(argv) > 1 and argv[1] in ("--list", "--unmapped"):
+        argv = [argv[0], argv[1][2:]] + argv[2:]
     ap = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("convert", help="one map to the intermediate JSON")
@@ -149,9 +191,15 @@ def main(argv):
     lst.add_argument("--markdown", action="store_true")
     lst.add_argument("--converted", metavar="ROOT", help="the directory holding the *-maps repositories")
     lst.add_argument("--queue", action="store_true", help="leave out maps already converted")
+    um = sub.add_parser("unmapped", help="textures that hit no row of source_textures.tsv, with face counts")
+    um.add_argument("paths", nargs="+")
+    um.add_argument("--table", help="another table than dotbsp/source_textures.tsv")
+    um.add_argument("--top", type=int, default=0, help="only the N most-used")
+    um.add_argument("--json", action="store_true")
+    um.add_argument("--strict", action="store_true", help="exit 1 when anything is unmapped")
     args = ap.parse_args(argv[1:])
     try:
-        return cmd_convert(args) if args.cmd == "convert" else cmd_list(args)
+        return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2

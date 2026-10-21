@@ -1,0 +1,231 @@
+# ---- Source texture name (case-insensitive, * and ? wildcards)  ->  generic material id  ->  optional tint
+# Most specific row wins (an exact name beats a glob; a longer glob beats a shorter one), not the first, so the
+# order here is only for the reader. A tint is r,g,b (0..1) or #rrggbb and multiplies the game's texture.
+# A map's own folder (MAPS/<map>/) and a cubemap suffix are stripped before matching, so never name a map here.
+# Ids are generic (what the surface IS); a game draws each id from its own art. Unknown ids are drawn flat by the game.
+# `python3 -I tools/bsp/bsp.py unmapped <maps>` lists every texture that hits no row below, with face counts.
+
+# --- never drawn as a surface a player reads
+TOOLS/*	flat
+DEV/*	flat	0.8,0.8,0.82
+EFFECTS/*	flat
+DECALS/*	flat
+TEST_SPEAKERS/*	flat
+
+# --- floors: wood
+WOOD/*FLOOR*	wood_floor
+WOOD/*FLR*	wood_floor
+WOOD/INFWOODFLOOR*	wood_floor
+WOOD/MILFLR*	wood_floor
+WOOD/WOOD_FRESH*	wood_floor
+DE_CBBLE/PI_WOOD*	wood_floor
+DE_CBBLE/WOODFLOOR*	wood_floor
+DE_PIRANESI/PI_WOOD*	wood_floor
+DE_PIRANESI/WOODFLOOR*	parquet
+DE_CHATEAU/WOODFLOOR*	wood_floor
+DE_CHATEAU/FLOOR0*	wood_floor
+DE_AZTEC/WOOD_PLANK*	wood_planks
+CS_HAVANA/WOODM*	wood_planks
+CS_ITALY/PWOOD*	wood_floor
+CS_ITALY/WFLOOR*	wood_floor
+MU_FACTORY_WINTER/PWOOD*	wood_floor
+STONE/MARBLEFLOOR*	tile_floor
+DE_PIRANESI/MARBLEFLOOR*	tile_floor
+WOOD/WOODFLOOR008A	parquet
+WOOD/INFFLRA	parquet
+
+# --- floors: carpet
+CARPET/*	carpet
+CARPET/OFFFLRA	carpet	0.62,0.70,0.86
+CARPET/OFFFLRB	carpet	0.86,0.66,0.64
+CONCRETE/OFFFLRASNOW	snow
+PROPS/CARPETFLOOR*	carpet	0.70,0.62,0.58
+CS_ITALY/CARPET*	carpet	0.80,0.50,0.46
+DE_CHATEAU/CRPT*	carpet	0.80,0.48,0.46
+DE_CHATEAU/CARPET*	carpet	0.80,0.48,0.46
+
+# --- floors: tile, concrete, brick paving
+TILE/TILEFLOOR*	tile_floor
+TILE/MILFLR*	tile_floor
+TILE/INFROOFATRIM	roof_tiles
+TILE/TILEROOF*	roof_tiles
+TILE/CEILINGTILE*	ceiling
+DE_CHATEAU/INTERIORTILE*	tile_floor
+DE_TRAIN/TRAIN_OFFICETILE*	tile_floor
+DE_TRAIN/TRAIN_CEMENT*	concrete
+DE_TIDES/TIDES_FLOOR_STONE*	stone_wall
+DE_TIDES/TIDES_COBBLE*	stone_wall
+CONCRETE/CONCRETEFLOOR*	concrete
+CONCRETE/CONCRETE_FLOOR*	concrete
+CONCRETE/CURB*	concrete
+CONCRETE/CONCWSNOW*	snow
+CONCRETE/PRODBASE*	concrete
+BRICK/BRICKFLOOR*	brick_red
+STONE/STONE_FLOOR*	stone_wall
+DE_DUST/STONESTEP*	stone_wall
+DE_DUST/STONETRIM*	stone_wall
+METAL/METALFLOOR*	metal
+
+# --- ceilings
+*CEILING*	ceiling
+PLASTER/MILCEIL*	ceiling
+WOOD/INFCEILING*	wood_planks
+DE_CBBLE/WOODCEILING*	wood_planks
+CONCRETE/CONCRETECEILING*	ceiling
+PROPS/PLASTICCEILING*	ceiling
+METAL/METALCEILING*	metal
+DE_TRAIN/TRAIN_METALCEILING*	metal
+DE_CHATEAU/CEILING*	ceiling
+
+# --- walls: painted plaster, worn plaster, wallpaper
+PLASTER/*	plaster_painted
+PLASTER/OFFWLLB	plaster_painted	0.90,0.95,1.00
+PLASTER/OFFWLLC	plaster_painted	0.96,0.94,0.88
+PLASTER/OFFWLLD	plaster_painted	0.98,0.84,0.80
+PLASTER/OFFWLLE	plaster_painted	0.82,0.93,0.84
+PLASTER/OFFWLLF	plaster_painted	0.98,0.92,0.76
+PLASTER/OFFWLLG	plaster_painted	0.80,0.88,0.97
+PLASTER/OFFWLLA	plaster_painted
+PLASTER/PRODWLL*	plaster_painted	0.95,0.92,0.84
+PLASTER/INFWLL*	plaster_painted	0.95,0.92,0.84
+PLASTER/INFINTWLL*	plaster_painted	0.95,0.92,0.84
+PLASTER/INFDR*	door_wood
+PLASTER/INFWNDW*	plaster_painted
+PLASTER/MILWALL*	plaster_worn
+PLASTER/INFPLASTERWALL*	plaster_worn
+PLASTER/PLASTERWALL0*	plaster_worn
+PLASTER/PLASTERWALLPAPER*	wallpaper
+PLASTER/URBAN_WALLPAPER*	wallpaper
+PLASTER/PLASTERCEILING*	ceiling
+CS_ITALY/WALLPAPER*	wallpaper	1.0,0.92,0.80
+CS_HAVANA/TUNNELPLASTER*	plaster_worn
+CS_HAVANA/GEN*	plaster_painted	0.96,0.90,0.78
+DE_CHATEAU/WALL0*	wallpaper	0.95,0.88,0.78
+DE_CHATEAU/WALL04PNL*	wood_planks
+DE_CHATEAU/INTBRICK*	brick_red
+DE_CHATEAU/BRICK*	brick_red
+DE_CHATEAU/CURTAIN*	wallpaper	0.85,0.55,0.50
+DE_CHATEAU/CXWNDBLU	glass
+DE_CHATEAU/STAIRS*	wood_planks
+DE_CHATEAU/WOODKTRIM	wood_planks
+DE_CHATEAU/WOODI*	wood_planks
+DE_CHATEAU/EXTTRIM*	stone_wall
+DE_CHATEAU/BUSH*	grass
+DE_PIRANESI/PI_ART*	wallpaper
+BUILDING_TEMPLATE/*	plaster_painted	0.95,0.90,0.82
+BUILDING_TEMPLATE/ROOF_TEMPLATE*	roof_tiles
+BUILDING_TEMPLATE/COURTYARD*	plaster_painted	0.95,0.90,0.82
+BUILDINGS/*	plaster_painted	0.95,0.90,0.82
+COMPOSITE/*	plaster_painted	0.95,0.90,0.82
+CS_ASSAULT/*	plaster_painted	0.85,0.85,0.88
+WALL/THS_MNSTRYWALL*	plaster_worn
+MU_FACTORY_WINTER/FOKA_MNSTRYWALL*	plaster_worn
+MU_FACTORY_WINTER/TIDES_ROOF*	roof_tiles
+MU_FACTORY_WINTER/*	plaster_worn
+ICE/WOODWALL*	wood_planks	0.85,0.9,1.0
+ICE/*	snow
+
+# --- walls: concrete, stone, brick
+CONCRETE/CONCRETEWALL*	concrete
+CONCRETE/OFFTRIM*	concrete
+CONCRETE/OFFWLL*	plaster_painted
+CONCRETE/METALWALL*	metal
+CONCRETE/*	concrete
+BRICK/*	brick_red
+BRICK/OFFWLL*	plaster_painted
+BRICK/INFWNDW*	plaster_painted
+BRICK/INFDR*	door_wood
+BRICK/INFWLL*	plaster_painted	0.95,0.92,0.84
+STONE/*	stone_wall
+STONE/INFWLL*	stone_wall
+STONE/INFBASE*	stone_wall
+STONE/INFWINDW*	plaster_painted
+STONE/STONEWALL*_SNOW	snow
+CS_ITALY/HPE_ITALY_STONE*	stone_wall
+CS_ITALY/STONEWALL*	stone_wall
+CS_ITALY/PICRATE*	wood_planks
+CS_ITALY/BLACK	flat	0.1,0.1,0.1
+CS_ITALY/DOOR*	door_wood
+CS_ITALY/MISC_*	plaster_painted
+DE_CBBLE/OUTWALL*	stone_wall
+DE_CBBLE/ROOFTILE*	roof_tiles
+DE_CBBLE/TRIM*	stone_wall
+DE_CBBLE/WOODBEAM*	wood_planks
+DE_CBBLE/GRASSDIRT*	grass
+DE_NUKE/*	metal
+DE_DUST/*	stone_wall
+DE_TRAIN/*	metal
+DE_TIDES/*	stone_wall
+
+# --- walls: wood
+WOOD/*BEAM*	wood_planks
+WOOD/WOODWALL*	wood_planks
+WOOD/MILWALL*	wood_planks
+WOOD/MILCAB*	wood_planks
+WOOD/MILROOF*	roof_tiles
+WOOD/WOODSTAIR*	wood_planks
+WOOD/WOODSHINGLES*	roof_tiles
+WOOD/THS_TIDES_ROOF*	roof_tiles
+WOOD/THS_*	wood_planks
+WOOD/OFFDESKTOP*	wood_planks
+WOOD/WOODBURNT*	wood_planks
+WOOD/*DOOR*	door_wood
+WOOD/INFDOOR*	door_wood
+WOOD/*DR*	door_wood
+WOOD/OFFDR*	door_wood
+WOOD/WOODDOOR*	door_wood
+WOOD/*	wood_planks
+CS_ITALY/WOODBEAM*	wood_planks
+PROPS/WOODCRATE*	wood_planks
+
+# --- metal and glass
+METAL/*	metal
+METAL/METALTRUSS*	metal
+METAL/DRTRIM*	metal
+METAL/OFFELEVDR*	metal
+METAL/OFFGARAGEDR*	metal
+METAL/MILWALL*	plaster_worn
+METAL/PRODTRIM*	metal
+METAL/PRODIBEAM*	metal
+METAL/PRODCAUTION	metal
+PROPS/METAL*	metal
+DIOLATOR/*	metal
+VEHICLE/*	metal
+GLASS/*	glass
+GLASS/OFFWNDW*	glass
+PLASTER/INFWNDWA	glass
+LIQUIDS/*	water
+NATURE/WATER*	water
+
+# --- ground
+NATURE/GRASSFLOOR*	grass
+NATURE/BLENDPRODASPHALT*	concrete
+NATURE/BLENDDIRT*	mud
+NATURE/PORTCLIFF*	stone_wall
+NATURE/TREE_CARD*	grass
+CS_HAVANA/GROUND01GRASS	grass
+
+# --- found by `bsp.py unmapped` over the murder maps (2026-10-20)
+MATERIALS/DE_CBBLE/OUTWALL*	stone_wall
+MATERIALS/DE_CBBLE/WOODBEAM*	wood_planks
+MATERIALS/DE_CBBLE/*	stone_wall
+PROPS/TARPAPERROOF*	roof_tiles
+PROPS/SIGN*	metal
+PROPS/HAZARDSTRIP*	metal
+DE_CHATEAU/DECWDD*	wood_planks
+DE_CBBLE/CONCRETE*	concrete
+DE_PIRANESI/PI_SIGN*	metal
+DE_PIRANESI/PI_COBBLES*	stone_wall
+NATURE/GRAVEL*	mud
+NATURE/CLIFF*	stone_wall
+NATURE/BLENDGRASS*	grass
+NATURE/BLENDROCKS*	mud
+NATURE/BLENDRUBBLE*	mud
+GROUND/OFFTERRAIN	snow
+GROUND/BLENDSNOW*	snow
+CS_HAVANA/WOODF*	wood_floor
+CS_HAVANA/METAL*	metal
+RNDECALS/*	flat
+LIGHTS/*	flat
+THS_ART/*	wallpaper
+T_WOOD/*	wood_planks
