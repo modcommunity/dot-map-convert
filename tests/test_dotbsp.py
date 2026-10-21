@@ -397,15 +397,15 @@ class DocBoxes(unittest.TestCase):
             def __init__(self, boxes_):
                 self.boxes = boxes_
         leaf = {"at": [0, 1.0, 0], "size": [0.9, 2.0, 0.05], "mat": "wood"}
-        dropped_any = False
+        made = {"boxes": [leaf, dict(leaf, mat="concrete"), dict(leaf, size=[0.9, 2.5, 0.05])]}
+        # Asserted on the made-up doc, not inside the loop: once every repo imports
+        # the helper from dotbsp, each_copy yields nothing and the loop proves nothing.
+        self.assertGreater(docboxes.drop_door_leaves(copy.deepcopy(made["boxes"])), 0)
         for repo, mod in self.each_copy("drop_door_leaves"):
-            docs = [doc for _n, doc in repo_docs(repo)] + [{"boxes": [leaf, dict(leaf, mat="concrete"), dict(leaf, size=[0.9, 2.5, 0.05])]}]
-            for doc in docs:
+            for doc in [doc for _n, doc in repo_docs(repo)] + [made]:
                 a, b = copy.deepcopy(doc["boxes"]), M(copy.deepcopy(doc["boxes"]))
                 n1, n2 = docboxes.drop_door_leaves(a), mod.drop_door_leaves(b)
                 self.assertEqual((n1, a), (n2, b.boxes), repo)
-                dropped_any = dropped_any or n1 > 0
-        self.assertTrue(dropped_any)
 
     def test_prune_far_scenery_matches_every_copy(self):
         for repo, mod in self.each_copy("prune_far_scenery"):
