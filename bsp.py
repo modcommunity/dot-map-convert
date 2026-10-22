@@ -30,7 +30,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import classes, units, docboxes, gma, intermediate, mesh, movers, reader, sources, texturemap  # noqa: E402
+from dotbsp import classes, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -99,7 +99,8 @@ def cmd_mesh(args):
     report = classes.report(bsp)
     extra = {"movers": movers.movers(bsp, scale, args.y0), "volumes": movers.volumes(bsp, scale, args.y0),
              "destinations": movers.destinations(bsp, scale, args.y0), "entity_report": report,
-             "links": movers.links(bsp), "entities": movers.generic(bsp)}
+             "links": movers.links(bsp), "entities": movers.generic(bsp),
+             "environment": environment.environment(bsp, scale, args.y0), "sounds": environment.sounds(bsp, scale, args.y0)}
     if args.coverage:
         extra["coverage"] = mesh.coverage(bsp, m)
         extra["silhouette"] = mesh.silhouette_diff(bsp, m)
@@ -125,6 +126,33 @@ def cmd_mesh(args):
         if not args.allow_unknown:
             return 3
     return 0
+
+
+def cmd_import(args):
+    src = _one(args)
+    if src is None:
+        return 2
+    try:
+        bsp = reader.Bsp(src.member or src.origin, data=src.read()).load()
+    except (ValueError, OSError) as e:
+        print("%s: %s" % (src.label(), e), file=sys.stderr)
+        return 1
+    scale = units.parse_scale(args.scale)
+    credit = _credit(args)
+    raw = importer.store_raw(bsp, src.name, args.game, credit=credit, root=args.raw_root, pak=args.pak, scale=scale, y0=args.y0)
+    print("raw import stored: %s" % raw)
+    if not args.out:
+        return 0
+    doc, problems = importer.ship(bsp, src.name, args.out, credit=credit, scale=scale, y0=args.y0,
+                                  allow_unknown=args.allow_unknown)
+    lic = doc["licence"]
+    print("%s: %d surfaces; %d free replacements (%s); %d models stood in; %d ambient sounds, %d soundscapes; environment: %s -> %s.json" % (
+        src.name, len(doc["surfaces"]), len(lic["textures"]), ", ".join(sorted({t["kind"] for t in lic["textures"]})),
+        len(lic["models"]), len(doc["sounds"]["ambient"]), len(doc["sounds"]["soundscapes"]),
+        ", ".join(k for k in doc["environment"] if k != "sky") or "sky only", args.out))
+    for p in problems:
+        print("  NOT SHIPPABLE: %s" % p, file=sys.stderr)
+    return 4 if problems else 0
 
 
 def cmd_classes(args):
@@ -297,12 +325,26 @@ def main(argv):
     me.add_argument("--coverage", action="store_true", help="sample the source against the output (slow on big maps)")
     me.add_argument("--allow-unknown", action="store_true", help="do not fail on an undecided entity class")
     cl = sub.add_parser("classes", help="entity classes and what each becomes")
+    im = sub.add_parser("import", help="raw import outside the repo, then the licence pass into --out")
+    im.add_argument("bsp")
+    im.add_argument("--game", required=True, help="the game's folder under the raw root (zz, pg, ...)")
+    im.add_argument("--raw-root", default=None, help="default $DOTBSP_RAW_ROOT or ~/mapsrc; the raw import is <root>/<game>/raw/<map>/")
+    im.add_argument("--out", help="prefix of the shipped map; omit to store only the raw import")
+    im.add_argument("--pak", action="store_true", help="also extract the packed vmt/vtf/sound files into the raw store")
+    im.add_argument("--member")
+    im.add_argument("--credit")
+    im.add_argument("--author")
+    im.add_argument("--page")
+    im.add_argument("--licence")
+    im.add_argument("--scale", default="visual")
+    im.add_argument("--y0", type=float, default=0.0)
+    im.add_argument("--allow-unknown", action="store_true")
     cl.add_argument("paths", nargs="*")
     cl.add_argument("--markdown", action="store_true")
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes}[args.cmd](args)
+                "classes": cmd_classes, "import": cmd_import}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2
