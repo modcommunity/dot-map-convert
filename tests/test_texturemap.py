@@ -17,7 +17,7 @@ from dotbsp import docboxes, texturemap                    # noqa: E402
 
 # The ids a game may be asked to draw; a row naming anything else is a typo until this list grows.
 GENERIC = {
-    "wood_floor", "parquet", "carpet", "tile_floor", "tile_wall", "plaster_painted", "plaster_worn", "wallpaper",
+    "wood_floor", "parquet", "carpet", "carpet_grey", "carpet_pattern", "carpet_red", "carpet_blue", "tile_floor", "tile_wall", "plaster_painted", "plaster_worn", "wallpaper",
     "concrete", "brick_red", "stone_wall", "wood_planks", "ceiling", "roof_tiles", "snow", "mud", "metal",
     "door_wood", "glass", "grass", "water", "flat",
 }
@@ -84,6 +84,28 @@ class TextureMapTests(unittest.TestCase):
         for r in t.rows:
             self.assertNotIn(r.pattern, seen, "%s is on lines %s and %d twice" % (r.pattern, seen.get(r.pattern), r.line))
             seen[r.pattern] = r.line
+
+    def test_carpet_and_snow_names_reach_a_photo_set(self):
+        from dotbsp import licence
+        t, free = texturemap.load(), licence.load()
+        want = {
+            "carpet/offflra": "carpet", "carpet/offflrb": "carpet", "cs_italy/carpet-sn03": "carpet_red",
+            "customtext/gc textures/carpet/blue_carpet08_darker": "carpet_blue",
+            "customtext/gc textures/carpet/gray_carpet02": "carpet_grey",
+            "customtext/gc textures/carpet/red_carpet01": "carpet_red",
+            "de_piranesi/pi_rug1": "carpet_pattern", "de_piranesi/pi_rug4": "carpet_pattern",
+            "nippertextures/clue/clue_redcarp": "carpet_red", "props/carpetfloor001a": "carpet",
+            "props/carpetfloor004a": "carpet", "props/carpetfloor006a": "carpet",
+            "props/carpetfloor007a": "carpet", "props/carpetfloor008a": "carpet",
+            "custom/snowboard": "snow", "custom/snowboard2": "snow",
+        }
+        for name, material in want.items():
+            hit = t.lookup(name)
+            self.assertIsNotNone(hit, name)
+            self.assertEqual(hit[0], material, name)
+            self.assertNotEqual(free[material]["kind"], "generated", name)
+            self.assertEqual(free[material]["licence"], "CC0-1.0", name)
+        self.assertEqual(len({free[m]["kind"] for m in want.values()} - {"snow"}), 4)
 
     def test_cli_unmapped_reads_a_map(self):
         import synth

@@ -13,6 +13,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 # First match wins; order is specific to general. Values are folders of addons/dot_map/surfaces.
 NAME_RULES = [
+    (r"snow", "snow"),
+    (r"carpet|carp|crpt|rug", "carpet_grey"),
     (r"brick|bricks|brk", "brick"),
     (r"rust|rusty|corrod", "rust"),
     (r"corrug|container|shutter", "corrugated"),

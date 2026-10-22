@@ -61,6 +61,23 @@ class Free(unittest.TestCase):
             if r["kind"] != "generated":
                 self.assertTrue(os.path.isdir(os.path.join(HERE, "..", "..", "..", "addons", "dot_map", "surfaces", r["kind"])), g)
 
+    def test_photo_sets_are_complete_and_credited(self):
+        root = os.path.join(HERE, "..", "..", "..", "addons", "dot_map", "surfaces")
+        credits = open(os.path.join(root, "CREDITS.md")).read()
+        for r in licence.load().values():
+            if r["kind"] == "generated":
+                continue
+            for f in ("albedo.jpg", "normal.jpg", "roughness.jpg"):
+                self.assertTrue(os.path.isfile(os.path.join(root, r["kind"], f)), (r["kind"], f))
+            self.assertIn("| %s |" % r["kind"], credits)
+            self.assertIn(r["url"], credits)
+
+    def test_carpet_and_snow_names_choose_a_photo(self):
+        from dotbsp import nearest
+        self.assertEqual(nearest.by_name("de_chateau/carpet01"), "carpet_grey")
+        self.assertEqual(nearest.by_name("nature/snowfloor001"), "snow")
+        self.assertIsNone(nearest.by_name("props/drugstore"))
+
     def test_generated_texture_is_deterministic_and_a_png(self):
         a, b = textures.generate("carpet", [0.2, 0.3, 0.8]), textures.generate("carpet", [0.2, 0.3, 0.8])
         self.assertEqual(a, b)
