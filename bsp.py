@@ -7,6 +7,15 @@
     python3 -I tools/bsp/bsp.py --list <dir>...           (the same as `list`)
     python3 -I tools/bsp/bsp.py unmapped <dir | file>... [--table source_textures.tsv] [--top N] [--json] [--strict]
     python3 -I tools/bsp/bsp.py --unmapped <dir | file>...   (the same as `unmapped`)
+    python3 -I tools/bsp/bsp.py mesh <map.bsp | archive> --out <prefix> [--member NAME] [credit flags]
+            [--y0 M] [--coverage] [--allow-unknown]
+    python3 -I tools/bsp/bsp.py classes [<dir | file>...] [--markdown]
+
+`mesh` writes the full geometry (`<prefix>.json` + `<prefix>.bin`, dotbsp/mesh.py) with the
+movers, volumes and teleport destinations (dotbsp/movers.py) and what became of every entity
+(dotbsp/classes.py) in the manifest; it fails (3) on an entity class nobody decided about
+unless `--allow-unknown`, and `--coverage` samples the source against what was written.
+`classes` prints each class's treatment over the maps given, or the whole table.
 
 `convert` writes the intermediate JSON (README.md, "The intermediate") that every game's
 adapter reads. `list` prints one line a map: name, BSP version, size, entity and spawn
@@ -21,7 +30,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import docboxes, gma, intermediate, reader, sources, texturemap  # noqa: E402
+from dotbsp import classes, units, docboxes, gma, intermediate, mesh, movers, reader, sources, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -64,6 +73,79 @@ def cmd_convert(args):
         src.name, bsp.version, c["brushes"], c["entities"], c["spawns"], c["lights"], c["static_props"],
         c["displacements"], args.out))
     return 0
+
+
+def _one(args):
+    found = sources.find([args.bsp])
+    if args.member:
+        found = [s for s in found if s.member == args.member or s.name == args.member.lower()]
+    if len(found) != 1:
+        print("%s holds %d maps; name one with --member" % (args.bsp, len(found)), file=sys.stderr)
+        return None
+    return found[0]
+
+
+def cmd_mesh(args):
+    src = _one(args)
+    if src is None:
+        return 2
+    try:
+        bsp = reader.Bsp(src.member or src.origin, data=src.read()).load()
+    except (ValueError, OSError) as e:
+        print("%s: %s" % (src.label(), e), file=sys.stderr)
+        return 1
+    scale = units.parse_scale(args.scale)
+    m = mesh.build(bsp, scale=scale, y0=args.y0)
+    report = classes.report(bsp)
+    extra = {"movers": movers.movers(bsp, scale, args.y0), "volumes": movers.volumes(bsp, scale, args.y0),
+             "destinations": movers.destinations(bsp, scale, args.y0), "entity_report": report}
+    if args.coverage:
+        extra["coverage"] = mesh.coverage(bsp, m)
+        extra["silhouette"] = mesh.silhouette_diff(bsp, m)
+    doc = mesh.write(m, args.out, credit=_credit(args), name=src.name, extra=extra)
+    c = doc["counts"]
+    print("%s: %d surfaces, %d triangles, %d hulls, %d movers, %d volumes, bin %d bytes (%d gzip'd) -> %s.{json,bin}" % (
+        src.name, c["surfaces"], c["triangles"], c["hulls"], len(extra["movers"]), len(extra["volumes"]),
+        doc["bin"]["bytes"], doc["bin"]["stored_bytes"], args.out))
+    for t, row in report["by_treatment"].items():
+        print("  %-8s %5d  %s" % (t, sum(row.values()), ", ".join("%s %d" % kv for kv in sorted(row.items(), key=lambda kv: -kv[1])[:8])))
+    if args.coverage:
+        cv, sl = extra["coverage"], extra["silhouette"]
+        print("  coverage: drawn %.4f of %d samples, solid %.4f of %d; silhouette kept top %.4f side %.4f/%.4f" % (
+            cv["drawn"], cv["drawn_samples"], cv["solid"], cv["solid_samples"], sl["top"]["kept"],
+            sl["side_x"]["kept"], sl["side_z"]["kept"]))
+    if report["unknown"]:
+        print("  undecided classes (add a row to dotbsp/classes.py): %s" % ", ".join(
+            "%s %d" % kv for kv in sorted(report["unknown"].items())), file=sys.stderr)
+        if not args.allow_unknown:
+            return 3
+    return 0
+
+
+def cmd_classes(args):
+    if not args.paths:
+        print(classes.markdown(), end="")
+        return 0
+    maps = {}
+    bad = 0
+    for s in sources.find(args.paths):
+        try:
+            bsp = reader.Bsp(s.member or s.origin, data=s.read()).load()
+        except (ValueError, OSError) as e:
+            print("%s: %s" % (s.label(), e), file=sys.stderr)
+            bad += 1
+            continue
+        for c in {e.get("classname", "") for e in bsp.entities} | ({"prop_static"} if bsp.static_props() else set()):
+            maps[c] = maps.get(c, 0) + 1
+    if args.markdown:
+        print(classes.markdown(maps), end="")
+    else:
+        for c, n in sorted(maps.items(), key=lambda kv: -kv[1]):
+            t, _m, how = classes.treatment(c)
+            print("%-36s %4d  %s%s" % (c, n, t or "UNDECIDED", " (prefix)" if how == "prefix" else ""))
+    undecided = [c for c in maps if classes.treatment(c)[0] is None]
+    print("%d classes, %d undecided, %d unreadable maps" % (len(maps), len(undecided), bad), file=sys.stderr)
+    return 3 if undecided else 0
 
 
 def _row_notes(s):
@@ -197,9 +279,25 @@ def main(argv):
     um.add_argument("--top", type=int, default=0, help="only the N most-used")
     um.add_argument("--json", action="store_true")
     um.add_argument("--strict", action="store_true", help="exit 1 when anything is unmapped")
+    me = sub.add_parser("mesh", help="one map's full geometry, movers and volumes (dotbsp/mesh.py)")
+    me.add_argument("bsp")
+    me.add_argument("--out", required=True, help="prefix: writes <prefix>.json and <prefix>.bin")
+    me.add_argument("--member")
+    me.add_argument("--credit")
+    me.add_argument("--author")
+    me.add_argument("--page")
+    me.add_argument("--licence")
+    me.add_argument("--scale", default="visual")
+    me.add_argument("--y0", type=float, default=0.0, help="metres subtracted from every height")
+    me.add_argument("--coverage", action="store_true", help="sample the source against the output (slow on big maps)")
+    me.add_argument("--allow-unknown", action="store_true", help="do not fail on an undecided entity class")
+    cl = sub.add_parser("classes", help="entity classes and what each becomes")
+    cl.add_argument("paths", nargs="*")
+    cl.add_argument("--markdown", action="store_true")
     args = ap.parse_args(argv[1:])
     try:
-        return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped}[args.cmd](args)
+        return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
+                "classes": cmd_classes}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2
