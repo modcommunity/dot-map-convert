@@ -33,7 +33,7 @@ def _colour(text):
         v = [float(x) for x in t[:4]]
     except ValueError:
         return None
-    if len(v) < 3:
+    if len(v) < 3 or min(v[:3]) < 0:        # "-1 -1 -1 1" is how an unset HDR colour is stored
         return None
     return [round(c / 255.0, 4) for c in v[:3]] + ([v[3]] if len(v) > 3 else [])
 

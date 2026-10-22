@@ -1,0 +1,23 @@
+# regex on the lowercased source sound name (first match wins) -> stand-in id, an ogg in addons/dot_map/sounds/ or a dot-audio stock bed (amb_*); empty id = nothing shipped (music and voices). Columns: pattern<TAB>stand_in<TAB>source<TAB>url<TAB>author<TAB>licence.
+\.mp3$|music|jingle|song					
+npc/|vo/|scream|voice|monk|child|radiovoice|zombie|growl|moan					
+door.*(close|stop|shut)|doors\.(full)?close|gate_close	door_close	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
+door|elevator|lift	door_open	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
+button|switch|lever|click|combine_camera|combinecamera	button	Kenney Interface Sounds	https://kenney.nl/assets/interface-sounds	Kenney	CC0-1.0
+explo|c4|bomb|grenade	explosion	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
+flush|toilet	flush	Kenney Foley Sounds	https://kenney.nl/assets/foley-sounds	Kenney	CC0-1.0
+drip	drip	Kenney Foley Sounds	https://kenney.nl/assets/foley-sounds	Kenney	CC0-1.0
+waterrun|water|wave|sink|pipe_water|leech|swim|river|stream	water_run	Kenney Foley Sounds	https://kenney.nl/assets/foley-sounds	Kenney	CC0-1.0
+boil|slime|acid|lava|bubble	bubbling	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
+fire|flame|burn|torch	fire	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
+steam|jet|vent|hiss	machine_low	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
+wind|windmill|breeze	amb_wind	dot-audio stock ambience (synthesised)	https://github.com/modcommunity/dot-audio	TMC (dot-audio authors)	CC0-1.0
+rain|storm	amb_rain	dot-audio stock ambience (synthesised)	https://github.com/modcommunity/dot-audio	TMC (dot-audio authors)	CC0-1.0
+night|cricket	amb_night	dot-audio stock ambience (synthesised)	https://github.com/modcommunity/dot-audio	TMC (dot-audio authors)	CC0-1.0
+cave|dungeon|tunnel	amb_cave	dot-audio stock ambience (synthesised)	https://github.com/modcommunity/dot-audio	TMC (dot-audio authors)	CC0-1.0
+eerie|atmosphere|ambience|creepy|horror|drone	amb_eerie	dot-audio stock ambience (synthesised)	https://github.com/modcommunity/dot-audio	TMC (dot-audio authors)	CC0-1.0
+city|street|traffic|crowd|cantina|radio_am|am_radio	amb_city	dot-audio stock ambience (synthesised)	https://github.com/modcommunity/dot-audio	TMC (dot-audio authors)	CC0-1.0
+bell|alarm|siren|buzzer	bell	Kenney Impact Sounds	https://kenney.nl/assets/impact-sounds	Kenney	CC0-1.0
+shield|energy|electric|teleport|combine|whiteflash|forcefield|portal|laser	energy	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
+generator|substation|machine|engine|fan|motor|diesel|airboat|hum|turbine|factory|industrial	machine	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
+plate|slide|scrape|metal	metal_slide	Kenney Foley Sounds	https://kenney.nl/assets/foley-sounds	Kenney	CC0-1.0

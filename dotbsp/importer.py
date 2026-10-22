@@ -14,7 +14,7 @@ import json
 import os
 import re
 
-from . import environment, intermediate, licence, mesh, movers, props, reader, units
+from . import environment, intermediate, licence, mesh, movers, props, reader, standins, units
 
 DEFAULT_ROOT = os.path.expanduser(os.environ.get("DOTBSP_RAW_ROOT", "~/mapsrc"))
 
@@ -106,8 +106,7 @@ def ship(bsp, name, prefix, credit=None, prop_table=None, scale=units.VISUAL, y0
     doc = mesh.write(m, prefix, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(prefix))
     licence.annotate(doc, outdir, prop_table=prop_table, models=placed_models(bsp))
-    for s in doc["sounds"]["ambient"]:
-        s.setdefault("stand_in", "")
+    doc["props"] = standins.placements(bsp, prop_table, scale=scale, y0=y0)
     problems = licence.check(doc)
     if report["unknown"] and not allow_unknown:
         problems.append("undecided entity classes: %s" % ", ".join(sorted(report["unknown"])))

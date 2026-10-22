@@ -89,6 +89,39 @@ class Import(unittest.TestCase):
         self.assertIsNone(importer._safe("c:/x"))
         self.assertEqual(importer._safe("\\materials\\a.vtf"), "materials/a.vtf")
 
+    def test_model_and_sound_stand_ins_are_free_and_exist(self):
+        from dotbsp import standins
+        root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "addons", "dot_map")
+        m, s = standins.models(), standins.sounds()
+        self.assertEqual(m.get("props/cs_office/sofa.mdl")["stand_in"], "sofa")
+        self.assertIsNone(m.get("props_pipes/pipe03_straight01_long.mdl"))     # no sensible match: stays a box
+        self.assertEqual(s.get("ambient/water/wave2.wav")["stand_in"], "water_run")
+        self.assertEqual(s.get("music/dust.mp3")["stand_in"], "")               # music and voices are never replaced
+        for rx, row in m.rows:
+            self.assertIn(row["licence"], licence.ALLOWED)
+            self.assertTrue(os.path.exists(os.path.join(root, "props", row["stand_in"] + ".glb")), row["stand_in"])
+        for rx, row in s.rows:
+            if row["stand_in"]:
+                self.assertIn(row["licence"], licence.ALLOWED)
+                if not row["stand_in"].startswith("amb_"):
+                    self.assertTrue(os.path.exists(os.path.join(root, "sounds", row["stand_in"] + ".ogg")), row["stand_in"])
+
+    def test_unset_hdr_colour_is_absent(self):
+        from dotbsp import environment
+        self.assertIsNone(environment._colour("-1 -1 -1 1"))
+        self.assertEqual(environment._colour("255 0 0 200"), [1.0, 0.0, 0.0, 200.0])
+
+    def test_unmapped_texture_goes_to_the_nearest_photo(self):
+        from dotbsp import nearest
+        table = licence.load()
+        self.assertEqual(nearest.nearest("custom/brickwall12", None), ("brick", "name"))
+        self.assertEqual(nearest.nearest("zz/dawall_07", [0.97, 0.97, 0.96])[1], "colour")
+        self.assertEqual(nearest.nearest("zz/qq", [0.0, 0.9, 0.0]), (None, None))          # too far from every photo: flat
+        r = licence.replacement(None, [0.5, 0.4, 0.3], table, "custom/rusty_barrel_a")
+        self.assertEqual((r["kind"], r["how"], r["licence"]), ("rust", "name", "CC0-1.0"))
+        r = licence.replacement(None, [0.0, 0.9, 0.0], table, "zz/qq")
+        self.assertEqual((r["kind"], r["generic"]), ("generated", "flat"))
+
     def test_shipped_map_has_only_free_textures(self):
         with tempfile.TemporaryDirectory() as out:
             doc, problems = importer.ship(load(), "t", os.path.join(out, "t"), allow_unknown=True,
@@ -97,7 +130,7 @@ class Import(unittest.TestCase):
             self.assertTrue(all("free" in s for s in doc["surfaces"]))
             self.assertTrue(all(t["licence"] in licence.ALLOWED for t in doc["licence"]["textures"]))
             unknown = [t for t in doc["licence"]["textures"] if "zz_unknown/never_heard_of_it" in t["sources"]]
-            self.assertEqual(unknown[0]["generic"], "flat")           # an unmapped name still gets a free image
+            self.assertIn(unknown[0]["how"], ("colour", "flat"))    # an unmapped name still gets a free image
             for t in doc["licence"]["textures"]:
                 if t["kind"] == "generated":
                     self.assertTrue(os.path.exists(os.path.join(out, t["file"])), t["file"])

@@ -1,0 +1,16 @@
+# kind<TAB>r<TAB>g<TAB>b: average albedo of each photo set in addons/dot_map/surfaces (sRGB 0..1); nearest.py picks by colour from these. Regenerate when a set is added.
+asphalt	0.271	0.267	0.263
+brick	0.522	0.416	0.329
+concrete	0.569	0.529	0.451
+concrete_clean	0.722	0.722	0.722
+corrugated	0.510	0.506	0.506
+grass	0.376	0.427	0.188
+ground	0.596	0.576	0.345
+metal	0.435	0.427	0.420
+plaster	0.745	0.749	0.733
+rust	0.545	0.298	0.153
+tile_checker	0.333	0.294	0.267
+tile_dark	0.208	0.212	0.216
+tile_white	0.973	0.973	0.969
+wood_floor	0.361	0.294	0.224
+wood_planks	0.725	0.596	0.412
