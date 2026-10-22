@@ -120,6 +120,17 @@ class RoundTrip(unittest.TestCase):
         self.assertEqual(a, b)
 
 
+class Fixture(unittest.TestCase):
+    def test_the_godot_fixture_is_current(self):
+        # examples/bsp_mesh/ is what the Godot suite reads; a format change must rewrite it
+        import mesh_fixture
+        with tempfile.TemporaryDirectory() as d:
+            mesh_fixture.write(os.path.join(d, "fixture"))
+            for ext in (".json", ".bin"):
+                with open(os.path.join(d, "fixture" + ext), "rb") as a, open(mesh_fixture.OUT + ext, "rb") as b:
+                    self.assertEqual(a.read(), b.read(), "run tools/bsp/tests/mesh_fixture.py")
+
+
 class Coverage(unittest.TestCase):
     def test_full_mesh_is_full(self):
         bsp = load(boxes=((0, 0, 0, 256, 256, 64), (0, 0, 64, 32, 256, 192)))
