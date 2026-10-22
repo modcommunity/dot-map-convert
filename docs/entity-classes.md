@@ -7,7 +7,7 @@ What a class becomes:
 - `world`: geometry, drawn and solid (`dotbsp/mesh.py`), like any world brush.
 - `drawn`: geometry, drawn and never solid.
 - `mover`: geometry that moves: a record in the mesh manifest's `movers` (what moves, which way, how far, how fast, what starts it, and the outputs that drive it) beside its model's surfaces and hulls (`dotbsp/movers.py`).
-- `volume`: a brush a body is affected by inside: the manifest's `volumes` (teleport, push, hurt, gravity, water, ladder) with each brush's planes; never drawn.
+- `volume`: a brush a body is affected by inside: the manifest's `volumes` (multiple, once, teleport, push, hurt, gravity, water, ladder) with each brush's planes; never drawn.
 - `point`: a point entity a game uses as it is: spawns, lights, the sun, fog, the 3D sky, props, sounds, decals, effect positions (the intermediate's `entities`, `lights`, `spawns`, `static_props`).
 - `data`: kept verbatim in the intermediate's entity list (map logic, paths, filters). Nothing runs it: a converter is not a scripting engine. The one exception is an output that drives a mover (`button -> door,Open`), which `movers` records as `opened_by`, because a button that opens a door and a lift is what the escape and zombie maps are built around.
 - `dropped`: deliberately left out, with the reason in the row.
@@ -43,7 +43,7 @@ What a class becomes:
 | `info_player_counterterrorist` | 139 | a spawn of the other team | `point` |
 | `func_button` | 138 | a button: pressed by use or touch, moves along `movedir` by its size minus `lip`, fires OnPressed | `mover` |
 | `ambient_generic` | 134 | a sound played at a point, looped or on input | `point` |
-| `trigger_multiple` | 130 | fires outputs each time a body enters | `data`: logic, kept for a game that reads its name (zones) |
+| `trigger_multiple` | 130 | fires outputs each time a body enters | `volume`: fires outputs each time a body enters, then waits `wait` seconds |
 | `func_illusionary` | 124 | a brush that is drawn and never solid (foliage, light shafts, fake walls); one painted with water is water | `drawn` |
 | `trigger_push` | 122 | pushes a body inside along `pushdir` at `speed` | `volume` |
 | `func_breakable` | 116 | a brush that breaks when damaged; drawn and solid where it stands | `world`: breaking is the game's (ZZ: barricades) |
@@ -64,7 +64,7 @@ What a class becomes:
 | `prop_physics` | 74 | a placed physics model (a barrel, a crate); models are studied | `point` |
 | `game_player_equip` | 73 | gives players weapons on spawn | `data`: the game decides kits |
 | `point_template` | 73 | a template that spawns copies of entities | `data`: logic |
-| `trigger_once` | 73 | fires outputs the first time a body enters | `data`: logic |
+| `trigger_once` | 73 | fires outputs the first time a body enters | `volume`: fires outputs the first time a body enters |
 | `func_door_rotating` | 69 | a hinged door: turns `distance` degrees about its origin's axis at `speed` | `mover` |
 | `point_viewcontrol` | 67 | a scripted camera | `data`: logic |
 | `sky_camera` | 66 | the 3D skybox's camera: where the miniature backdrop is and its scale (`mesh.skybox_of`) | `point` |

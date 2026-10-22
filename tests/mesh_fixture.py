@@ -31,7 +31,8 @@ def bsp():
 def write(prefix=OUT):
     b = bsp()
     m = mesh.build(b)
-    extra = {"movers": movers.movers(b), "volumes": movers.volumes(b)}
+    extra = {"movers": movers.movers(b), "volumes": movers.volumes(b),
+             "links": movers.links(b), "entities": movers.generic(b)}
     return mesh.write(m, prefix, credit={"author": "dot-map tests"}, name="fixture", extra=extra)
 
 

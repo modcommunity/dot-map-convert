@@ -3,6 +3,7 @@
 Every map is written by tests/synth.py with `faces=True`, so the drawn faces are known exactly.
 """
 
+import json
 import os
 import sys
 import tempfile
@@ -170,6 +171,77 @@ class Movers(unittest.TestCase):
         v = [x for x in movers.volumes(bsp) if x["kind"] == "hurt"][0]
         self.assertEqual(v["damage"], 500.0)
         self.assertEqual(len(v["brushes"][0]), 6)
+
+
+class Entities(unittest.TestCase):
+    REAL = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "examples", "bsp_mesh",
+                        "zm_4way_tunnel.entities.json")
+
+    def test_trigger_multiple_and_once_are_volumes_with_outputs(self):
+        bsp = load(entity_box=(0, 0, 0, 64, 64, 64), entity_class="trigger_multiple",
+                   entity_keys={"wait": "2.5", "OnStartTouch": "gate,Open,,1.5,-1"})
+        v = [x for x in movers.volumes(bsp) if x["kind"] == "multiple"][0]
+        self.assertEqual((v["wait"], v["outputs"][0]["delay"], v["outputs"][0]["input"]), (2.5, 1.5, "Open"))
+        bsp = load(entity_box=(0, 0, 0, 64, 64, 64), entity_class="trigger_once")
+        self.assertEqual([x["wait"] for x in movers.volumes(bsp) if x["kind"] == "once"], [-1.0])
+
+    def test_door_travel_time_and_lip(self):
+        bsp = load(entity_box=(-8, -32, -64, 8, 32, 64), entity_origin=(100, 0, 64),
+                   entity_keys={"movedir": "-90 0 0", "lip": "8", "speed": "100"})
+        r = movers.movers(bsp)[0]
+        self.assertAlmostEqual(r["lip"], 8 * units.VISUAL, places=4)
+        self.assertAlmostEqual(r["travel_time"], r["distance"] / r["speed"], places=3)
+
+    def test_hinge_travel_time_is_degrees_over_speed(self):
+        bsp = load(entity_box=(-8, -8, -64, 8, 8, 64), entity_class="func_door_rotating",
+                   entity_keys={"distance": "90", "speed": "45"})
+        r = movers.movers(bsp)[0]
+        self.assertEqual((r["degrees"], r["travel_time"]), (90.0, 2.0))
+
+    def test_links_resolve_and_flag_specials_and_strays(self):
+        bsp = load(entity_box=(-8, -32, -64, 8, 32, 64), entity_keys={"targetname": "Gate"})
+        bsp.entities.append({"classname": "func_button", "targetname": "b",
+                             "OnPressed": "gate,Open,,0,-1\n!activator,Ignite,,0,1\nnothing,Open,,2,-1"})
+        ls = {l["target"]: l for l in movers.links(bsp)}
+        self.assertEqual(ls["gate"]["to"], [i for i, e in enumerate(bsp.entities) if e.get("targetname") == "Gate"])                     # case-insensitive
+        self.assertTrue(ls["!activator"]["special"] and not ls["!activator"]["to"])
+        self.assertTrue(not ls["nothing"]["to"] and not ls["nothing"]["special"])
+        self.assertEqual(ls["nothing"]["delay"], 2.0)
+
+    def test_unknown_and_logic_classes_survive_as_generic_entities(self):
+        bsp = load()
+        bsp.entities += [{"classname": "made_up_entity", "targetname": "x", "origin": "100 0 0", "foo": "bar",
+                          "OnThing": "a,b,,0,-1"}, {"classname": "logic_relay", "targetname": "r"}]
+        g = {e["classname"]: e for e in movers.generic(bsp)}
+        self.assertEqual(g["made_up_entity"]["treatment"], "unknown")
+        self.assertEqual(g["made_up_entity"]["keys"]["foo"], "bar")
+        self.assertNotIn("OnThing", g["made_up_entity"]["keys"])
+        self.assertEqual(g["logic_relay"]["treatment"], "data")
+
+    def test_real_map_link_graph_and_travel(self):
+        with open(self.REAL) as f:
+            d = json.load(f)
+        names = {m["entity"]: m for m in d["movers"]}
+        self.assertTrue(d["links"] and d["movers"])
+        for l in d["links"]:
+            self.assertTrue(l["to"] or l["special"] or l["target"] == "phys_prp", l)    # the one stray in the map
+            for t in l["to"]:
+                n = self._name(d, t)
+                self.assertTrue(n is None or l["target"].lower() == n.lower(), (l["target"], n))
+        lift = names[145]                                  # lift02_plate: a toggle door moved by two buttons
+        self.assertEqual(lift["targetname"], "lift02_plate")
+        up = lift["maxs"][1] - lift["mins"][1]
+        self.assertAlmostEqual(lift["distance"], up - 2 * units.VISUAL - lift["lip"], places=2)
+        self.assertEqual({o["input"] for o in lift["opened_by"]}, {"Open", "Close"})
+        self.assertGreater(lift["travel_time"], 1.0)
+
+    @staticmethod
+    def _name(d, i):
+        for group in ("movers", "volumes", "entities"):
+            for r in d[group]:
+                if r["entity"] == i:
+                    return r["targetname"]
+        return None
 
 
 class Classes(unittest.TestCase):

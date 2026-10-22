@@ -70,8 +70,8 @@ func_water_analog|volume|water as a movable brush; swum in, it does not move her
 func_water|volume|older water brush; swum in
 func_ladder|volume|a climbable volume
 func_useableladder|volume|a ladder climbed by using it; as func_ladder between its two points
-trigger_multiple|data|fires outputs each time a body enters -- logic, kept for a game that reads its name (zones)
-trigger_once|data|fires outputs the first time a body enters -- logic
+trigger_multiple|volume|fires outputs each time a body enters, then waits `wait` seconds
+trigger_once|volume|fires outputs the first time a body enters
 trigger_look|data|fires when a player looks at a target -- logic
 trigger_soundscape|data|switches the ambient soundscape in a volume -- sound logic
 trigger_vphysics_motion|data|applies forces to physics objects inside -- props are not simulated

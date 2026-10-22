@@ -98,7 +98,8 @@ def cmd_mesh(args):
     m = mesh.build(bsp, scale=scale, y0=args.y0)
     report = classes.report(bsp)
     extra = {"movers": movers.movers(bsp, scale, args.y0), "volumes": movers.volumes(bsp, scale, args.y0),
-             "destinations": movers.destinations(bsp, scale, args.y0), "entity_report": report}
+             "destinations": movers.destinations(bsp, scale, args.y0), "entity_report": report,
+             "links": movers.links(bsp), "entities": movers.generic(bsp)}
     if args.coverage:
         extra["coverage"] = mesh.coverage(bsp, m)
         extra["silhouette"] = mesh.silhouette_diff(bsp, m)
@@ -109,6 +110,10 @@ def cmd_mesh(args):
         doc["bin"]["bytes"], doc["bin"]["stored_bytes"], args.out))
     for t, row in report["by_treatment"].items():
         print("  %-8s %5d  %s" % (t, sum(row.values()), ", ".join("%s %d" % kv for kv in sorted(row.items(), key=lambda kv: -kv[1])[:8])))
+    odd = sorted({e["classname"] for e in extra["entities"] if e["treatment"] == "unknown"})
+    print("  links: %d (%d unresolved); kept as data: %d entities; unknown classes: %s" % (
+        len(extra["links"]), sum(1 for k in extra["links"] if not k["to"] and not k["special"]),
+        len(extra["entities"]), ", ".join(odd) or "none"))
     if args.coverage:
         cv, sl = extra["coverage"], extra["silhouette"]
         print("  coverage: drawn %.4f of %d samples, solid %.4f of %d; silhouette kept top %.4f side %.4f/%.4f" % (

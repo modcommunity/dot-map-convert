@@ -17,6 +17,8 @@ engine's (a door travels its size along its direction, less `lip`).
 - `movers(bsp)`: one record a moving brush entity (`classes` treatment `mover`).
 - `volumes(bsp)`: one record a trigger volume, water and ladder brush (treatment `volume`),
   each with its brushes' planes so a game can test containment exactly.
+- `links(bsp)`: the output -> input graph between entities, each end resolved to entity indices.
+- `generic(bsp)`: every entity kept as data (logic, unknown classes) with all its keys.
 - `paths(bsp)`: the `path_track` chains trains run on.
 """
 
@@ -217,6 +219,9 @@ def movers(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
         elif cls == "func_conveyor":
             d = angle_vector(e.get("movedir", "0 0 0"))
             rec.update(direction=gdir(d), carries=not flags & 1, solid=not flags & 2)
+        _travel_time(rec)
+        if cls in ("func_door", "func_button"):
+            rec["lip"] = round(_f(e, "lip") * scale, 4)
         rec["opened_by"] = []
         out.append(rec)
     # Who drives whom: an output of any entity whose target is a mover's name.
@@ -231,6 +236,17 @@ def movers(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
                                        "targetname": e.get("targetname", ""), "output": o["output"],
                                        "input": o["input"], "delay": o["delay"]})
     return out
+
+
+def _travel_time(rec):
+    """Seconds one full travel takes: a slide's distance over its speed, a hinge's degrees over
+    its degrees a second; 0 for what does not travel."""
+    t = 0.0
+    if "degrees" in rec and rec.get("speed"):
+        t = abs(rec["degrees"]) / rec["speed"]
+    elif "distance" in rec and rec.get("speed"):
+        t = rec["distance"] / rec["speed"]
+    rec["travel_time"] = round(t, 4)
 
 
 KINDS = {
@@ -264,7 +280,7 @@ def chain(bsp, first, named, g, scale=_units.VISUAL, limit=512):
     return out
 
 
-VOLUME_KINDS = {"trigger_teleport": "teleport", "trigger_push": "push", "trigger_hurt": "hurt",
+VOLUME_KINDS = {"trigger_multiple": "multiple", "trigger_once": "once", "trigger_teleport": "teleport", "trigger_push": "push", "trigger_hurt": "hurt",
                 "trigger_gravity": "gravity", "func_water_analog": "water", "func_water": "water",
                 "func_ladder": "ladder"}
 
@@ -288,9 +304,12 @@ def volumes(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
         off = reader.entity_vec(e)
         rec = {"entity": ei, "model": mi, "classname": e["classname"], "kind": kind,
                "targetname": e.get("targetname", ""), "spawnflags": _i(e, "spawnflags"),
-               "disabled": str(e.get("StartDisabled", "0")).strip() == "1",
+               "disabled": str(e.get("StartDisabled", "0")).strip() == "1", "outputs": outputs(e),
                "brushes": [planes(bi, off) for bi in sorted(bsp.model_brushes(mi)) if bi < len(bsp.brushes)]}
-        if kind == "teleport":
+        if kind in ("multiple", "once"):
+            rec["wait"] = -1.0 if kind == "once" else _f(e, "wait", 1.0)
+            rec["filter"] = e.get("filtername", "")
+        elif kind == "teleport":
             rec["target"] = e.get("target", "")
             rec["filter"] = e.get("filtername", "")
         elif kind == "push":
@@ -310,6 +329,50 @@ def volumes(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
         if kind:
             out.append({"entity": None, "model": 0, "classname": "worldspawn", "kind": kind, "brush": bi,
                         "slime": bool(c & reader.CONTENTS_SLIME), "brushes": [planes(bi, (0.0, 0.0, 0.0))]})
+    return out
+
+
+_SPECIAL = ("!activator", "!caller", "!self", "!player", "!picker")
+
+
+def links(bsp):
+    """Every output as a graph edge: the output's record plus `from` (entity index), `from_name`
+    and `to`, the entity indices its target names (empty for a `!activator`-style special, which
+    is flagged `special`, or for a name nothing carries)."""
+    named = {}
+    for i, e in enumerate(bsp.entities):
+        if e.get("targetname"):
+            named.setdefault(e["targetname"].lower(), []).append(i)
+    out = []
+    for i, e in enumerate(bsp.entities):
+        for o in outputs(e):
+            t = o["target"].lower()
+            rec = dict(o)
+            rec.update({"from": i, "from_name": e.get("targetname", ""), "from_class": e.get("classname", ""),
+                        "to": named.get(t, []), "special": t in _SPECIAL or t.startswith("!")})
+            out.append(rec)
+    return out
+
+
+def generic(bsp, owners=None):
+    """Entities kept as data: treatment `data` or undecided. {entity, classname, targetname,
+    target, origin, model, treatment, keys}; `keys` is every key but the outputs and origin."""
+    from . import classes, mesh
+    owners = owners if owners is not None else mesh.model_entities(bsp)
+    by_entity = {ei: mi for mi, ei in owners.items()}
+    k = _units.VISUAL
+    out = []
+    for i, e in enumerate(bsp.entities):
+        cls = e.get("classname", "")
+        t = classes.treatment(cls)[0]
+        if t not in (None, "data"):
+            continue
+        p = reader.entity_vec(e)
+        out.append({"entity": i, "classname": cls, "targetname": e.get("targetname", ""),
+                    "target": e.get("target", ""), "model": by_entity.get(i),
+                    "origin": [round(p[0] * k, 4), round(p[2] * k, 4), round(-p[1] * k, 4)],
+                    "treatment": t or "unknown",
+                    "keys": {a: str(v) for a, v in e.items() if not a.startswith("On") and a not in ("origin", "classname")}})
     return out
 
 
