@@ -220,13 +220,15 @@ def _sky_face(bsp, f, off, sky):
 
 class Surface:
     __slots__ = ("model", "entity", "classname", "targetname", "material", "generic", "tint",
-                 "colour", "texels", "water", "displacement", "collide", "sky3d", "verts", "index", "_dedupe")
+                 "colour", "texels", "water", "displacement", "collide", "sky3d", "chunk", "verts", "index",
+                 "_dedupe")
 
     def __init__(self, model, entity, classname, targetname, material):
         self.model, self.entity, self.classname, self.targetname = model, entity, classname, targetname
         self.material = material
         self.generic, self.tint, self.colour, self.texels = None, None, None, None
         self.water = self.displacement = self.collide = self.sky3d = False
+        self.chunk = None
         self.verts, self.index, self._dedupe = [], [], {}
 
     def vertex(self, p, n, uv):
@@ -284,13 +286,18 @@ def _is_water(name, generic):
     return generic == "water" or "WATER" in name.upper()
 
 
+CHUNK = 32.0
+
+
 def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classify_material,
-          drawn_classes=DRAWN_BRUSH_ENTITIES, solid_classes=SOLID_BRUSH_ENTITIES):
+          drawn_classes=DRAWN_BRUSH_ENTITIES, solid_classes=SOLID_BRUSH_ENTITIES, chunk=CHUNK):
     """The drawn and solid world of a loaded `reader.Bsp` as a `Mesh`, in metres and Godot axes.
 
     `tmap` is a `texturemap.TextureMap` (the shared list by default). `y0` is subtracted from
     every height, for a game whose floor is at 0. `drawn_classes` and `solid_classes` say which
-    brush entities are drawn and which collide.
+    brush entities are drawn and which collide. The world's faces are split into `chunk`-metre
+    columns (x, z), one surface per material per column, so a renderer culls what is out of
+    view instead of drawing one map-sized surface per material (0 turns it off).
     """
     tmap = tmap or texturemap.load()
     out = Mesh()
@@ -338,8 +345,14 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                 in_sky = _sky_face(bsp, f, off, sky)
                 if in_sky:
                     out.skipped["face:sky3d_moved"] += 1
+                cell = None
+                if mi == 0 and chunk > 0 and not in_sky:
+                    fp = bsp.face_points(f)
+                    if fp:
+                        c = g([sum(p[i] for p in fp) / len(fp) for i in range(3)], off)
+                        cell = [int(math.floor(c[0] / chunk)), int(math.floor(c[2] / chunk))]
                 _add_face(bsp, f, name, mi, ei, cls, e.get("targetname", ""), off, surfaces, tmap,
-                          classify, g_sky if in_sky else g, gn, in_sky)
+                          classify, g_sky if in_sky else g, gn, in_sky, cell)
         solid = mi == 0 or cls in solid_classes
         if not solid:
             continue
@@ -371,13 +384,14 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
             out.hulls.append({"brush": bi, "model": mi, "entity": ei, "classname": cls, "kind": kind,
                               "contents": contents, "points": [g(p, off) for p in pts], "planes": planes})
     out.surfaces = [s for s in surfaces.values() if s.index]
-    out.surfaces.sort(key=lambda s: (s.model, s.sky3d, s.displacement, s.material))
+    out.surfaces.sort(key=lambda s: (s.model, s.chunk or [], s.sky3d, s.displacement, s.material))
     return out
 
 
-def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classify, g, gn, sky3d=False):
+def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classify, g, gn, sky3d=False,
+              chunk=None):
     disp = f[6] >= 0
-    key = (mi, name, disp, sky3d)
+    key = (mi, name, disp, sky3d, tuple(chunk) if chunk else None)
     s = surfaces.get(key)
     if s is None:
         s = Surface(mi, ei, cls, targetname, reader.clean_material(name))
@@ -388,6 +402,7 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
         s.displacement = disp
         s.collide = disp and not sky3d
         s.sky3d = sky3d
+        s.chunk = chunk
         surfaces[key] = s
     ti = bsp.texinfo[f[5]]
     td = int(ti[17])
@@ -469,7 +484,7 @@ def write(mesh, prefix, credit=None, name=None, extra=None):
                "generic": s.generic, "vertex_count": n, "position_offset": poff,
                "normal_offset": noff, "uv_offset": uoff,
                "index_offset": ioff, "index_count": len(s.index)}
-        for k in ("targetname", "tint", "colour", "texels"):
+        for k in ("targetname", "tint", "colour", "texels", "chunk"):
             v = getattr(s, k)
             if v:
                 rec[k] = v
@@ -518,6 +533,7 @@ def read(prefix):
         s = Surface(rec["model"], rec["entity"], rec["classname"], rec.get("targetname", ""), rec["material"])
         s.generic, s.water, s.displacement = rec.get("generic"), rec.get("water", False), rec.get("displacement", False)
         s.collide, s.sky3d, s.tint, s.colour = rec.get("collide", False), rec.get("sky3d", False), rec.get("tint"), rec.get("colour")
+        s.texels, s.chunk = rec.get("texels"), rec.get("chunk")
         n = rec["vertex_count"]
         pos = struct.unpack_from("<%df" % (3 * n), blob, rec["position_offset"])
         nor = struct.unpack_from("<%df" % (3 * n), blob, rec["normal_offset"])
