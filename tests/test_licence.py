@@ -126,6 +126,22 @@ class Defects(unittest.TestCase):
         self.assertEqual(cat.match([1.0, 0.5, 0.5]), ("crate_large", 0))
         self.assertEqual(cat.match([0.5, 0.5, 1.0]), ("crate_large", 1))
 
+    def test_a_thing_resting_on_a_packed_model_gets_a_block_of_its_size(self):
+        from dotbsp import standins
+        k = 1 / 0.01905
+        # a 1.8 x 0.7 x 0.6 m table at the origin (its z runs 0 to -0.6), a bottle on top, a bottle on the floor
+        packed = {"models/x/tbl.mdl": {"size": [1.8, 0.7, 0.6], "centre": [0.0, 0.35, -0.3], "min": [-0.9, 0.0, -0.6]}}
+        spots = [("models/x/tbl.mdl", [0, 0, 0], [0, 0, 0], None),
+                 ("models/x/bottle.mdl", [0.1 * k, 0.3 * k, 0.7 * k], [0, 0, 0], None)]
+        got = standins._support_boxes(spots, packed, None, 0.01905, 0.0)
+        self.assertEqual(len(got), 1)
+        self.assertEqual(got[0]["box"], [1.8, 0.7, 0.6])
+        self.assertAlmostEqual(got[0]["at"][1], 0.35, places=3)
+        floor = spots[:1] + [("models/x/bottle.mdl", [0.1 * k, 0.3 * k, 0.0], [0, 0, 0], None)]
+        self.assertEqual(standins._support_boxes(floor, packed, None, 0.01905, 0.0), [])
+        far = spots[:1] + [("models/x/bottle.mdl", [3.0 * k, 0.3 * k, 0.7 * k], [0, 0, 0], None)]
+        self.assertEqual(standins._support_boxes(far, packed, None, 0.01905, 0.0), [])
+
     def test_black_name_keeps_dark_colour(self):
         self.assertLess(licence.name_colour("tools/black")[0], 0.1)
         self.assertGreater(licence.name_colour("metal/white")[0], 0.8)

@@ -161,7 +161,7 @@ class FreeProps(_props.PropTable):
         return row["stand_in"] if row else default
 
 
-def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=None, shaped=None):
+def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=None, shaped=None, packed=None):
     """[{stand_in, model, at, yaw, scale, size?}] (`size`: the metres its longest side is drawn at, for a
     small thing a furniture-sized stand-in would swamp) for every placed model the game's table does not
     know and the free table does; positions in metres and Godot axes like the rest of the manifest."""
@@ -182,22 +182,88 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
             rec["size"] = size
         out.append(rec)
     shaped = shape_matches(bsp, game_table, table) if shaped is None else shaped
+    spots = _spots(doc)
+    boxes = _support_boxes(spots, packed if packed is not None else _models_measure(bsp), game_table, scale, y0)
+    if boxes:
+        gone = {(b["model"], tuple(b["origin"])) for b in boxes}
+        out = [r for r in out if (r["model"], tuple(r["at"])) not in gone]
     if shaped:
-        out += _shaped_placements(doc, shaped, scale, y0)
+        out += _shaped_placements(spots, shaped, scale, y0, {(b["model"], b["src"]) for b in boxes})
+    out += [{k: v for k, v in b.items() if k not in ("origin", "src")} for b in boxes]
     return out
 
 
-def _shaped_placements(doc, shaped, scale, y0):
-    """Placements of the models `shape_matches` stood in: put on the packed model's middle, turned to its long side,
-    drawn at its measured longest side (`size`, before the placement's own scale)."""
-    out = []
+def _models_measure(bsp):
+    from . import models as _m
+    return _m.measure(bsp)
+
+
+def _spots(doc):
+    """[(model, origin, angles, modelscale)] of every placed .mdl, in source units."""
     spots = [(e["keys"].get("model"), reader.entity_vec(e["keys"]), reader.entity_vec(e["keys"], "angles"), e["keys"].get("modelscale"))
              for e in doc["entities"] if e["classname"] in (_ent.PROP_CLASSES | _ent.PHYSICS_PROP_CLASSES)
              and not str(e["keys"].get("model", "")).startswith("*")]
     spots += [(p.get("model"), list(p["origin"]), list(p.get("angles", [0, 0, 0])), p.get("scale")) for p in doc.get("static_props", [])]
+    return spots
+
+
+BOX_MAX_SIDE = 4.0       # metres: a bigger packed model is a room or a roof, not furniture something stands on
+BOX_MAX_HEIGHT = 1.4     # taller is a tree or a wall, which nothing rests on by its top
+BOX_MIN_HEIGHT = 0.25    # a rug or a plate holds nothing up
+BOX_NOT = re.compile(r"ceiling|truss|pipe|beam|moss|vine|light|lamp|rail|cable|wire|connector")   # hung or lattice things: a block would shade the room
+BOX_REACH = 0.15         # how far past the edge a thing's origin may be and still rest on the model
+BOX_TOP = 0.12           # how far from the top a thing's origin may be and still rest on it
+
+
+def _support_boxes(spots, packed, game_table, scale, y0):
+    """[{box, model, at, yaw, scale, origin, src}]: a size-correct neutral block for each placed packed model that
+    something else rests on or inside (its origin lies over the model's footprint, at the model's top) and the shape table could not stand in for with the right size. Without it a stand-in table or shelf
+    is smaller than the real one and the bottles on it hang in the air. The model itself is never copied."""
+    out = []
+    pts = [(m, o, k) for m, o, _a, k in spots]
+    for model, o, ang, sc in spots:
+        name = _props.norm_model(model)
+        rec = packed.get(name)
+        if rec is None or is_skybox(name) or BOX_NOT.search(name) or (game_table is not None and game_table.get(name) is not None):
+            continue
+        k = _props._num(sc, 1.0)
+        sx, sy, sz = (v * k for v in rec["size"])
+        if sy < BOX_MIN_HEIGHT or max(sx, sz) > BOX_MAX_SIDE or sy > BOX_MAX_HEIGHT:
+            continue
+        a = math.radians(ang[1])
+        ca, sa = math.cos(a), math.sin(a)
+        base = o[2] * scale + rec["min"][1] * k
+        centre = rec["centre"]
+        # the footprint in model axes (Godot): x along the model's x, z along its z; yaw turns it as the box is turned
+        gx0, gz0 = o[0] * scale, -o[1] * scale
+        cx, cz = centre[0] * k, centre[2] * k
+        mx, mz = gx0 + cx * ca + cz * sa, gz0 - cx * sa + cz * ca
+        held = False
+        for m2, o2, k2 in pts:
+            if o2 is o or _props.norm_model(m2) == name:
+                continue
+            dx, dz = o2[0] * scale - mx, -o2[1] * scale - mz
+            lx, lz = dx * ca - dz * sa, dx * sa + dz * ca
+            dy = o2[2] * scale - base
+            if abs(lx) <= sx / 2 + BOX_REACH and abs(lz) <= sz / 2 + BOX_REACH and abs(dy - sy) <= BOX_TOP:
+                held = True
+                break
+        if held:
+            out.append({"box": [round(sx, 3), round(sy, 3), round(sz, 3)], "model": name,
+                        "at": [round(mx, 4), round(base - y0 + sy / 2, 4), round(mz, 4)],
+                        "yaw": round(ang[1], 2), "scale": 1.0,
+                        "origin": [round(o[0] * scale, 4), round(o[2] * scale - y0, 4), round(-o[1] * scale, 4)],
+                        "src": tuple(round(v, 3) for v in o)})
+    return out
+
+
+def _shaped_placements(spots, shaped, scale, y0, boxed=frozenset()):
+    """Placements of the models `shape_matches` stood in: put on the packed model's middle, turned to its long side,
+    drawn at its measured longest side (`size`, before the placement's own scale). A spot in `boxed` has a block instead."""
+    out = []
     for model, o, ang, sc in spots:
         s = shaped.get(_props.norm_model(model))
-        if s is None:
+        if s is None or (_props.norm_model(model), tuple(round(v, 3) for v in o)) in boxed:
             continue
         k = _props._num(sc, 1.0)
         a = math.radians(ang[1])
