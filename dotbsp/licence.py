@@ -116,11 +116,11 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
     mods, used_models = [], {}
     for m, n in sorted(counts.items()):
         mine = tbl.get(m)
-        row = None if mine else free_models.get(m.replace("models/", "", 1))
+        row = None if mine or standins.is_detail(m) else free_models.get(m.replace("models/", "", 1))
         hit = (shaped or {}).get(m) if not (mine or row) else None
         if hit and hit["row"]:
             row = dict(hit["row"], stand_in=hit["stand_in"])
-        mods.append({"model": m, "count": n, "stand_in": mine or (row["stand_in"] if row else "skybox" if standins.is_skybox(m) else "placeholder_box")})
+        mods.append({"model": m, "count": n, "stand_in": mine or (row["stand_in"] if row else "skybox" if standins.is_skybox(m) else "detail" if standins.is_detail(m) and not (hit and hit.get("box")) else "measured_box" if hit and hit.get("box") else "placeholder_box")})
         if row:
             used_models.setdefault(row["stand_in"], dict(row, files=[], count=0))
             used_models[row["stand_in"]]["count"] += n

@@ -22,7 +22,23 @@ COLUMNS = ("stand_in", "source", "url", "author", "licence")
 
 # A model of the 3D skybox (a distant city, forest or refinery) is drawn by the sky, never placed.
 # Only a `skybox` or `sky` directory segment (or a skybox-named file): props/sky_scraper and de_sky_sign are props.
-SKYBOX = re.compile(r"(^|[/_])skybox(?![a-z])|(^|/)sky/")
+SKYBOX = re.compile(r"skybox(?![a-z])|(^|/)sky/")
+
+# Not a prop at all, or a trim too small or flat to be worth a stand-in: light volumes, characters and corpses, cables,
+# vents, wall buttons, pictures, hanging growth, distant buildings. Left out on purpose, so it is not counted as unplaced.
+DETAIL = re.compile(
+    r"(^|/)(effects|extras|humans|characters|zombie|combine_turrets|cranes)/|vol_light|headcrab|ichthyosaur|(^|/)(stalker|gman|buggy)(\.mdl)?$"
+    r"|props_buildings/|destroyed_cityblock|project_building|trainstation/(train00|traintrack|trackmarkers)"
+    r"|vent_|(^|[/_])vent\d|wall_vent|grill|wire|cable|conduit|conducter|conduct|spool|button|knob|doorhandle|(^|[/_])handle|hinge|lever|keypad|tpswitch|tpplug|prison_bracket|sprinkler"
+    r"|offpainting|offinsp|offcert|offcork|gm_painting|(^|/)frame\d|billboard|noparking|nostopssign|clouds|meter(\.mdl)?$"
+    r"|icicle|stalactite|moss_|vine|fan_ceiling|roof_dish|antenna|gutter|cleat|dock\d*_pole|pulley|dock_broken|canal_cap|truss"
+    r"|picture_frame|ceiling_fan|(^|/)fan(off)?(\\.mdl)?$|teleplatform|info_speech|snowman_arm|(^|/)donut(\.mdl)?$|extras/")
+
+
+def is_detail(model):
+    """True for a model left out on purpose (see DETAIL); `is_skybox` models are a separate, silent case."""
+    m = str(model or "").lower().replace("\\", "/")
+    return not is_skybox(m) and bool(DETAIL.search(m))
 
 
 def is_skybox(model):
@@ -134,15 +150,34 @@ def shape_matches(bsp, game_table=None, table=None, packed=None, catalogue=None)
     out = {}
     for m in _m.placed(bsp):
         rec = packed.get(m)
-        if rec is None or is_skybox(m) or (game_table is not None and game_table.get(m) is not None):
+        if rec is None or is_skybox(m) or is_detail(m) or (game_table is not None and game_table.get(m) is not None):
             continue
         if table.get(m.replace("models/", "", 1)) is not None:
             continue
         hit = catalogue.match(rec["size"])
-        if hit:
+        if hit is None and _box_ok(m, rec["size"]):
+            out[m] = {"stand_in": "box", "box": True, "turns": 0, "size": round(max(rec["size"]), 3), "dims": rec["size"],
+                      "centre": rec["centre"], "base": rec["min"][1], "row": None}
+        elif hit:
             out[m] = {"stand_in": hit[0], "turns": hit[1], "size": round(max(rec["size"]), 3),
                       "centre": rec["centre"], "base": rec["min"][1], "row": catalogue.rows.get(hit[0])}
     return out
+
+
+FALLBACK_MIN_SIDE, FALLBACK_MAX_SIDE, FALLBACK_MAX_HEIGHT = 0.1, 4.0, 2.2   # metres
+
+
+def _box_ok(model, size):
+    """True when a packed model no stand-in fits is still a thing worth a size-correct neutral block: a prop-sized
+    solid, not a decal, a hung light, a lattice or trim (`DETAIL`, `BOX_NOT`)."""
+    if is_detail(model) or BOX_NOT.search(_props.norm_model(model)):
+        return False
+    lo = min(size)
+    longest = max(size)
+    if not FALLBACK_MIN_SIDE <= longest <= FALLBACK_MAX_SIDE or size[1] > FALLBACK_MAX_HEIGHT or lo < 0.03:
+        return False
+    mid = sorted(size)[1]
+    return not (lo < 0.06 and mid > 0.6)   # a poster or a panel: a block would z-fight the wall it hangs on
 
 
 def sounds(path=os.path.join(HERE, "free_sounds.tsv")):
@@ -157,6 +192,8 @@ class FreeProps(_props.PropTable):
         self.table = table or models()
 
     def get(self, model, default=None):
+        if is_detail(model):
+            return default
         row = self.table.get(_props.norm_model(model).replace("models/", "", 1))
         return row["stand_in"] if row else default
 
@@ -202,7 +239,8 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
 # 15 m boulder), so a packed model's measured size is drawn: height for what grows upright (the glb's longest side
 # is its height), the longest side for the rest.
 NATURAL_UPRIGHT = frozenset({"tree", "plant", "pirate/palm"})
-NATURAL_LOW = frozenset({"rock", "bush", "stump"})
+NATURAL_LOW = frozenset({"rock", "bush", "stump", "factory/window", "factory/door", "pirate/boat", "vehicles/sedan", "vehicles/van",
+                         "vehicles/truck", "vehicles/garbage-truck"})   # also drawn at the packed model's longest side: openings and vehicles come in every size
 # A stock debris model (not packed, so unmeasurable) is left out: a rock at its origin hangs in the air, small or
 # sized, where the real chunk lay on or hung from something the converter does not know.
 UNMEASURED_DEBRIS = re.compile(r"debris|rubble|cinderblock|concrete_chunk|concretepiece|brick|chunk|gib")
@@ -299,6 +337,9 @@ def _shaped_placements(spots, shaped, scale, y0, boxed=frozenset()):
             continue
         k = _props._num(sc, 1.0)
         a = math.radians(ang[1])
+        if s.get("box"):
+            out.append(_box_record(model, o, ang, k, s, scale, y0))
+            continue
         cx, cz = s["centre"][0] * k, -s["centre"][2] * k
         gx = o[0] * scale + cx * math.cos(a) - cz * math.sin(a)
         gz = -o[1] * scale - (cx * math.sin(a) + cz * math.cos(a))
@@ -306,3 +347,14 @@ def _shaped_placements(spots, shaped, scale, y0, boxed=frozenset()):
                     "at": [round(gx, 4), round(o[2] * scale - y0 + s["base"] * k, 4), round(gz, 4)],
                     "yaw": round(ang[1] + 90.0 * s["turns"], 2), "scale": round(k, 3), "size": s["size"]})
     return out
+
+
+def _box_record(model, o, ang, k, s, scale, y0):
+    """The size-correct block for a packed model with no stand-in, on the model's own middle and turned with it."""
+    a = math.radians(ang[1])
+    ca, sa = math.cos(a), math.sin(a)
+    cx, cy, cz = s["centre"][0] * k, s["centre"][1] * k, s["centre"][2] * k
+    sx, sy, sz = (v * k for v in s["dims"])
+    return {"box": [round(sx, 3), round(sy, 3), round(sz, 3)], "model": _props.norm_model(model),
+            "at": [round(o[0] * scale + cx * ca + cz * sa, 4), round(o[2] * scale - y0 + cy, 4), round(-o[1] * scale - cx * sa + cz * ca, 4)],
+            "yaw": round(ang[1], 2), "scale": 1.0}

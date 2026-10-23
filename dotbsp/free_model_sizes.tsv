@@ -1,5 +1,19 @@
 # regex on the normalised model path (first match wins) -> metres: the longest side the stand-in is drawn at. A stand-in is a furniture-sized glb, so a can, a fruit or a phone left at its own size would be a chair. Columns: pattern<TAB>metres. Anchored to the start of the basename (a prefix like beach_ball or storage_w_shelf must not shrink a big prop); tests/test_licence.py holds the name to class table.
 (?:^|/)(popcan|sodacan|beercan|can\d*|spraycan|firstaidspray)(?![a-z_])(?![^/]*/)	0.13
+357ammo|am_medicine|pool_cue|brass_key|(^|/)nail_|mb_handle|dynamite|lightswitch|ammo	0.15
+wood_pile|woodpile	1.0
+ankerbig|(^|/)anker	0.9
+glass(bottle|jug)|(^|[/_])jug\w*	0.3
+watermelon|potato|donut|pizza|kids_meal|(^|[/_])eat_\d	0.22
+(^|/)(shoe|dish_soap|styrofoam|plate|cigs|doll|huladoll|paper_towels|paper\d*|dollar|briefcase|suitcase|newspaper\w*)\d*[a-z]?(_\w+)?(\.mdl)?$	0.22
+binder|(^|/)clock|breenclock|breenglobe|breenbust|lifepreserver|terracotta|(^|/)cactus|hev_case	0.25
+sawblade	0.35
+harpoon|shovel|(^|/)axe\b|(^|/)ibeam|dockplank	1.2
+chess/	0.12
+fire_extinguisher|propane_tank|tirestack|buoy|oil_storage|concretebags|nuclearcontainer	0.6
+caseofbeer|paperbox|(^|/)car_battery	0.4
+concrete_barrier|barricade|sheetrock|(^|/)pylon	1.1
+snowman_(body|face|hat)	0.8
 (?:^|/)(wineglass|cup|mug|beaker|vial|jar)(?![a-z_])(?![^/]*/)	0.1
 (?:^|/)(bottle\w*|flask)(?![a-z_])(?![^/]*/)	0.28
 (?:^|/)(orange|apple|bananas?|fruit|lemon|pear|egg|pills?|ball\d*)(?![a-z_])(?![^/]*/)	0.1

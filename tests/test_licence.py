@@ -101,7 +101,7 @@ class Defects(unittest.TestCase):
                  "props_junk/bottle001a.mdl": 0.28, "props_junk/beach_ball01.mdl": None, "props_junk/wrecking_ball01.mdl": None,
                  "props_street/phone_booth01.mdl": None, "props_c17/phone01a.mdl": 0.15, "props_junk/ball001a.mdl": 0.1,
                  "props_c17/storage_w_shelf01.mdl": None, "props_street/food_stand01.mdl": None, "props_junk/food01.mdl": 0.25,
-                 "weapons/w_pistol.mdl": 0.25, "props_junk/watermelon01.mdl": None, "props/cup01.mdl": 0.1}
+                 "weapons/w_pistol.mdl": 0.25, "props_junk/watermelon01.mdl": 0.22, "props/cup01.mdl": 0.1}
         for name, want in small.items():
             self.assertEqual(sz.get(name), want, name)
 
@@ -174,6 +174,29 @@ class Defects(unittest.TestCase):
         self.assertEqual(fm.get("props_vehicles/carparts_wheel01a")["stand_in"], "barrel")
         self.assertEqual(fm.get("props_vehicles/carparts_door01a")["stand_in"], "crate")
         self.assertEqual(fm.get("props_vehicles/car001a")["stand_in"], "vehicles/sedan")
+
+    def test_junk_and_light_names_have_stand_ins_and_effects_are_left_out(self):
+        from dotbsp import standins
+        fm, sz = standins.models(), standins.Sizes()
+        self.assertEqual(fm.get("props_junk/glassbottle01a.mdl")["stand_in"], "pirate/bottle")
+        self.assertEqual(fm.get("props/de_nuke/wall_light.mdl")["stand_in"], "ceiling_light")
+        self.assertEqual(fm.get("props_junk/shoe001a.mdl")["stand_in"], "cardboard_box")
+        self.assertEqual(sz.get("props_junk/shoe001a.mdl"), 0.22)
+        for m in ("effects/vol_light64x128.mdl", "humans/charple02.mdl", "props_vents/vent_medium_grill002.mdl",
+                  "props_buildings/buildingskybox_002a.mdl", "props_furniture/picture_frame8.mdl"):
+            self.assertTrue(standins.is_skybox(m) or standins.is_detail(m), m)
+        self.assertFalse(standins.is_detail("props_c17/furniturechair001a.mdl"))
+
+    def test_measured_block_for_a_packed_model_no_stand_in_fits(self):
+        from dotbsp import standins
+        self.assertTrue(standins._box_ok("models/propper/x/widget.mdl", [0.3, 0.6, 0.4]))
+        self.assertFalse(standins._box_ok("models/propper/x/ceilinglamp.mdl", [0.3, 0.6, 0.4]))    # hung: would shade the room
+        self.assertFalse(standins._box_ok("models/propper/x/poster.mdl", [1.2, 0.8, 0.01]))        # a decal
+        self.assertFalse(standins._box_ok("models/propper/x/hall.mdl", [9.0, 3.0, 6.0]))           # a building
+        rec = standins._box_record("models/a/b.mdl", [100.0, 200.0, 50.0], [0, 90, 0], 1.0,
+                                   {"dims": [0.3, 0.6, 0.4], "centre": [0.0, 0.3, 0.0]}, 0.01905, 0.0)
+        self.assertEqual(rec["box"], [0.3, 0.6, 0.4])
+        self.assertAlmostEqual(rec["at"][1], 50 * 0.01905 + 0.3, 3)
 
     def test_unmeasured_stock_debris_is_not_drawn(self):
         from dotbsp import standins
