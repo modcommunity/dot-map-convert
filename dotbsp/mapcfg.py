@@ -55,10 +55,10 @@ def suggest(map_name, cmds):
     return "\n".join(lines) + "\n"
 
 
-def write_suggestion(out_dir, map_name, cmds):
-    """Writes `<out_dir>/<map_name>.yml` unless one exists (an author's file is never overwritten). Returns the path or None."""
-    text = suggest(map_name, cmds)
-    path = os.path.join(out_dir, map_name + ".yml")
+def write_suggestion(out_dir, file_name, cmds, map_name=None):
+    """Writes `<out_dir>/<file_name>.yml` unless one exists (an author's file is never overwritten). Returns the path or None."""
+    text = suggest(map_name or file_name, cmds)
+    path = os.path.join(out_dir, file_name + ".yml")
     if text is None or os.path.exists(path):
         return None
     os.makedirs(out_dir, exist_ok=True)

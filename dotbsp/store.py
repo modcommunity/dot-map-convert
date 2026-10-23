@@ -99,6 +99,8 @@ def put(root, game, name, data, credit=None):
     cred.setdefault("first_import", None)
     cred["missing"] = [k for k in ("author", "page") if not cred.get(k)]
     _dump(cpath, cred)
+    from . import mapcfg
+    mapcfg.write_suggestion(d, "mapcfg", doc["commands"], map_name=name)
     ipath = os.path.join(root, "index.json")
     index = _load(ipath) if os.path.isfile(ipath) else {}
     key = "%s/%s" % (game, name)

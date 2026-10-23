@@ -72,6 +72,9 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
                      free_models=rs.models_view(), free_sounds=rs.sounds_view())
     doc["props"] = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0)
     problems = licence.check(doc)
+    # The starter per-map config: every map gets one, from the commands its entities send, commented out.
+    from . import mapcfg, store
+    mapcfg.write_suggestion(os.path.join(outdir, "dot_map", "map"), name.lower(), store.commands(bsp.entities))
     rep = coverage.build(rs, bsp, doc, links, name, sha, cat)
     with open(out + ".json", "w") as f:
         json.dump(doc, f, indent=1, sort_keys=True)
