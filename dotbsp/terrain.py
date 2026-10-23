@@ -383,9 +383,10 @@ def swap_terrain(doc, tris, mat, tint, budget=24000, scale=0.01905):
     # And only the layer the field had: displacements overlap (a roof's snow over the ground), and
     # the heightfield keeps the highest, a cliff in a doorway where the field took the ground.
     def on_layer(t):
-        cx, cy, cz = (sum(p[i] for p in t) / 3 for i in range(3))
+        # The centroid or a corner: a steep triangle's centroid can sit past a step's top.
+        pts = [tuple(sum(p[i] for p in t) / 3 for i in range(3))] + list(t)
         return any(abs(cx - b["at"][0]) <= b["size"][0] / 2 + 0.01 and abs(cz - b["at"][2]) <= b["size"][2] / 2 + 0.01
-                   and abs(cy - (b["at"][1] + b["size"][1] / 2)) <= 1.5 for b in grid.get((int(cx // 4), int(cz // 4)), ()))
+                   and abs(cy - (b["at"][1] + b["size"][1] / 2)) <= 1.5 for cx, cy, cz in pts for b in grid.get((int(cx // 4), int(cz // 4)), ()))
 
     gtris = [t for t in gtris if on_layer(t)]
     hf, size = fit(gtris, (lo[0], lo[2], hi[0], hi[2]), budget, margin_m=0.5, keep=under_field)
