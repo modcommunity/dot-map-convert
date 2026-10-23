@@ -21,7 +21,7 @@ def _ents(entities):
 def build(boxes=((0, 0, 0, 64, 64, 64),), version=20, swapped=False, entities=None,
           materials=("TOOLS/TOOLSNODRAW", "dev/dev_measuregeneric01"), contents=1, bevel=True,
           entity_box=None, entity_origin=(0, 0, 0), game_lump=None, static_props=None, faces=False,
-          entity_class="func_door", entity_keys=None):
+          entity_class="func_door", entity_keys=None, box_material=None, texinfo_flags=None, entity_contents=None):
     """The bytes of a map whose world is `boxes` (x0, y0, z0, x1, y1, z1 in map units).
 
     `entity_box` adds a brush entity (model *1, a func_door) with that box relative to
@@ -41,16 +41,16 @@ def build(boxes=((0, 0, 0, 64, 64, 64),), version=20, swapped=False, entities=No
         ent.update(entity_keys or {})
         entities.append(ent)
     planes, sides, brushes = [], [], []
-    for b in all_boxes:
+    for bi, b in enumerate(all_boxes):
         x0, y0, z0, x1, y1, z1 = b
         first = len(sides)
         for n, d in (((1, 0, 0), x1), ((-1, 0, 0), -x0), ((0, 1, 0), y1),
                      ((0, -1, 0), -y0), ((0, 0, 1), z1), ((0, 0, -1), -z0)):
-            sides.append((len(planes), len(sides) % len(materials), -1, 0))
+            sides.append((len(planes), box_material[bi] if box_material else len(sides) % len(materials), -1, 0))
             planes.append(n + (d, 0))
         if bevel:      # a bevel duplicates a real side; the reader must drop it
             sides.append((first + 4, 0, -1, 1))
-        brushes.append((first, len(sides) - first, contents))
+        brushes.append((first, len(sides) - first, entity_contents if (entity_contents is not None and bi == len(all_boxes) - 1 and entity_box) else contents))
     strings = b""
     table = []
     for m in materials:
@@ -60,6 +60,8 @@ def build(boxes=((0, 0, 0, 64, 64, 64),), version=20, swapped=False, entities=No
     texinfo = [(0.0,) * 16 + (0, i) for i in range(len(materials))]
     if faces:
         texinfo = [(1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0) + (0.0,) * 8 + (0, i) for i in range(len(materials))]
+    if texinfo_flags:
+        texinfo = [t[:16] + (texinfo_flags.get(i, 0), t[17]) for i, t in enumerate(texinfo)]
     verts, edges, surfedges, dfaces, model_range = [], [(0, 0)], [], [], []
     if faces:
         for bi, b in enumerate(all_boxes):

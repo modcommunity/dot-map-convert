@@ -103,6 +103,7 @@ def cmd_mesh(args):
     extra = {"movers": movers.movers(bsp, scale, args.y0), "volumes": movers.volumes(bsp, scale, args.y0),
              "destinations": movers.destinations(bsp, scale, args.y0), "entity_report": report,
              "links": movers.links(bsp), "entities": movers.generic(bsp),
+             "breakables": mesh.breakables(bsp, m),
              "environment": environment.environment(bsp, scale, args.y0), "sounds": environment.sounds(bsp, scale, args.y0)}
     if args.coverage:
         extra["coverage"] = mesh.coverage(bsp, m)

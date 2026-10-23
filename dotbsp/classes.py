@@ -34,8 +34,8 @@ func_detail|world|detail brushes; compiled into the world by the map compiler, s
 func_wall|world|a brush entity that is just a wall
 func_brush|world|a toggleable brush; drawn and solid unless `Solidity` 1, rendermode 10 or StartDisabled -- toggling is the map's logic
 func_wall_toggle|world|a wall an input shows or hides; drawn and solid unless it starts off (spawnflag 1)
-func_breakable|world|a brush that breaks when damaged; drawn and solid where it stands -- breaking is the game's (ZZ: barricades)
-func_breakable_surf|world|breakable glass panes; drawn and solid
+func_breakable|world|a brush that breaks when damaged; drawn and solid where it stands -- listed in the manifest's `breakables`; an all-glass one is a DotMapGlass, any other breaking is the game's (ZZ: barricades)
+func_breakable_surf|world|breakable glass panes; drawn and solid -- listed in the manifest's `breakables`; DotMapGlass breaks it
 func_physbox|world|a brush simulated as a physics object; drawn and solid where it rests, not simulated
 func_physbox_multiplayer|world|the networked physbox; as func_physbox
 func_monitor|world|a brush showing a camera's view; drawn as its plain surface

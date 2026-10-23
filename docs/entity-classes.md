@@ -46,7 +46,7 @@ What a class becomes:
 | `trigger_multiple` | 130 | fires outputs each time a body enters | `volume`: fires outputs each time a body enters, then waits `wait` seconds |
 | `func_illusionary` | 124 | a brush that is drawn and never solid (foliage, light shafts, fake walls); one painted with water is water | `drawn` |
 | `trigger_push` | 122 | pushes a body inside along `pushdir` at `speed` | `volume` |
-| `func_breakable` | 116 | a brush that breaks when damaged; drawn and solid where it stands | `world`: breaking is the game's (ZZ: barricades) |
+| `func_breakable` | 116 | a brush that breaks when damaged; drawn and solid where it stands | `world`: listed in the manifest's `breakables`; an all-glass one is a DotMapGlass, any other breaking is the game's (ZZ: barricades) |
 | `prop_dynamic` | 109 | a placed model that may animate; models are studied | `point` |
 | `func_door` | 104 | a sliding door: moves along `movedir` by its size minus `lip` at `speed`, opened by a touch, a use or an input | `mover` |
 | `func_rotating` | 102 | a brush that spins about one axis at `maxspeed` (fans, wheels, rotating platforms) | `mover` |
@@ -114,7 +114,7 @@ What a class becomes:
 | `logic_compare` | 20 | compares a value | `data`: logic |
 | `env_beam` | 19 | a beam between two points | `point`: an effect |
 | `game_text` | 19 | shows text on screens | `data`: logic; its text is kept |
-| `func_breakable_surf` | 18 | breakable glass panes; drawn and solid | `world` |
+| `func_breakable_surf` | 18 | breakable glass panes; drawn and solid | `world`: listed in the manifest's `breakables`; DotMapGlass breaks it |
 | `phys_thruster` | 18 | pushes a physics object | `data`: nothing is simulated |
 | `point_camera` | 18 | a camera a monitor shows | `data`: logic |
 | `func_dustcloud` | 17 | a particle volume of dust clouds | `dropped`: effects, as func_dustmotes |

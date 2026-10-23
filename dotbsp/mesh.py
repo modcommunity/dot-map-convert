@@ -220,14 +220,15 @@ def _sky_face(bsp, f, off, sky):
 
 class Surface:
     __slots__ = ("model", "entity", "classname", "targetname", "material", "generic", "tint",
-                 "colour", "texels", "water", "displacement", "collide", "sky3d", "chunk", "verts", "index",
-                 "_dedupe")
+                 "colour", "texels", "water", "glass", "displacement", "collide", "sky3d", "chunk", "verts",
+                 "index", "_dedupe")
 
     def __init__(self, model, entity, classname, targetname, material):
         self.model, self.entity, self.classname, self.targetname = model, entity, classname, targetname
         self.material = material
         self.generic, self.tint, self.colour, self.texels = None, None, None, None
         self.water = self.displacement = self.collide = self.sky3d = False
+        self.glass = None
         self.chunk = None
         self.verts, self.index, self._dedupe = [], [], {}
 
@@ -260,6 +261,7 @@ class Mesh:
         self.notes = []
         self.sky = None
         self.skipped = collections.Counter()
+        self.translucent_unmapped = collections.Counter()
 
     def triangles(self, displacements=True):
         """Every drawn triangle as three game-metre points, for a coverage test."""
@@ -284,6 +286,19 @@ def _tri_area(a, b, c):
 
 def _is_water(name, generic):
     return generic == "water" or "WATER" in name.upper()
+
+
+SURF_TRANS = 0x10
+GLASS_CLASSES = ("func_reflective_glass",)
+BREAKABLE_CLASSES = ("func_breakable", "func_breakable_surf")
+
+
+def glass_kind(generic, classname):
+    """The glass kind (a generic id starting `glass`, from `source_textures.tsv`) or None. A
+    reflective-glass brush is glass whatever its texture is called."""
+    if generic and generic.startswith("glass"):
+        return generic
+    return "glass" if classname in GLASS_CLASSES else None
 
 
 CHUNK = 32.0
@@ -352,7 +367,8 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                         c = g([sum(p[i] for p in fp) / len(fp) for i in range(3)], off)
                         cell = [int(math.floor(c[0] / chunk)), int(math.floor(c[2] / chunk))]
                 _add_face(bsp, f, name, mi, ei, cls, e.get("targetname", ""), off, surfaces, tmap,
-                          classify, g_sky if in_sky else g, gn, in_sky, cell)
+                          classify, g_sky if in_sky else g, gn, in_sky, cell,
+                          out.translucent_unmapped if flags & SURF_TRANS else None)
         solid = mi == 0 or cls in solid_classes
         if not solid:
             continue
@@ -385,11 +401,17 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                               "contents": contents, "points": [g(p, off) for p in pts], "planes": planes})
     out.surfaces = [s for s in surfaces.values() if s.index]
     out.surfaces.sort(key=lambda s: (s.model, s.chunk or [], s.sky3d, s.displacement, s.material))
+    n_glass = sum(1 for s in out.surfaces if s.glass)
+    if n_glass:
+        out.notes.append("%d glass surfaces (kinds %s)" % (n_glass, ", ".join(sorted({s.glass for s in out.surfaces if s.glass}))))
+    if out.translucent_unmapped:
+        out.notes.append("translucent faces whose texture maps to no glass kind or water, drawn opaque (add a row to "
+                         "source_textures.tsv): " + ", ".join("%s %d" % kv for kv in out.translucent_unmapped.most_common(12)))
     return out
 
 
 def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classify, g, gn, sky3d=False,
-              chunk=None):
+              chunk=None, trans=None):
     disp = f[6] >= 0
     key = (mi, name, disp, sky3d, tuple(chunk) if chunk else None)
     s = surfaces.get(key)
@@ -399,11 +421,14 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
         if hit is not None:
             s.generic, s.tint = hit[0], (list(hit[1]) if hit[1] else None)
         s.water = _is_water(name, s.generic)
+        s.glass = None if s.water else glass_kind(s.generic, cls)
         s.displacement = disp
         s.collide = disp and not sky3d
         s.sky3d = sky3d
         s.chunk = chunk
         surfaces[key] = s
+    if trans is not None and not s.water and not s.glass:
+        trans[classify(name)] += 1
     ti = bsp.texinfo[f[5]]
     td = int(ti[17])
     tw = th = 1
@@ -491,6 +516,8 @@ def write(mesh, prefix, credit=None, name=None, extra=None):
         for k in ("water", "displacement", "collide", "sky3d"):
             if getattr(s, k):
                 rec[k] = True
+        if s.glass:
+            rec["glass"] = s.glass
         surfaces.append(rec)
     hulls = []
     for h in mesh.hulls:
@@ -532,6 +559,7 @@ def read(prefix):
     for rec in doc["surfaces"]:
         s = Surface(rec["model"], rec["entity"], rec["classname"], rec.get("targetname", ""), rec["material"])
         s.generic, s.water, s.displacement = rec.get("generic"), rec.get("water", False), rec.get("displacement", False)
+        s.glass = rec.get("glass")
         s.collide, s.sky3d, s.tint, s.colour = rec.get("collide", False), rec.get("sky3d", False), rec.get("tint"), rec.get("colour")
         s.texels, s.chunk = rec.get("texels"), rec.get("chunk")
         n = rec["vertex_count"]
@@ -766,3 +794,37 @@ def silhouette_diff(bsp, mesh, cell=0.5):
         a, b = silhouette(src, cell, axis), silhouette(got, cell, axis)
         out[label] = {"source_cells": len(a), "kept": len(a & b) / len(a) if a else 1.0, "extra": len(b - a)}
     return out
+
+
+def breakables(bsp, mesh):
+    """One record a brush entity that breaks (`func_breakable`, `func_breakable_surf`): `model`,
+    `entity`, `classname`, `targetname`, `health` (the map's, else 1: one hit breaks a pane),
+    `glass` (the kind when every drawn surface of the model is glass, else None) and `material`
+    (the entity's own material number). The game decides what each does; a glass one is what
+    `DotMapGlass` breaks."""
+    drawn = collections.defaultdict(list)
+    for s in mesh.surfaces:
+        drawn[s.model].append(s)
+    out = []
+    for mi, ei in sorted(model_entities(bsp).items()):
+        e = bsp.entities[ei]
+        if e.get("classname") not in BREAKABLE_CLASSES or mi == 0:
+            continue
+        kinds = {s.glass for s in drawn.get(mi, [])}
+        try:
+            health = float(str(e.get("health", "")).split()[0])
+        except (ValueError, IndexError):
+            health = 0.0
+        out.append({"model": mi, "entity": ei, "classname": e["classname"], "targetname": e.get("targetname", ""),
+                    "health": health if health > 0 else 1.0,
+                    "glass": next(iter(kinds)) if len(kinds) == 1 and None not in kinds else None,
+                    "material": _int(e.get("material"))})
+    return out
+
+
+
+def _int(v):
+    try:
+        return int(float(str(v).split()[0]))
+    except (ValueError, IndexError):
+        return 0

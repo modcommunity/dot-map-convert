@@ -132,6 +132,46 @@ class Fixture(unittest.TestCase):
                     self.assertEqual(a.read(), b.read(), "run tools/bsp/tests/mesh_fixture.py")
 
 
+class Glass(unittest.TestCase):
+    def setUp(self):
+        import mesh_fixture
+        self.b = mesh_fixture.glass_bsp()
+        self.m = mesh.build(self.b)
+
+    def test_glass_texture_is_glass_and_concrete_is_not(self):
+        kinds = {s.material.split("/")[-1]: s.glass for s in self.m.surfaces}
+        self.assertEqual(kinds["glasswindow001b"], "glass")
+        self.assertIsNone(kinds["concretefloor001"])
+
+    def test_translucent_texture_with_no_row_is_reported_not_guessed(self):
+        fence = [s for s in self.m.surfaces if s.material.endswith("fencexyz")]
+        self.assertTrue(fence and all(s.glass is None for s in fence))
+        self.assertEqual(sum(self.m.translucent_unmapped.values()), 6)
+        self.assertTrue(any("fencexyz".upper() in n.upper() for n in self.m.notes))
+
+    def test_breakable_pane_is_listed_with_its_health_and_glass_kind(self):
+        rows = mesh.breakables(self.b, self.m)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual((rows[0]["model"], rows[0]["health"], rows[0]["glass"], rows[0]["targetname"]),
+                         (1, 20.0, "glass", "pane"))
+        self.assertEqual([h["kind"] for h in self.m.hulls if h["model"] == 1], ["glass"])
+
+    def test_glass_survives_write_and_read(self):
+        with tempfile.TemporaryDirectory() as d:
+            doc = mesh.write(self.m, os.path.join(d, "g"))
+            back = mesh.read(os.path.join(d, "g"))[1]
+        self.assertEqual(sum(1 for r in doc["surfaces"] if r.get("glass")), sum(1 for s in back.surfaces if s.glass))
+        self.assertTrue(any(s.glass for s in back.surfaces))
+
+    def test_the_godot_glass_fixture_is_current(self):
+        import mesh_fixture
+        with tempfile.TemporaryDirectory() as d:
+            mesh_fixture.write_glass(os.path.join(d, "glass"))
+            for ext in (".json", ".bin"):
+                with open(os.path.join(d, "glass" + ext), "rb") as a, open(mesh_fixture.GLASS_OUT + ext, "rb") as b:
+                    self.assertEqual(a.read(), b.read(), "run tools/bsp/tests/mesh_fixture.py")
+
+
 class Coverage(unittest.TestCase):
     def test_full_mesh_is_full(self):
         bsp = load(boxes=((0, 0, 0, 256, 256, 64), (0, 0, 64, 32, 256, 192)))

@@ -28,6 +28,27 @@ def bsp():
     return b
 
 
+GLASS_OUT = os.path.join(os.path.dirname(OUT), "glass")
+
+
+def glass_bsp():
+    """A floor, a glass wall, a fence (translucent, no glass row) and a breakable pane."""
+    return reader.Bsp("glass.bsp", data=synth.build(
+        boxes=((0, 0, 0, 512, 512, 16), (0, 496, 16, 512, 512, 192), (0, 0, 16, 512, 8, 96)),
+        materials=("concrete/concretefloor001", "glass/glasswindow001b", "props/fencexyz"),
+        box_material=(0, 1, 2, 1), faces=True, texinfo_flags={2: 0x10}, entity_class="func_breakable",
+        entity_box=(-4, -32, 0, 4, 32, 112), entity_origin=(256, 256, 16), entity_contents=0x3,
+        entity_keys={"targetname": "pane", "health": "20"})).load()
+
+
+def write_glass(prefix=GLASS_OUT):
+    b = glass_bsp()
+    m = mesh.build(b)
+    return mesh.write(m, prefix, credit={"author": "dot-map tests"}, name="glass",
+                      extra={"movers": movers.movers(b), "volumes": movers.volumes(b), "links": movers.links(b),
+                             "entities": movers.generic(b), "breakables": mesh.breakables(b, m)})
+
+
 def write(prefix=OUT):
     b = bsp()
     m = mesh.build(b)
@@ -39,3 +60,5 @@ def write(prefix=OUT):
 if __name__ == "__main__":
     d = write()
     print("%s.{json,bin}: %s" % (OUT, d["counts"]))
+    d = write_glass()
+    print("%s.{json,bin}: %s" % (GLASS_OUT, d["counts"]))
