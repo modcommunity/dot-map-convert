@@ -161,7 +161,7 @@ What a class becomes:
 | `info_ladder_dismount` | 4 | where a ladder is left | `point` |  |
 | `info_player_deathmatch` | 4 | a spawn | `point` |  |
 | `info_player_zombie_boss` | 4 | a boss zombie's spawn | `point` |  |
-| `lua_run` | 4 | runs a script on the server | `dropped`: refused, never executed |  |
+| `lua_run` | 4 | runs a script on the server | `data`: never executed; template-matched snippets become whitelisted operations, the rest are reported (`DotMapScript`) |  |
 | `npc_template_maker` | 4 | spawns monsters from a template | `data`: the game's director decides monsters |  |
 | `aiscripted_schedule` | 3 | AI logic | `data` |  |
 | `env_blood` | 3 | sprays blood by input | `data`: logic |  |

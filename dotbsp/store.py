@@ -12,7 +12,7 @@ import json
 import os
 import sys
 
-from . import movers, reader, sources
+from . import movers, reader, scripts, sources
 
 FORMAT = "dot-bsp-source"
 VERSION = 1
@@ -54,6 +54,7 @@ def ship_document(data, prefix, stored=None):
     their outputs) that `DotMapWorld` reads, so a shipped map needs no store. `stored` is the
     store entry's `doc.json` when there is one; otherwise it is built from `data`."""
     doc = _load(stored) if stored and os.path.isfile(stored) else document(data)
+    scripts.annotate(doc["entities"])
     with open(prefix + ".doc.json", "w") as f:
         json.dump(doc, f, sort_keys=True, separators=(",", ":"))
         f.write("\n")
@@ -183,8 +184,22 @@ def _walk(paths):
                 yield game, s
 
 
+def scripts_report(root):
+    """Every distinct `lua_run` snippet in the store with its count, maps and what the converter does with it."""
+    index = _load(os.path.join(root, "index.json"))
+    docs = [(key, _load(os.path.join(root, h, "doc.json"))["entities"]) for key, h in sorted(index.items())]
+    inv = scripts.inventory(docs)
+    for shape, r in sorted(inv.items(), key=lambda kv: (-kv[1]["count"], kv[0])):
+        print("%4d x %d map(s)  %-10s %-12s %s" % (r["count"], len(r["maps"]), r["status"], r["category"], r["example"][:90].replace("\n", " ")))
+    print("store --scripts: %d distinct, %d translated, %d unhandled" % (
+        len(inv), sum(1 for r in inv.values() if r["status"] == "translated"), sum(1 for r in inv.values() if r["status"] != "translated")))
+    return 0
+
+
 def cmd(args):
     root = args.root or default_root()
+    if getattr(args, "scripts", False):
+        return scripts_report(root)
     if getattr(args, "audit", False):
         rows = audit(root)
         for key, problems, flags in rows:

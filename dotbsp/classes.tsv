@@ -153,7 +153,7 @@ point_teleport	data	teleports an entity by input -- logic
 point_hurt	data	hurts in a radius by input -- logic	
 point_servercommand	dropped	runs a server console command -- a map does not run commands on this server	DotMapServerCommand
 point_clientcommand	dropped	runs a command on a client -- refused for the same reason	DotMapServerCommand
-lua_run	dropped	runs a script on the server -- refused, never executed	
+lua_run	data	runs a script on the server -- never executed; a template-matched snippet becomes whitelisted operations (DotMapScript), the rest is reported	DotMapScript
 point_worldhint	data	a hint shown to a player	
 point_zsmessage	data	a mode script's message point	
 logic_auto	data	fires outputs when the map starts -- logic	DotMapAuto

@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-from . import classes, coverage, environment, licence, mapcfg, mesh, movers, reader, rules, standins, store, units
+from . import classes, coverage, environment, licence, mapcfg, mesh, movers, reader, rules, scripts, standins, store, units
 
 
 def _json(path):
@@ -71,7 +71,8 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
                  "destinations": movers.destinations(bsp, scale, y0), "spawns": movers.spawns(bsp, scale, y0), "pickups": movers.pickups(bsp, scale, y0), "entity_report": report,
                  "links": links, "entities": ents, "breakables": mesh.breakables(bsp, m),
                  "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0),
-                 "settings": mapcfg.defaults(store.commands(bsp.entities))}
+                 "settings": mapcfg.defaults(store.commands(bsp.entities)),
+                 "scripts": scripts.analyse(bsp.entities)}
     doc = mesh.write(m, out, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(out))
     from . import importer

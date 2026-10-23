@@ -12,7 +12,7 @@
     python3 -I tools/bsp/bsp.py classes [<dir | file>...] [--markdown | --keys]
     python3 -I tools/bsp/bsp.py regen <hash | game/name> --out <prefix> [--game-rules DIR] [--addon-rules DIR]...
             [--map-rules FILE] [--ratchet] [--baseline FILE] [--coverage FILE] [--root R]
-    python3 -I tools/bsp/bsp.py store <dir | file>... [--root R] [--game G] [credit flags] | store --check
+    python3 -I tools/bsp/bsp.py store <dir | file>... [--root R] [--game G] [credit flags] | store --check | store --scripts
 
 `mesh` writes the full geometry (`<prefix>.json` + `<prefix>.bin`, dotbsp/mesh.py) with the
 movers, volumes and teleport destinations (dotbsp/movers.py) and what became of every entity
@@ -373,6 +373,7 @@ def main(argv):
     st.add_argument("--check", action="store_true", help="rebuild every document from its source.bsp and compare")
     st.add_argument("--game")
     st.add_argument("--audit", action="store_true", help="list entries with an empty author, page, licence or no_share_check, and licence terms that restrict reuse")
+    st.add_argument("--scripts", action="store_true", help="list every distinct lua_run snippet with its count and whether the converter translates it")
     st.add_argument("--entry", help="update this stored entry's credit.json (<game>/<map> or hash prefix) from the credit flags, overwriting those keys")
     st.add_argument("--credit", help="a JSON file with author, page, licence, no_share_check")
     for k in ("author", "page", "licence", "no_share_check", "removal", "note"):

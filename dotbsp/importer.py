@@ -14,7 +14,7 @@ import json
 import os
 import re
 
-from . import environment, intermediate, licence, mesh, movers, props, reader, standins, units
+from . import environment, intermediate, licence, mesh, movers, props, reader, scripts, standins, units
 
 DEFAULT_ROOT = os.path.expanduser(os.environ.get("DOTBSP_RAW_ROOT", "~/mapsrc"))
 
@@ -103,7 +103,8 @@ def ship(bsp, name, prefix, credit=None, prop_table=None, scale=units.VISUAL, y0
              "destinations": movers.destinations(bsp, scale, y0), "spawns": movers.spawns(bsp, scale, y0), "entity_report": report,
              "links": movers.links(bsp), "entities": movers.generic(bsp),
              "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0),
-             "settings": mapcfg.defaults(store.commands(bsp.entities))}
+             "settings": mapcfg.defaults(store.commands(bsp.entities)),
+             "scripts": scripts.analyse(bsp.entities)}
     doc = mesh.write(m, prefix, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(prefix))
     licence.annotate(doc, outdir, prop_table=prop_table, models=placed_models(bsp))
