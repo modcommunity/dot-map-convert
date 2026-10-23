@@ -17,6 +17,14 @@ from . import reader
 HERE = os.path.dirname(os.path.abspath(__file__))
 COLUMNS = ("stand_in", "source", "url", "author", "licence")
 
+# A model of the 3D skybox (a distant city, forest or refinery) is drawn by the sky, never placed.
+SKYBOX = re.compile(r"(^|[/_])skybox(?![a-z])|(^|[/_])sky[/_]")
+
+
+def is_skybox(model):
+    """True for a model that only dresses the sky; it is skipped silently, not reported unmapped."""
+    return bool(SKYBOX.search(str(model or "").lower().replace("\\", "/")))
+
 
 def _load(path):
     rows = []
@@ -49,6 +57,27 @@ def models(path=os.path.join(HERE, "free_models.tsv")):
     return Table(path)
 
 
+class Sizes:
+    """An ordered regex table to metres (`free_model_sizes.tsv`); `get(name)` is the first match or None."""
+
+    def __init__(self, path=os.path.join(HERE, "free_model_sizes.tsv")):
+        self.rows = []
+        with open(path, encoding="utf-8") as f:
+            for n, line in enumerate(f.read().splitlines(), 1):
+                if line.strip() and not line.startswith("#"):
+                    c = line.split("\t")
+                    if len(c) != 2:
+                        raise ValueError("%s:%d: want 2 columns, got %d" % (path, n, len(c)))
+                    self.rows.append((re.compile(c[0]), float(c[1])))
+
+    def get(self, name):
+        n = _props.norm_model(name).replace("models/", "", 1)
+        for rx, m in self.rows:
+            if rx.search(n):
+                return m
+        return None
+
+
 def sounds(path=os.path.join(HERE, "free_sounds.tsv")):
     return Table(path)
 
@@ -65,10 +94,12 @@ class FreeProps(_props.PropTable):
         return row["stand_in"] if row else default
 
 
-def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0):
-    """[{stand_in, model, at, yaw, scale}] for every placed model the game's table does not
+def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=None):
+    """[{stand_in, model, at, yaw, scale, size?}] (`size`: the metres its longest side is drawn at, for a
+    small thing a furniture-sized stand-in would swamp) for every placed model the game's table does not
     know and the free table does; positions in metres and Godot axes like the rest of the manifest."""
     free = FreeProps(table)
+    sizes = sizes or Sizes()
     doc = {"entities": [{"classname": e.get("classname", ""), "keys": e} for e in bsp.entities],
            "static_props": bsp.static_props()}
     out = []
@@ -76,7 +107,11 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0):
         if game_table is not None and game_table.get(p["model"]) is not None:
             continue
         o = p["origin"]
-        out.append({"stand_in": p["id"], "model": p["model"],
-                    "at": [round(o[0] * scale, 4), round(o[2] * scale - y0, 4), round(-o[1] * scale, 4)],
-                    "yaw": round(p["yaw"], 2), "scale": round(float(p.get("scale") or 1.0), 3)})
+        rec = {"stand_in": p["id"], "model": p["model"],
+               "at": [round(o[0] * scale, 4), round(o[2] * scale - y0, 4), round(-o[1] * scale, 4)],
+               "yaw": round(p["yaw"], 2), "scale": round(float(p.get("scale") or 1.0), 3)}
+        size = sizes.get(p["model"])
+        if size:
+            rec["size"] = size
+        out.append(rec)
     return out

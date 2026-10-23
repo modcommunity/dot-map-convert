@@ -62,3 +62,6 @@ fl[ou]+rescentlight|lightsconce|floodlight|lantern	ceiling_light	Kenney Furnitur
 pottery|metalpot|(^|[/_])pot\d|vase|planter	bucket	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
 kitchen_counter|workspace|(^|[/_])counter	desk	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 acunit|roof_vent|radiator|boiler|gasmeter|electricalbox|wall_console|servers|combine_interface|eyescanner	cabinet	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+(^|[/_])(popcan|sodacan|beercan|can\d*|bottle\w*|jar|beaker|flask|vial|cup|mug|wineglass|spraycan|firstaidspray)(?![a-z])	pirate/bottle	Kenney Pirate Kit	https://kenney.nl/assets/pirate-kit	Kenney	CC0-1.0
+(^|[/_])(orange|apple|banan\w*|fruit|melon|pear|lemon|food\w*|bread|egg|pumpkin|pills?|ball\d*)(?![a-z])	rock	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
+(^|[/_])(iphone|phone|pliers|wrench|hammer|screwdriver|harddrive|camera|money|cashregister|wallet|book\d+|notebook|clipboard|remote|keyboard|mouse\d*|calculator|pistol|w_\w+|tools?_\w+)(?![a-z])	cardboard_box	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0

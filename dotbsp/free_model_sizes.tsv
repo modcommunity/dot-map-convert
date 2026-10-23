@@ -1,0 +1,10 @@
+# regex on the normalised model path (first match wins) -> metres: the longest side the stand-in is drawn at. A stand-in is a furniture-sized glb, so a can, a fruit or a phone left at its own size would be a chair. Columns: pattern<TAB>metres.
+(^|[/_])(popcan|sodacan|beercan|can\d*|spraycan|firstaidspray)(?![a-z])	0.13
+(^|[/_])(wineglass|cup|mug|beaker|vial|jar)(?![a-z])	0.1
+(^|[/_])(bottle\w*|flask)(?![a-z])	0.28
+(^|[/_])(orange|apple|banan\w*|fruit|lemon|pear|egg|pills?|ball\d*)(?![a-z])	0.1
+(^|[/_])(melon|pumpkin|bread|food\w*)(?![a-z])	0.25
+(^|[/_])(iphone|phone|remote|calculator|wallet|money|pliers|wrench|hammer|screwdriver|tools?_\w+)(?![a-z])	0.15
+(^|[/_])(harddrive|camera|notebook|clipboard|book\d+|mouse\d*)(?![a-z])	0.2
+(^|[/_])(keyboard|cashregister)(?![a-z])	0.4
+(^|[/_])(pistol|w_\w+)(?![a-z])	0.25

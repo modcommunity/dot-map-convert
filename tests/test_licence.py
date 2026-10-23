@@ -85,6 +85,17 @@ class Free(unittest.TestCase):
         self.assertNotEqual(a, textures.generate("carpet", [0.8, 0.3, 0.2]))
 
 
+class Defects(unittest.TestCase):
+    def test_skybox_model_is_recognised(self):
+        from dotbsp import standins
+        self.assertTrue(standins.is_skybox("models/props/sky_cube.mdl"))
+        self.assertFalse(standins.is_skybox("models/props/crate.mdl"))
+
+    def test_black_name_keeps_dark_colour(self):
+        self.assertLess(licence.name_colour("tools/black")[0], 0.1)
+        self.assertGreater(licence.name_colour("metal/white")[0], 0.8)
+
+
 class Import(unittest.TestCase):
     def test_raw_store_is_outside_the_repo_and_plain(self):
         with tempfile.TemporaryDirectory() as root:

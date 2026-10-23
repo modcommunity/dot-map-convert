@@ -224,7 +224,7 @@ class RuleSet:
             if row is not None:
                 self.used[kind][name] = t.name
                 return row
-        self.used[kind].setdefault(name, None)
+        self.used[kind].setdefault(name, "skybox" if kind == "models" and standins.is_skybox(name) else None)
         return None
 
     def klass(self, name):

@@ -47,6 +47,17 @@ def _snap(colour):
     return [round(min(1.0, max(0.0, c)) * 8) / 8 for c in (colour or (0.5, 0.5, 0.5))[:3]]
 
 
+def name_colour(material):
+    """A colour for a texture the compiler measured as black that its name still tells: `black` is
+    black (a dark veil), a `white` light panel is a pale surface. None for any other name."""
+    base = str(material or "").lower().replace("\\", "/").rsplit("/", 1)[-1]
+    if base.startswith("black") or base.endswith("_black"):
+        return (0.04, 0.04, 0.04)
+    if base.startswith("white"):
+        return (0.9, 0.9, 0.9)
+    return None
+
+
 def _photo_row(kind, table):
     """A table row of a photo set of this kind (for its URL, author and licence), or None."""
     for row in table.values():
@@ -58,6 +69,7 @@ def _photo_row(kind, table):
 def replacement(generic, colour, table, material=None):
     """The free replacement record of a surface of this generic id and average colour. A texture
     no row names gets the nearest photo set by name or colour (`how`), else a flat generated image."""
+    colour = colour or name_colour(material)
     row = table.get(generic)
     how = "table" if row else None
     gid = generic
@@ -105,7 +117,7 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
     for m, n in sorted(counts.items()):
         mine = tbl.get(m)
         row = None if mine else free_models.get(m.replace("models/", "", 1))
-        mods.append({"model": m, "count": n, "stand_in": mine or (row["stand_in"] if row else "placeholder_box")})
+        mods.append({"model": m, "count": n, "stand_in": mine or (row["stand_in"] if row else "skybox" if standins.is_skybox(m) else "placeholder_box")})
         if row:
             used_models.setdefault(row["stand_in"], dict(row, files=[], count=0))
             used_models[row["stand_in"]]["count"] += n
