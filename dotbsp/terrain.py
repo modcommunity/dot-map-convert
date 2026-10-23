@@ -21,6 +21,8 @@ import math
 import struct
 import zlib
 
+from . import boxes as _boxes
+
 FORMAT = 1
 # The steepest terrain a walker climbs, as rise per metre: 1.0 is 45 degrees, just under the
 # family's 46 degree player slope limit.
@@ -311,3 +313,108 @@ def walk_samples(hf, seen_terrain, cell):
             if any((ix + a, iz + b) in seen_terrain for a in (-1, 0) for b in (-1, 0)):
                 out.add((i, j))
     return out
+
+
+def _v3(x, y, z):
+    return [round(x, 3), round(y, 3), round(z, 3)]
+
+
+def terrain_tris(bsp):
+    """The map's displacement triangles, in map units."""
+    tris = []
+    for f in bsp.model_faces(0):
+        if f[6] >= 0:
+            tris += bsp.displacement_tris(f)
+    return tris
+
+
+def swap_terrain(doc, tris, mat, tint, budget=24000, scale=0.01905):
+    """Replaces the stepped box field `--terrain` cut with dot-map's heightfield (`doc["terrain"]`).
+
+    The field is found in the finished document by cutting it again and matching boxes, which also
+    gives the shift the importer moved the map by, so this runs on a fresh import and on a
+    committed document (`--graft-terrain`) alike. What stood on a box of the field is set down on
+    the heightfield instead; the rest of the document is untouched."""
+    cells = []
+    for c in _boxes.terrain_cells(tris):
+        (x0, x1), (y0, y1), (z0, z1) = c["x"], c["z"], c["y"]
+        x0, x1, y0, y1, z0, z1 = x0 * scale, x1 * scale, y0 * scale, y1 * scale, -z1 * scale, -z0 * scale
+        if x1 - x0 <= 0.001 or y1 - y0 <= 0.001 or z1 - z0 <= 0.001:
+            continue
+        cells.append((_v3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), _v3(x1 - x0, y1 - y0, z1 - z0)))
+    want_tint = list(tint) if tint else None
+    by_size = {}
+    for b in doc["boxes"]:
+        if b.get("mat") == mat and b.get("tint") == want_tint and b.get("solid", True):
+            by_size.setdefault(tuple(b["size"]), []).append(b)
+    votes = {}
+    for at, size in cells[::max(1, len(cells) // 300)]:
+        for b in by_size.get(tuple(size), ()):
+            k = tuple(round(b["at"][i] - at[i], 3) for i in range(3))
+            votes[k] = votes.get(k, 0) + 1
+    if not votes:
+        raise SystemExit("swap_terrain: no box of the document matches the stepped field (mat %s)" % mat)
+    shift = max(votes, key=votes.get)
+    index = {(tuple(round(b["at"][i], 3) for i in range(3)), tuple(b["size"])): b for bs in by_size.values() for b in bs}
+    old = []
+    for at, size in cells:
+        b = index.get((tuple(round(at[i] + shift[i], 3) for i in range(3)), tuple(size)))
+        if b is not None:
+            old.append(b)
+    if len(old) < max(20, len(cells) * 0.25):
+        raise SystemExit("swap_terrain: only %d of %d field boxes found; the document was not cut with this field" % (len(old), len(cells)))
+    gone = {id(b) for b in old}
+    doc["boxes"][:] = [b for b in doc["boxes"] if id(b) not in gone]
+    lo = [min(b["at"][i] - b["size"][i] / 2 for b in old) for i in range(3)]
+    hi = [max(b["at"][i] + b["size"][i] / 2 for b in old) for i in range(3)]
+    moved = [tuple(p[i] + shift[i] for i in range(3)) for t in game_tris(tris, scale) for p in t]
+    gtris = [tuple(moved[k:k + 3]) for k in range(0, len(moved), 3)]
+    # Only where the document had field boxes: the importer left out the rest (far scenery, a
+    # roof's snow) on purpose, and ground there would stand in a doorway.
+    grid = {}
+    for b in old:
+        for gx in range(int((b["at"][0] - b["size"][0] / 2) // 4), int((b["at"][0] + b["size"][0] / 2) // 4) + 1):
+            for gz in range(int((b["at"][2] - b["size"][2] / 2) // 4), int((b["at"][2] + b["size"][2] / 2) // 4) + 1):
+                grid.setdefault((gx, gz), []).append(b)
+
+    def under_field(x, z):
+        return any(abs(x - b["at"][0]) <= b["size"][0] / 2 + 0.01 and abs(z - b["at"][2]) <= b["size"][2] / 2 + 0.01 for b in grid.get((int(x // 4), int(z // 4)), ()))
+
+    # And only the layer the field had: displacements overlap (a roof's snow over the ground), and
+    # the heightfield keeps the highest, a cliff in a doorway where the field took the ground.
+    def on_layer(t):
+        cx, cy, cz = (sum(p[i] for p in t) / 3 for i in range(3))
+        return any(abs(cx - b["at"][0]) <= b["size"][0] / 2 + 0.01 and abs(cz - b["at"][2]) <= b["size"][2] / 2 + 0.01
+                   and abs(cy - (b["at"][1] + b["size"][1] / 2)) <= 1.5 for b in grid.get((int(cx // 4), int(cz // 4)), ()))
+
+    gtris = [t for t in gtris if on_layer(t)]
+    hf, size = fit(gtris, (lo[0], lo[2], hi[0], hi[2]), budget, margin_m=0.5, keep=under_field)
+    if hf is None:
+        raise SystemExit("swap_terrain: the displacements produced no heightfield")
+    enc = hf.encode(0.05, None, mat)
+    if tint:
+        enc["tint"] = list(tint)
+    ground = Heightfield.decode(enc)[0]
+    tops = [(b["at"][0] - b["size"][0] / 2, b["at"][0] + b["size"][0] / 2, b["at"][2] - b["size"][2] / 2, b["at"][2] + b["size"][2] / 2, b["at"][1] + b["size"][1] / 2) for b in old]
+
+    def land(o, tag):
+        x, y, z = o["at"]
+        for x0, x1, z0, z1, top in tops:
+            if x0 <= x <= x1 and z0 <= z <= z1 and abs(y - top) < 0.12:
+                h = ground.height(x, z)
+                if h is not None:
+                    o["at"] = [x, round(h, 3), z]
+                    counts[tag] = counts.get(tag, 0) + 1
+                return
+
+    counts = {}
+    for o in doc.get("props", []):
+        land(o, "props")
+    for side in doc.get("spawns", {}).values():
+        for o in side:
+            land(o, "spawns")
+    for o in doc.get("toys", []):
+        land(o, "toys")
+    doc["terrain"] = enc
+    print("terrain: %d field boxes -> %dx%d heightfield at %.1f m, %d bytes; set down on it: %s" % (len(old), ground.nx, ground.nz, ground.cell, size, counts or "nothing"))
+    return ground
