@@ -12,6 +12,7 @@ python3 -I tools/bsp/bsp.py mesh map.bsp --out world/map --author "A" --page htt
 python3 -I tools/bsp/bsp.py classes ~/mapsrc --markdown   # every entity class and what the importer makes of it
 python3 -I tools/bsp/tests/test_mesh.py              # the mesh, movers and class table on maps written from scratch
 python3 -I tools/bsp/tests/test_licence.py           # the raw store, the licence pass, environment and sound data
+python3 -I tools/bsp/tests/test_regen.py             # rule tiers, fallbacks, regen, coverage, ratchet
 python3 -I tools/bsp/tests/test_store.py             # the lossless store, repeated keys, outputs of any name
 python3 -I tools/bsp/tests/test_lift.py              # the pieces lifted from the adapters (flood, classifier, props, lights, plan, .gma, guards)
 DOTBSP_TEST_MAPS=~/maps python3 -I tools/bsp/tests/test_dotbsp.py RealMaps   # and on real ones
@@ -35,6 +36,12 @@ Always `python3 -I`: the maps are downloads, and `-I` keeps a planted module bes
 - `nearest.py` for an unmapped texture: by name (`brickwall12` is brick), then by average colour against `photo_colours.tsv` within 0.2, else the flat generated image. The record's `how` says which (`table`, `name`, `colour`, `flat`). Rows for every photo kind are in `free_textures.tsv` so credits resolve.
 
 `DotMapBspMesh` applies the data with hooks and no scene path or autoload: `build_environment()` (sky, sun, fog, tonemap, probes), `build_sounds(stream_for, make_node)` (a callable for the stream, one for the node so a game can play through dot-audio), `build_props(scene_for)`, `licence()`, `is_free()`. `tools/screenshot.sh <world prefix> <png>` renders a frame of a converted map dressed this way.
+
+## Rule tiers, `regen` and the coverage ratchet (converter v2, package 3)
+
+`bsp.py regen <hash | game/map> --out <prefix> [--addon-rules DIR]... [--game-rules DIR] [--map-rules FILE] [--ratchet]` rebuilds a map's manifest, `.bin`, textures and `CREDITS.md` from its store entry (`source.bsp` and `credit.json`, which must name author and page) and the rules alone. Rules are read in four tiers, default (the lists beside `dotbsp/` and `tools/bsp/rules/`) < addon < game < map. A tier is a directory of `textures.tsv`, `free_textures.tsv`, `models.tsv`, `sounds.tsv`, `classes.tsv` (class or `prefix*`, treatment, meaning, component), `materials.tsv`, `roles.tsv`, or one JSON file with the same tables as keys (a map's `tools/convert/maps/<id>.json`). The highest tier with a matching row answers, the most specific row inside it; a path that does not exist is an error. Nothing is dropped: a texture no row names goes to the nearest photo set or a flat image, a model to `placeholder_box`, a sound to silence, a class to `DotMapEntity` (`rule: "fallback"` in the manifest's `entities`).
+
+`<prefix>.coverage.json` lists, per map, which tier answered how many textures, models, sounds and classes, and the names that fell through: `textures_unmapped`, `textures_flat`, `models_unmapped`, `sounds_unmapped`, `classes_unmapped`, `keys_unmapped` (keys of a class that `rules/entity_defs.json` does not know), `links_unresolved`. Commit it with the map. `--ratchet` compares against the committed report and exits 5 when any list holds a name the baseline did not (the report is then not rewritten); with no baseline it exits 2. Inputs no component implements are not in the report yet: they need the runtime of package 5.
 
 ## The lossless store (converter v2, package 1)
 

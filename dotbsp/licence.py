@@ -77,7 +77,7 @@ def replacement(generic, colour, table, material=None):
     return r
 
 
-def annotate(doc, outdir=None, table=None, prop_table=None, models=()):
+def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_models=None, free_sounds=None):
     """Add `free` to every surface of the manifest `doc` and a `licence` block; write the generated
     images under `outdir` when given. `models` is the placed model paths (static props and
     prop entities); `prop_table` a `PropTable` of the game's stand-ins. Returns the block."""
@@ -100,7 +100,7 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=()):
         free.append(dict(u, key=key))
     counts = collections.Counter(_props.norm_model(m) for m in models if m)
     tbl = prop_table or _props.PropTable({})
-    free_models = standins.models()
+    free_models = free_models or standins.models()
     mods, used_models = [], {}
     for m, n in sorted(counts.items()):
         mine = tbl.get(m)
@@ -109,7 +109,7 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=()):
         if row:
             used_models.setdefault(row["stand_in"], dict(row, files=[], count=0))
             used_models[row["stand_in"]]["count"] += n
-    free_sounds = standins.sounds()
+    free_sounds = free_sounds or standins.sounds()
     used_sounds = {}
     for s in doc.get("sounds", {}).get("ambient", []):
         row = free_sounds.get(s.get("message"))
