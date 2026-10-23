@@ -14,7 +14,7 @@ import json
 import os
 import re
 
-from . import environment, intermediate, licence, mesh, movers, props, reader, scripts, standins, units
+from . import environment, intermediate, licence, mesh, models, movers, props, reader, scripts, standins, units
 
 DEFAULT_ROOT = os.path.expanduser(os.environ.get("DOTBSP_RAW_ROOT", "~/mapsrc"))
 
@@ -56,7 +56,8 @@ def _safe(name):
 
 
 def store_raw(bsp, name, game, credit=None, root=None, pak=False, scale=units.VISUAL, y0=0.0):
-    """Write the plain import; returns its directory. Nothing here is replaced or dropped."""
+    """Write the plain import; returns its directory. Nothing here is replaced or dropped. Models packed in the map's pakfile are converted to
+    glb (textures embedded) under `models/` with a `models.json` index, `dotbsp.models`."""
     d = raw_dir(game, name, root)
     os.makedirs(d, exist_ok=True)
     m = mesh.build(bsp, scale=scale, y0=y0)
@@ -86,6 +87,11 @@ def store_raw(bsp, name, game, credit=None, root=None, pak=False, scale=units.VI
                     f.write(data)
         with open(os.path.join(d, "pak-notes.txt"), "w") as f:
             f.write("\n".join(notes) + ("\n" if notes else ""))
+    notes = []
+    models.extract(bsp, os.path.join(d, "models"), notes)
+    if notes:
+        with open(os.path.join(d, "models-notes.txt"), "w") as f:
+            f.write("\n".join(notes) + "\n")
     with open(os.path.join(d, "SOURCE.txt"), "w") as f:
         f.write("%s\nsha256 %s\nbsp version %d\nThe author's work, kept for reconversion only; never copied into a repository.\n" % (
             bsp.path, m.source["sha256"], bsp.version))
