@@ -173,6 +173,18 @@ class Movers(unittest.TestCase):
         self.assertEqual(len(v["brushes"][0]), 6)
 
 
+    def test_trigger_push_has_direction_speed_and_flags(self):
+        bsp = load(entity_box=(0, 0, 0, 64, 64, 64), entity_class="trigger_push",
+                   entity_keys={"pushdir": "-90 0 0", "speed": "5000", "spawnflags": "65", "StartDisabled": "1"})
+        v = [x for x in movers.volumes(bsp) if x["kind"] == "push"][0]
+        self.assertEqual(v["direction"], [0.0, 1.0, -0.0])                  # pitch -90 is up
+        self.assertAlmostEqual(v["speed"], 5000 * units.VISUAL, places=3)
+        self.assertEqual((v["spawnflags"], v["disabled"], len(v["brushes"][0])), (65, True, 6))
+        bsp = load(entity_box=(0, 0, 0, 64, 64, 64), entity_class="trigger_push", entity_keys={"pushdir": "0 90 0"})
+        v = [x for x in movers.volumes(bsp) if x["kind"] == "push"][0]
+        self.assertEqual(v["direction"], [0.0, 0.0, -1.0])                  # yaw 90 is map +y, Godot -z
+
+
 class Entities(unittest.TestCase):
     REAL = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "examples", "bsp_mesh",
                         "zm_4way_tunnel.entities.json")
