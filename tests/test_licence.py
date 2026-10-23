@@ -142,6 +142,31 @@ class Defects(unittest.TestCase):
         far = spots[:1] + [("models/x/bottle.mdl", [3.0 * k, 0.3 * k, 0.7 * k], [0, 0, 0], None)]
         self.assertEqual(standins._support_boxes(far, packed, None, 0.01905, 0.0), [])
 
+    def test_natural_stand_ins_take_a_packed_models_size_and_base(self):
+        from dotbsp import standins
+        tree = {"size": [11.0, 5.0, 8.8], "min": [-7.5, 0.0, -4.7]}
+        rec = {"stand_in": "tree", "at": [1.0, 2.0, 3.0]}
+        standins._fit_natural(rec, tree, None)
+        self.assertEqual(rec["size"], 5.0)                          # height: a wide crown is not a taller tree
+        rock = {"stand_in": "rock", "at": [0.0, 1.0, 0.0]}
+        standins._fit_natural(rock, {"size": [15.5, 7.1, 7.8], "min": [-7.7, 0.0, -3.9]}, None)
+        self.assertEqual(rock["size"], 15.5)
+        palm = {"stand_in": "pirate/palm", "at": [0.0, 10.0, 0.0]}
+        standins._fit_natural(palm, {"size": [7.2, 14.2, 7.6], "min": [-3.6, -3.59, -3.8]}, 2.0)
+        self.assertAlmostEqual(palm["at"][1], 10.0 - 7.18)                # origin mid-trunk: stood on its own base
+        chair = {"stand_in": "chair", "at": [0.0, 0.0, 0.0]}
+        standins._fit_natural(chair, {"size": [2.0, 2.0, 2.0], "min": [0, 0, 0]}, None)
+        self.assertNotIn("size", chair)                             # furniture keeps its stand-in's own size
+        none = {"stand_in": "tree", "at": [0.0, 0.0, 0.0]}
+        standins._fit_natural(none, None, None)
+        self.assertNotIn("size", none)                              # a stock model cannot be measured
+        sprite = {"stand_in": "tree", "at": [0.0, 0.0, 0.0]}
+        standins._fit_natural(sprite, {"size": [0.01, 0.01, 0.01], "min": [0, 0, 0]}, None)
+        self.assertNotIn("size", sprite)
+        sz = standins.Sizes()
+        self.assertIsNone(sz.get("plants/bananatree.mdl"))          # a banana tree is not a banana
+        self.assertEqual(sz.get("props/banana01.mdl"), 0.1)
+
     def test_black_name_keeps_dark_colour(self):
         self.assertLess(licence.name_colour("tools/black")[0], 0.1)
         self.assertGreater(licence.name_colour("metal/white")[0], 0.8)

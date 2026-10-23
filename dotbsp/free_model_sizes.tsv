@@ -2,7 +2,7 @@
 (?:^|/)(popcan|sodacan|beercan|can\d*|spraycan|firstaidspray)(?![a-z_])(?![^/]*/)	0.13
 (?:^|/)(wineglass|cup|mug|beaker|vial|jar)(?![a-z_])(?![^/]*/)	0.1
 (?:^|/)(bottle\w*|flask)(?![a-z_])(?![^/]*/)	0.28
-(?:^|/)(orange|apple|banan\w*|fruit|lemon|pear|egg|pills?|ball\d*)(?![a-z_])(?![^/]*/)	0.1
+(?:^|/)(orange|apple|bananas?|fruit|lemon|pear|egg|pills?|ball\d*)(?![a-z_])(?![^/]*/)	0.1
 (?:^|/)(melon|pumpkin|bread|food\d*[a-z]?)(?![a-z_])(?![^/]*/)	0.25
 (?:^|/)(iphone|phone|remote|calculator|wallet|money|pliers|wrench|hammer|screwdriver|tools?_\w+)(?![a-z_])(?![^/]*/)	0.15
 (?:^|/)(harddrive|camera|notebook|clipboard|book\d+|mouse\d*)(?![a-z_])(?![^/]*/)	0.2

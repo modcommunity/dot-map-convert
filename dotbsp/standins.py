@@ -167,6 +167,7 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
     know and the free table does; positions in metres and Godot axes like the rest of the manifest."""
     free = FreeProps(table)
     sizes = sizes or Sizes()
+    packed = packed if packed is not None else _models_measure(bsp)
     doc = {"entities": [{"classname": e.get("classname", ""), "keys": e} for e in bsp.entities],
            "static_props": bsp.static_props()}
     out = []
@@ -180,10 +181,12 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
         size = sizes.get(p["model"])
         if size:
             rec["size"] = size
+        else:
+            _fit_natural(rec, packed.get(p["model"]), p.get("scale"))
         out.append(rec)
     shaped = shape_matches(bsp, game_table, table) if shaped is None else shaped
     spots = _spots(doc)
-    boxes = _support_boxes(spots, packed if packed is not None else _models_measure(bsp), game_table, scale, y0)
+    boxes = _support_boxes(spots, packed, game_table, scale, y0)
     if boxes:
         gone = {(b["model"], tuple(b["origin"])) for b in boxes}
         out = [r for r in out if (r["model"], tuple(r["at"])) not in gone]
@@ -191,6 +194,30 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
         out += _shaped_placements(spots, shaped, scale, y0, {(b["model"], b["src"]) for b in boxes})
     out += [{k: v for k, v in b.items() if k not in ("origin", "src")} for b in boxes]
     return out
+
+
+# Natural stand-ins are far smaller than what they stand in for (a 1.2 m tree for a 9 m one, a 1 m rock for a
+# 15 m boulder), so a packed model's measured size is drawn: height for what grows upright (the glb's longest side
+# is its height), the longest side for the rest.
+NATURAL_UPRIGHT = frozenset({"tree", "plant", "pirate/palm"})
+NATURAL_LOW = frozenset({"rock", "bush", "stump"})
+NATURAL_RANGE = (0.2, 40.0)   # metres: outside is a measuring accident (a tree-named sprite sheet), not a plant
+
+
+def _fit_natural(rec, measured, modelscale):
+    """Sets `size` on a natural stand-in `rec` from the packed model's measured size and puts it on the model's own
+    base (some origins sit mid-trunk). Leaves it alone with no measure: a stock model cannot be measured."""
+    sid = rec["stand_in"]
+    if measured is None or sid not in NATURAL_UPRIGHT | NATURAL_LOW:
+        return
+    sx, sy, sz = measured["size"]
+    size = sy if sid in NATURAL_UPRIGHT else max(sx, sy, sz)
+    if not NATURAL_RANGE[0] <= size <= NATURAL_RANGE[1]:
+        return
+    rec["size"] = round(size, 3)
+    base = measured["min"][1] * _props._num(modelscale, 1.0)
+    if abs(base) > 0.05:
+        rec["at"][1] = round(rec["at"][1] + base, 4)
 
 
 def _models_measure(bsp):
