@@ -631,6 +631,33 @@ class FastgmadLookup(unittest.TestCase):
                         os.environ[k] = v
 
 
+class PropDoorSwing(unittest.TestCase):
+    """A model door's direction comes from opendir and spawnpos, never from the brush-door reverse flag."""
+
+    class _Bsp:
+        def __init__(self, ents):
+            self.entities, self.models = ents, []
+
+    def rec(self, **keys):
+        from dotbsp import movers
+        e = {"classname": "prop_door_rotating", "origin": "0 0 0", "angles": "0 90 0", "spawnflags": "8192"}
+        e.update({k: str(v) for k, v in keys.items()})
+        return movers.movers(self._Bsp([e]), owners={})[0]
+
+    def test_directions(self):
+        r = self.rec(spawnflags=8194, distance=90)          # bit 2 is not "reverse" on a model door
+        self.assertEqual((r["degrees"], r["open_dir"], r["yaw"], r["start_open"]), (90.0, 0, 90.0, False))
+        self.assertEqual(self.rec(opendir=2)["degrees"], -90.0)
+        self.assertEqual(self.rec(opendir=1)["open_dir"], 1)
+
+    def test_spawnpos(self):
+        r = self.rec(spawnpos=2)
+        self.assertTrue(r["start_open"])
+        self.assertEqual(r["spawn_side"], -1.0)
+        self.assertNotIn("spawn_side", self.rec(spawnpos=0))
+        self.assertTrue(self.rec(spawnflags=8193)["start_open"])
+
+
 @unittest.skipUnless(os.environ.get("DOTBSP_TEST_MAPS"), "set DOTBSP_TEST_MAPS to a folder of real maps")
 class RealMaps(unittest.TestCase):
     def test_each(self):

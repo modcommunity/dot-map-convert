@@ -219,13 +219,27 @@ def movers(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
         elif cls in ("func_door_rotating", "func_rot_button", "momentary_rot_button", "prop_door_rotating"):
             axis = _rot_axis(e, flags, SF_ROT_X, SF_ROT_Y)
             dist = _f(e, "distance", 90.0)
-            if flags & SF_ROT_REVERSE:
-                dist = -dist
+            start_open = bool(flags & SF_DOOR_START_OPEN)
             if cls == "prop_door_rotating":
+                # Flag 2 is not "reverse" on a model door; its direction is opendir (0 away from the
+                # opener, 1 forward, 2 back) and spawnpos (1 open forward, 2 open back at the start).
                 axis = (0.0, 0.0, 1.0)
                 rec["model_path"] = e.get("model", "")
+                open_dir = _i(e, "opendir")
+                spawn = _i(e, "spawnpos")
+                dist = abs(dist)
+                if open_dir == 2:
+                    dist = -dist
+                ang = e.get("angles", "").split()
+                rec["open_dir"] = open_dir if open_dir in (0, 1, 2) else 0
+                rec["yaw"] = _f({"a": ang[1]}, "a") if len(ang) > 1 else 0.0
+                if spawn in (1, 2):
+                    rec["spawn_side"] = 1.0 if spawn == 1 else -1.0
+                start_open = start_open or spawn in (1, 2)
+            elif flags & SF_ROT_REVERSE:
+                dist = -dist
             rec.update(axis=gdir(axis), degrees=round(dist, 3), wait=_f(e, "wait", 4),
-                       speed=round(_f(e, "speed", 100.0), 3), start_open=bool(flags & SF_DOOR_START_OPEN) and cls != "prop_door_rotating",
+                       speed=round(_f(e, "speed", 100.0), 3), start_open=start_open,
                        locked=bool(flags & SF_DOOR_LOCKED), use=True, touch=False, solid=True)
         elif cls == "func_movelinear":
             d = angle_vector(e.get("movedir", "0 0 0"))
