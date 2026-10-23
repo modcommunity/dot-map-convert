@@ -22,6 +22,8 @@ import math
 import random
 import re
 
+from . import reader
+
 # Dev-grid surface palette, the one three importers shared (RGB 0..1).
 SUBURBAN_PALETTE = {
     "SIDING_BLUE": (0.80, 0.88, 1.00),
@@ -409,7 +411,7 @@ def add_doors(m, doc, entities, shift, slide=False, scale=0.01905, skip=(), log=
     for e in entities:
         if e.get("classname") != "prop_door_rotating":
             continue
-        gx, gy, gz = gd(vec(e["origin"]))
+        gx, gy, gz = gd(reader.door_hinge(e)[0])
         hx, hy, hz = gx - ox, gy - oy, gz - oz
         if any(abs(hx - a) < 0.8 and abs(hz - b) < 0.8 for a, b in skip):
             continue

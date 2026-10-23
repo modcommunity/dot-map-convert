@@ -552,6 +552,60 @@ class DocBoxes(unittest.TestCase):
             self.assertEqual(n1, 0 if skip else 1, skip)
 
 
+class DoorHinge(unittest.TestCase):
+    """prop_door_rotating swings about its authored hinge when the model origin is elsewhere on the panel."""
+
+    @staticmethod
+    def door(origin, axis=None):
+        e = {"classname": "prop_door_rotating", "origin": origin, "angles": "0 270 0"}
+        if axis is not None:
+            e["axis"] = axis
+        return e
+
+    def test_hinge_cases(self):
+        # (name, entity, hinge, offset): the three stall doors of one map, a horizontal helper, a hinge at the origin
+        cases = [("no axis", self.door("608 284 -255"), [608, 284, -255], None),
+                 ("point off the origin", self.door("608 284 -255", "608 256 -255, 608 256 -255"), [608, 256, -255], (0.0, 28.0)),
+                 ("vertical line through the origin", self.door("3991 4742 -1098", "3991 4742 -1044, 3991 4742 -1152"), [3991, 4742, -1098], None),
+                 ("stale: 96 units away, a copied helper", self.door("608 352 -255", "608 256 -255, 608 256 -255"), [608, 352, -255], None),
+                 ("horizontal axis is a hatch, not a hinge", self.door("242 137 274", "293 137 274, 242 137 274"), [242, 137, 274], None),
+                 ("unreadable", self.door("1 2 3", "x y z"), [1, 2, 3], None)]
+        for name, e, hinge, off in cases:
+            h, o = reader.door_hinge(e)
+            self.assertEqual([round(v, 3) for v in h], hinge, name)
+            self.assertEqual(None if o is None else tuple(round(v, 3) for v in o), off, name)
+
+    def test_mover_record_carries_the_hinge(self):
+        from dotbsp import movers
+        class B:
+            models = []
+            entities = [self.door("608 284 -255", "608 256 -255, 608 256 -255"), self.door("608 352 -255", "608 256 -255, 608 256 -255")]
+        for e in B.entities:
+            e.update(opendir="0", model="m.mdl", distance="90")
+        recs = movers.movers(B, 0.01905, 0.0, owners={})
+        a, b = recs
+        self.assertAlmostEqual(a["origin"][2], -256 * 0.01905, 4)         # the hinge, not the model origin
+        self.assertAlmostEqual(a["panel_width"], 2 * 28 * 0.01905, 4)
+        self.assertAlmostEqual(a["panel_yaw"], 0.0, 3)                    # the panel lies along source +Y
+        self.assertAlmostEqual(a["yaw"], a["panel_yaw"], 3)
+        self.assertNotIn("panel_yaw", b)                                  # armed: the stale helper changes nothing
+        self.assertAlmostEqual(b["origin"][2], -352 * 0.01905, 4)
+
+    def test_add_doors_hangs_from_the_hinge(self):
+        wall = lambda x, z, w, d: {"at": [x, 1.25, z], "size": [w, 2.5, d], "mat": "plaster"}
+        doc = {"boxes": [wall(-2.0, 0, 4.0, 0.2), wall(3.0, 0, 4.0, 0.2), {"at": [0, -0.1, 0], "size": [12, 0.2, 6], "mat": "wood"}], "props": []}
+        class M:
+            calls = []
+            def door(self, *a, **k):
+                self.calls.append((a, k))
+        for origin, axis, want_hinge in (("%f 0 0" % (0.5 / 0.01905), "0 0 0, 0 0 0", "start"), ("0 0 0", None, "start")):
+            m = M()
+            m.calls = []
+            self.assertEqual(docboxes.add_doors(m, copy.deepcopy(doc), [self.door(origin, axis)], (0.0, 0.0, 0.0), log=lambda *_: None), 1, origin)
+            self.assertEqual(m.calls[0][1]["hinge"], want_hinge)
+            self.assertAlmostEqual(m.calls[0][0][1], 0.0, 1, "the door starts at the hinge x, not the model origin 0.5 m along")
+
+
 class LightsEquivalence(unittest.TestCase):
     @staticmethod
     def original(lamps, max_lights):

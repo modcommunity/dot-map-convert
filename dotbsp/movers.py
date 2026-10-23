@@ -225,6 +225,14 @@ def movers(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
                 # opener, 1 forward, 2 back) and spawnpos (1 open forward, 2 open back at the start).
                 axis = (0.0, 0.0, 1.0)
                 rec["model_path"] = e.get("model", "")
+                hinge, off = reader.door_hinge(e)
+                if off is not None:
+                    # The swing is about the authored hinge; the model's origin sits on the panel, which
+                    # then runs from the hinge through it. Its yaw is the direction the panel lies in
+                    # (source +Y turned to it), and `yaw` is that frame's, so "away from the opener" holds.
+                    rec["origin"] = g(hinge)
+                    rec["panel_width"] = round(2.0 * math.hypot(*off) * scale, 4)
+                    rec["panel_yaw"] = round(math.degrees(math.atan2(-off[0], off[1])), 3)
                 open_dir = _i(e, "opendir")
                 spawn = _i(e, "spawnpos")
                 dist = abs(dist)
@@ -233,6 +241,8 @@ def movers(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
                 ang = e.get("angles", "").split()
                 rec["open_dir"] = open_dir if open_dir in (0, 1, 2) else 0
                 rec["yaw"] = _f({"a": ang[1]}, "a") if len(ang) > 1 else 0.0
+                if "panel_yaw" in rec:
+                    rec["yaw"] = rec["panel_yaw"]
                 if spawn in (1, 2):
                     rec["spawn_side"] = 1.0 if spawn == 1 else -1.0
                 start_open = start_open or spawn in (1, 2)

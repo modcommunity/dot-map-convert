@@ -619,6 +619,33 @@ def entity_vec(e, key="origin", default=(0.0, 0.0, 0.0)):
     return v if len(v) == 3 else list(default)
 
 
+DOOR_HINGE_REACH = 64.0     # source units (1.2 m): a hinge farther from the origin than a door is wide is a stale editor helper
+
+
+def door_hinge(e):
+    """Where a prop_door_rotating swings from, in source units: ([x, y, z], offset).
+
+    The entity's origin is the model's, which for most models is the hinge. A door authored with a
+    hinge axis (`axis`: two points) away from it has its model origin elsewhere on the panel (a
+    stall door's origin is its middle), so the swing is about the axis. Only a vertical axis (or
+    one point) counts; a horizontal axis, or a hinge farther away than a door is wide, is left
+    on the origin. `offset` is the hinge-to-origin vector (x, y) when they differ by over a unit, else None."""
+    o = entity_vec(e)
+    try:
+        pts = [[float(x) for x in part.split()][:3] for part in e.get("axis", "").split(",")]
+    except ValueError:
+        return o, None
+    if not pts or any(len(p) != 3 for p in pts) or len(pts) > 2:
+        return o, None
+    if any(abs(p[0] - pts[0][0]) > 0.5 or abs(p[1] - pts[0][1]) > 0.5 for p in pts):
+        return o, None
+    dx, dy = o[0] - pts[0][0], o[1] - pts[0][1]
+    d = math.hypot(dx, dy)
+    if d <= 1.0 or d > DOOR_HINGE_REACH:
+        return o, None
+    return [pts[0][0], pts[0][1], o[2]], (dx, dy)
+
+
 def entity_yaw(e):
     try:
         return float(e["angles"].split()[1])
