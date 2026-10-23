@@ -1,0 +1,13 @@
+# stand-in id<TAB>x<TAB>y<TAB>z: the drawn size in metres (Godot axes, the glb's own frame, front on +z) of each generic stand-in a map's packed model may be matched to by shape alone (standins.shape_match). Only neutral blocks, drums and rocks belong here: a shape match knows a size and nothing else, so a furniture shape would turn a jar into a stool (no chair, tv, plant, door, vehicle).
+barrel	0.236	0.344	0.236
+bin	0.208	0.428	0.234
+bookcase	0.400	0.850	0.250
+bucket	0.144	0.192	0.144
+cabinet	0.800	0.310	0.250
+cardboard_box	0.212	0.281	0.212
+chest	0.260	0.257	0.272
+crate	0.250	0.250	0.250
+crate_large	0.250	0.250	0.500
+log	0.234	0.173	0.710
+rock	0.785	0.260	1.015
+stump	0.321	0.206	0.371

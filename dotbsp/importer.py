@@ -113,8 +113,9 @@ def ship(bsp, name, prefix, credit=None, prop_table=None, scale=units.VISUAL, y0
              "scripts": scripts.analyse(bsp.entities)}
     doc = mesh.write(m, prefix, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(prefix))
-    licence.annotate(doc, outdir, prop_table=prop_table, models=placed_models(bsp))
-    doc["props"] = standins.placements(bsp, prop_table, scale=scale, y0=y0)
+    shaped = standins.shape_matches(bsp, prop_table)
+    licence.annotate(doc, outdir, prop_table=prop_table, models=placed_models(bsp), shaped=shaped)
+    doc["props"] = standins.placements(bsp, prop_table, scale=scale, y0=y0, shaped=shaped)
     problems = licence.check(doc)
     if report["unknown"] and not allow_unknown:
         problems.append("undecided entity classes: %s" % ", ".join(sorted(report["unknown"])))

@@ -105,6 +105,27 @@ class Defects(unittest.TestCase):
         for name, want in small.items():
             self.assertEqual(sz.get(name), want, name)
 
+    def test_shape_match_neutral_blocks_only(self):
+        from dotbsp import standins
+        cat = standins.ShapeCatalogue()
+        props_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "addons", "dot_map", "props")
+        for cid in cat.dims:
+            self.assertTrue(os.path.exists(os.path.join(props_dir, cid + ".glb")), cid)
+            self.assertIn(cid, cat.rows, cid)                       # a credit row to ship with it
+        self.assertEqual(cat.match([0.6, 0.9, 0.6])[0], "barrel")
+        self.assertEqual(cat.match([0.5, 0.5, 0.5])[0], "crate")
+        self.assertIsNone(cat.match([0.02, 0.02, 0.02]))             # a decal
+        self.assertIsNone(cat.match([8.0, 3.0, 8.0]))                # a building
+        self.assertIsNone(cat.match([2.4, 0.4, 2.4]))                # a flat truss
+        self.assertIsNone(cat.match([0.1, 2.0, 1.9]))                # a wall decal
+
+    def test_shape_match_turns_to_the_long_side(self):
+        from dotbsp import standins
+        cat = standins.ShapeCatalogue()
+        # crate_large is long on its z; after the viewer's 90 degrees that is the source's x
+        self.assertEqual(cat.match([1.0, 0.5, 0.5]), ("crate_large", 0))
+        self.assertEqual(cat.match([0.5, 0.5, 1.0]), ("crate_large", 1))
+
     def test_black_name_keeps_dark_colour(self):
         self.assertLess(licence.name_colour("tools/black")[0], 0.1)
         self.assertGreater(licence.name_colour("metal/white")[0], 0.8)

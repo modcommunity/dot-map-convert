@@ -77,9 +77,10 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     doc = mesh.write(m, out, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(out))
     from . import importer
+    shaped = standins.shape_matches(bsp, None, table=rs.models_view())
     licence.annotate(doc, outdir, table=rs.free_table(), models=importer.placed_models(bsp),
-                     free_models=rs.models_view(), free_sounds=rs.sounds_view())
-    doc["props"] = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0)
+                     free_models=rs.models_view(), free_sounds=rs.sounds_view(), shaped=shaped)
+    doc["props"] = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0, shaped=shaped)
     problems = licence.check(doc)
     # The starter per-map config: every map gets one, from the commands its entities send, commented out.
     mapcfg.write_suggestion(os.path.join(outdir, "dot_map", "map"), name.lower(), store.commands(bsp.entities))

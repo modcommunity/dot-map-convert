@@ -8,10 +8,13 @@ What matches nothing stays a `placeholder_box` / silent: a wrong chair is better
 a wrong voice is not better than silence.
 """
 
+import math
 import os
 import re
 
+from . import models as _models
 from . import props as _props
+from . import entities as _ent
 from . import reader
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -79,6 +82,69 @@ class Sizes:
         return None
 
 
+SHAPE_LIMIT = 0.4   # normalised shape_distance a stand-in may be from a packed model (a stricter bar than a name)
+SHAPE_MIN_SIDE, SHAPE_MAX_SIDE = 0.08, 3.5   # metres: a packed model outside is a decal or a building, not a prop
+
+
+class ShapeCatalogue:
+    """The generic stand-ins (`free_model_dims.tsv`) a packed model can be matched to by its measured shape."""
+
+    def __init__(self, path=os.path.join(HERE, "free_model_dims.tsv")):
+        self.dims = {}
+        with open(path, encoding="utf-8") as f:
+            for n, line in enumerate(f.read().splitlines(), 1):
+                if line.strip() and not line.startswith("#"):
+                    c = line.split("\t")
+                    if len(c) != 4:
+                        raise ValueError("%s:%d: want 4 columns, got %d" % (path, n, len(c)))
+                    self.dims[c[0]] = [float(v) for v in c[1:]]
+        self.rows = {}
+        for _rx, row in models().rows:
+            self.rows.setdefault(row["stand_in"], row)
+
+    def match(self, size):
+        """(stand-in id, quarter_turns) nearest the measured `size` (x, y, z metres, Godot axes), or None. The
+        glb's front is +z and the viewer turns it 90 degrees onto the source's +x, so glb x/z are
+        compared with size z/x; quarter_turns is 1 when the other pairing (glb x with size x) fits better."""
+        longest = max(size)
+        if not SHAPE_MIN_SIDE <= longest <= SHAPE_MAX_SIDE:
+            return None
+        if size[1] < 0.3 * longest and longest > 0.8:
+            return None   # a truss, a rug or a slab: a block stood in for it would be a wall
+        s = [v / longest for v in size]
+        best = None
+        for cid in sorted(self.dims):
+            d = self.dims[cid]
+            k = max(d)
+            n = [v / k for v in d]
+            for turns, o in ((0, (n[2], n[1], n[0])), (1, tuple(n))):
+                dist = _models.shape_distance_exact(s, o)
+                if best is None or dist < best[0] - 1e-9:
+                    best = (dist, cid, turns)
+        return (best[1], best[2]) if best and best[0] <= SHAPE_LIMIT else None
+
+
+def shape_matches(bsp, game_table=None, table=None, packed=None, catalogue=None):
+    """{model path: {stand_in, turns, size, centre, row}} for every placed model neither the game's table nor the
+    free name table knows and the map packs, matched by measured shape. The model itself is never copied."""
+    from . import models as _m
+    table = table or models()
+    packed = packed if packed is not None else _m.measure(bsp)
+    catalogue = catalogue or ShapeCatalogue()
+    out = {}
+    for m in _m.placed(bsp):
+        rec = packed.get(m)
+        if rec is None or is_skybox(m) or (game_table is not None and game_table.get(m) is not None):
+            continue
+        if table.get(m.replace("models/", "", 1)) is not None:
+            continue
+        hit = catalogue.match(rec["size"])
+        if hit:
+            out[m] = {"stand_in": hit[0], "turns": hit[1], "size": round(max(rec["size"]), 3),
+                      "centre": rec["centre"], "base": rec["min"][1], "row": catalogue.rows.get(hit[0])}
+    return out
+
+
 def sounds(path=os.path.join(HERE, "free_sounds.tsv")):
     return Table(path)
 
@@ -95,7 +161,7 @@ class FreeProps(_props.PropTable):
         return row["stand_in"] if row else default
 
 
-def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=None):
+def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=None, shaped=None):
     """[{stand_in, model, at, yaw, scale, size?}] (`size`: the metres its longest side is drawn at, for a
     small thing a furniture-sized stand-in would swamp) for every placed model the game's table does not
     know and the free table does; positions in metres and Godot axes like the rest of the manifest."""
@@ -115,4 +181,30 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
         if size:
             rec["size"] = size
         out.append(rec)
+    shaped = shape_matches(bsp, game_table, table) if shaped is None else shaped
+    if shaped:
+        out += _shaped_placements(doc, shaped, scale, y0)
+    return out
+
+
+def _shaped_placements(doc, shaped, scale, y0):
+    """Placements of the models `shape_matches` stood in: put on the packed model's middle, turned to its long side,
+    drawn at its measured longest side (`size`, before the placement's own scale)."""
+    out = []
+    spots = [(e["keys"].get("model"), reader.entity_vec(e["keys"]), reader.entity_vec(e["keys"], "angles"), e["keys"].get("modelscale"))
+             for e in doc["entities"] if e["classname"] in (_ent.PROP_CLASSES | _ent.PHYSICS_PROP_CLASSES)
+             and not str(e["keys"].get("model", "")).startswith("*")]
+    spots += [(p.get("model"), list(p["origin"]), list(p.get("angles", [0, 0, 0])), p.get("scale")) for p in doc.get("static_props", [])]
+    for model, o, ang, sc in spots:
+        s = shaped.get(_props.norm_model(model))
+        if s is None:
+            continue
+        k = _props._num(sc, 1.0)
+        a = math.radians(ang[1])
+        cx, cz = s["centre"][0] * k, -s["centre"][2] * k
+        gx = o[0] * scale + cx * math.cos(a) - cz * math.sin(a)
+        gz = -o[1] * scale - (cx * math.sin(a) + cz * math.cos(a))
+        out.append({"stand_in": s["stand_in"], "model": _props.norm_model(model), "shape": True,
+                    "at": [round(gx, 4), round(o[2] * scale - y0 + s["base"] * k, 4), round(gz, 4)],
+                    "yaw": round(ang[1] + 90.0 * s["turns"], 2), "scale": round(k, 3), "size": s["size"]})
     return out

@@ -70,6 +70,8 @@ def convert(pak, key, cache=None, glb=True):
         if png:
             textures[i] = png
         mats.append({"name": m.materials[i], "vmt": p, "average": avg})
+    if m.bounds() is None:
+        raise mdl.ModelError("no drawn triangles")
     lo, hi = m.bounds()
     rec = {"packed": True, "triangles": m.triangles(), "min": [round(v, 4) for v in lo], "max": [round(v, 4) for v in hi],
            "size": [round(b - a, 4) for a, b in zip(lo, hi)], "centre": [round((a + b) / 2, 4) for a, b in zip(lo, hi)],
@@ -159,6 +161,14 @@ def shape_distance(size, other):
         return abs(math.log(max(a, 0.02) / max(b, 0.02)))
     wa, wb = sorted((size[0], size[2]), reverse=True), sorted((other[0], other[2]), reverse=True)
     return lg(size[1], other[1]) + lg(wa[0], wb[0]) + lg(wa[1], wb[1])
+
+
+def shape_distance_exact(a, b):
+    """`shape_distance` with the horizontal sides compared as given (x with x, z with z), for a caller that
+    knows the stand-in's orientation."""
+    def lg(p, q):
+        return abs(math.log(max(p, 0.02) / max(q, 0.02)))
+    return lg(a[0], b[0]) + lg(a[1], b[1]) + lg(a[2], b[2])
 
 
 def match_size(size, candidates, limit=1.0, scale=1.0):

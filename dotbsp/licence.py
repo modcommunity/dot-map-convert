@@ -89,7 +89,7 @@ def replacement(generic, colour, table, material=None):
     return r
 
 
-def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_models=None, free_sounds=None):
+def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_models=None, free_sounds=None, shaped=None):
     """Add `free` to every surface of the manifest `doc` and a `licence` block; write the generated
     images under `outdir` when given. `models` is the placed model paths (static props and
     prop entities); `prop_table` a `PropTable` of the game's stand-ins. Returns the block."""
@@ -117,6 +117,9 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
     for m, n in sorted(counts.items()):
         mine = tbl.get(m)
         row = None if mine else free_models.get(m.replace("models/", "", 1))
+        hit = (shaped or {}).get(m) if not (mine or row) else None
+        if hit and hit["row"]:
+            row = dict(hit["row"], stand_in=hit["stand_in"])
         mods.append({"model": m, "count": n, "stand_in": mine or (row["stand_in"] if row else "skybox" if standins.is_skybox(m) else "placeholder_box")})
         if row:
             used_models.setdefault(row["stand_in"], dict(row, files=[], count=0))
