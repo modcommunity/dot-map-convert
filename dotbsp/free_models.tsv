@@ -9,7 +9,7 @@ drawer|filing|file_cab	cabinet	Kenney Furniture Kit	https://kenney.nl/assets/fur
 laundry_cart|pushcart|(^|[/_])cart\d|shoppingcart|wheelbarrow	bin	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 paintcan|metal_can|oil_can|jerrycan|gascan|canister	bucket	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
 debris|rubble|cinderblock|concrete_chunk|concretepiece|brick|chunk|gib	rock	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
-vending|fridge	fridge	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+vending|fridge|refrigerator	fridge	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 sofa_chair|armchair|loungechair|recliner	armchair	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 sofa|couch	sofa	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 barstool|stool	stool	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
@@ -23,14 +23,14 @@ cabinet|dresser	cabinet	Kenney Furniture Kit	https://kenney.nl/assets/furniture-
 (^|[/_])bed|mattress|bunk	bed	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 tv_|television|plasma	tv	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 monitor|computer|screen	monitor	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
-light_ceiling|lights_|florescent|fluorescent|light_inset|lightbulb|domelight|cagelight|prison_lamp|prison_cagedlight|industrialbell|light_	ceiling_light	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+light_ceiling|lights_|florescent|flourescent|fluorescent|light_inset|lightbulb|domelight|cagelight|prison_lamp|prison_cagedlight|industrialbell|light_	ceiling_light	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 lamp	lamp	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 fern|plant|flower	plant	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 bush|shrub|hedge	bush	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
 tree|derevo|palm|pine|spruce	tree	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
 crate_extralarge|crate_large|crate_big|extralarge	crate_large	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
 crate|(^|[/_])box|pallet	crate	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
-oildrum|barrel|drum	barrel	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+oildrum|barrel|drum|coolingtank|cooling_tank	barrel	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
 fence|handrail|railing	fence	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
 trash|dumpster|garbage|bin\b	bin	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 toilet	toilet	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
