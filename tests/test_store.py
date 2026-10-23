@@ -120,6 +120,28 @@ class RoundTrip(unittest.TestCase):
             c = json.load(open(os.path.join(root, h, "credit.json")))
             self.assertEqual((c["author"], c["page"]), ("A", "p"))
 
+    def test_set_credit_overwrites_and_recomputes_missing(self):
+        with tempfile.TemporaryDirectory() as root:
+            h, _ = store.put(root, "t", "fix", fixture(), {"author": "A"})
+            c0 = json.load(open(os.path.join(root, h, "credit.json")))
+            self.assertEqual(c0["missing"], ["page"])
+            self.assertEqual(store.set_credit(root, "t/fix", {"author": "B", "page": "p", "removal": "r"}), h)
+            c = json.load(open(os.path.join(root, h, "credit.json")))
+            self.assertEqual((c["author"], c["page"], c["removal"], c["missing"]), ("B", "p", "r", []))
+            with self.assertRaises(ValueError):
+                store.set_credit(root, "t/none", {"author": "x"})
+
+    def test_spawns_are_listed_with_a_place_and_a_team(self):
+        bsp = reader.Bsp("t", data=synth.build(entities=[
+            {"classname": "worldspawn"},
+            {"classname": "info_player_terrorist", "origin": "100 200 300", "angles": "0 90 0"},
+            {"classname": "info_player_custom", "origin": "0 0 0"},
+            {"classname": "info_target", "origin": "1 1 1"}])).load()
+        sp = movers.spawns(bsp)
+        self.assertEqual([(s["classname"], s["team"]) for s in sp],
+                         [("info_player_terrorist", "red"), ("info_player_custom", "any")])
+        self.assertEqual(len(sp[0]["at"]), 3)
+
     def test_check_finds_a_changed_source(self):
         with tempfile.TemporaryDirectory() as root:
             h, _ = store.put(root, "t", "fix", fixture())

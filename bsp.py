@@ -101,7 +101,7 @@ def cmd_mesh(args):
     m = mesh.build(bsp, scale=scale, y0=args.y0)
     report = classes.report(bsp)
     extra = {"movers": movers.movers(bsp, scale, args.y0), "volumes": movers.volumes(bsp, scale, args.y0),
-             "destinations": movers.destinations(bsp, scale, args.y0), "entity_report": report,
+             "destinations": movers.destinations(bsp, scale, args.y0), "spawns": movers.spawns(bsp, scale, args.y0), "entity_report": report,
              "links": movers.links(bsp), "entities": movers.generic(bsp),
              "breakables": mesh.breakables(bsp, m),
              "environment": environment.environment(bsp, scale, args.y0), "sounds": environment.sounds(bsp, scale, args.y0)}
@@ -372,8 +372,9 @@ def main(argv):
     st.add_argument("--root", help="default $DOTBSP_STORE or ~/mapsrc/store")
     st.add_argument("--check", action="store_true", help="rebuild every document from its source.bsp and compare")
     st.add_argument("--game")
+    st.add_argument("--entry", help="update this stored entry's credit.json (<game>/<map> or hash prefix) from the credit flags, overwriting those keys")
     st.add_argument("--credit", help="a JSON file with author, page, licence, no_share_check")
-    for k in ("author", "page", "licence", "no_share_check"):
+    for k in ("author", "page", "licence", "no_share_check", "removal", "note"):
         st.add_argument("--" + k.replace("_", "-"), dest=k)
     rg = sub.add_parser("regen", help="rebuild a map from its store entry and the rule tiers, with a coverage report")
     rg.add_argument("entry", help="a store hash (prefix) or <game>/<map>")

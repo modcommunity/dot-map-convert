@@ -16,7 +16,7 @@ from . import movers, reader, sources
 
 FORMAT = "dot-bsp-source"
 VERSION = 1
-CREDIT_KEYS = ("author", "page", "licence", "no_share_check", "download", "member", "contact")
+CREDIT_KEYS = ("author", "page", "licence", "no_share_check", "download", "member", "contact", "removal", "note")
 
 
 def default_root():
@@ -111,6 +111,21 @@ def put(root, game, name, data, credit=None):
     return h, new
 
 
+def set_credit(root, entry, credit):
+    """Overwrite the given credit keys of an existing entry (`<game>/<name>` or a hash prefix);
+    returns its hash. `put` only fills blanks, so this is how a wrong or late credit is corrected."""
+    index = _load(os.path.join(root, "index.json"))
+    h = index.get(entry) or next(iter(sorted({v for v in index.values() if v.startswith(entry)})), None)
+    if h is None or not os.path.isdir(os.path.join(root, h)):
+        raise ValueError("no store entry %r" % entry)
+    cpath = os.path.join(root, h, "credit.json")
+    cred = _load(cpath) if os.path.isfile(cpath) else {}
+    cred.update({k: v for k, v in credit.items() if k in CREDIT_KEYS and v})
+    cred["missing"] = [k for k in ("author", "page") if not cred.get(k)]
+    _dump(cpath, cred)
+    return h
+
+
 def check(root):
     """Rebuild every entry's document from its source.bsp. Returns the problems found."""
     bad = []
@@ -159,6 +174,14 @@ def cmd(args):
     credit = {k: getattr(args, k, None) for k in CREDIT_KEYS}
     if args.credit:
         credit.update(_load(args.credit))
+    if getattr(args, "entry", None):
+        try:
+            h = set_credit(root, args.entry, credit)
+        except (ValueError, OSError) as e:
+            print("store: %s" % e, file=sys.stderr)
+            return 2
+        print("store: credit of %s updated (%s)" % (args.entry, h[:12]))
+        return 0
     stored = new = 0
     cut = []
     for game, s in _walk(args.paths):

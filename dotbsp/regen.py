@@ -62,7 +62,7 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
             e["component"] = rs.component(e["classname"])
             e["rule"] = tier if how != "fallback" else "fallback"
         extra = {"movers": movers.movers(bsp, scale, y0), "volumes": movers.volumes(bsp, scale, y0),
-                 "destinations": movers.destinations(bsp, scale, y0), "entity_report": report,
+                 "destinations": movers.destinations(bsp, scale, y0), "spawns": movers.spawns(bsp, scale, y0), "entity_report": report,
                  "links": links, "entities": ents, "breakables": mesh.breakables(bsp, m),
                  "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0)}
     doc = mesh.write(m, out, credit=credit, name=name, extra=extra)

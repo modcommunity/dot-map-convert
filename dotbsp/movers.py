@@ -403,6 +403,24 @@ def generic(bsp, owners=None):
     return out
 
 
+def spawns(bsp, scale=_units.VISUAL, y0=0.0):
+    """Every player spawn the source places: {classname, team, targetname, at, yaw}. The game picks
+    which team a class is for; `team` is the reader's default reading of the class name."""
+    out = []
+    for e in bsp.entities:
+        c = e.get("classname", "")
+        team = reader.SPAWN_CLASSES.get(c)
+        if team is None and c.startswith("info_player_"):
+            team = "any"
+        if team is None:
+            continue
+        p = reader.entity_vec(e)
+        out.append({"classname": c, "team": team, "targetname": e.get("targetname", ""),
+                    "at": [round(p[0] * scale, 4), round(p[2] * scale - y0, 4), round(-p[1] * scale, 4)],
+                    "yaw": round(reader.yaw_to_godot(reader.entity_yaw(e)), 3)})
+    return out
+
+
 def destinations(bsp, scale=_units.VISUAL, y0=0.0):
     """{name: {at, yaw}} of every point a teleport may send a body to."""
     out = {}

@@ -61,7 +61,7 @@ def store_raw(bsp, name, game, credit=None, root=None, pak=False, scale=units.VI
     os.makedirs(d, exist_ok=True)
     m = mesh.build(bsp, scale=scale, y0=y0)
     extra = {"movers": movers.movers(bsp, scale, y0), "volumes": movers.volumes(bsp, scale, y0),
-             "destinations": movers.destinations(bsp, scale, y0), "links": movers.links(bsp),
+             "destinations": movers.destinations(bsp, scale, y0), "spawns": movers.spawns(bsp, scale, y0), "links": movers.links(bsp),
              "entities": movers.generic(bsp), "environment": environment.environment(bsp, scale, y0),
              "sounds": environment.sounds(bsp, scale, y0)}
     mesh.write(m, os.path.join(d, "mesh"), credit=credit, name=name, extra=extra)
@@ -100,7 +100,7 @@ def ship(bsp, name, prefix, credit=None, prop_table=None, scale=units.VISUAL, y0
     m = mesh.build(bsp, scale=scale, y0=y0)
     report = classes.report(bsp)
     extra = {"movers": movers.movers(bsp, scale, y0), "volumes": movers.volumes(bsp, scale, y0),
-             "destinations": movers.destinations(bsp, scale, y0), "entity_report": report,
+             "destinations": movers.destinations(bsp, scale, y0), "spawns": movers.spawns(bsp, scale, y0), "entity_report": report,
              "links": movers.links(bsp), "entities": movers.generic(bsp),
              "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0)}
     doc = mesh.write(m, prefix, credit=credit, name=name, extra=extra)
