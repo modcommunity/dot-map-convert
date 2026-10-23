@@ -52,8 +52,8 @@ DE_CHATEAU/CARPET*	carpet	0.80,0.48,0.46
 TILE/TILEFLOOR*	tile_floor
 TILE/MILFLR*	tile_floor
 TILE/INFROOFATRIM	roof_tiles
-TILE/TILEROOF*	roof_tiles
-TILE/CEILINGTILE*	ceiling
+TILE/TILEROOF*	roof_clay
+TILE/CEILINGTILE*	ceiling_tile
 DE_CHATEAU/INTERIORTILE*	tile_floor
 DE_TRAIN/TRAIN_OFFICETILE*	tile_floor
 DE_TRAIN/TRAIN_CEMENT*	concrete
@@ -152,7 +152,7 @@ CS_ITALY/BLACK	flat	0.1,0.1,0.1
 CS_ITALY/DOOR*	door_wood
 CS_ITALY/MISC_*	plaster_painted
 DE_CBBLE/OUTWALL*	stone_wall
-DE_CBBLE/ROOFTILE*	roof_tiles
+DE_CBBLE/ROOFTILE*	roof_clay
 DE_CBBLE/TRIM*	stone_wall
 DE_CBBLE/WOODBEAM*	wood_planks
 DE_CBBLE/GRASSDIRT*	grass
@@ -212,7 +212,7 @@ NATURE/WATER*	water
 NATURE/GRASSFLOOR*	grass
 NATURE/BLENDPRODASPHALT*	concrete
 NATURE/BLENDDIRT*	mud
-NATURE/PORTCLIFF*	stone_wall
+NATURE/PORTCLIFF*	rock
 NATURE/TREE_CARD*	grass
 CS_HAVANA/GROUND01GRASS	grass
 
@@ -228,7 +228,7 @@ DE_CBBLE/CONCRETE*	concrete
 DE_PIRANESI/PI_SIGN*	metal
 DE_PIRANESI/PI_COBBLES*	stone_wall
 NATURE/GRAVEL*	mud
-NATURE/CLIFF*	stone_wall
+NATURE/CLIFF*	rock
 NATURE/BLENDGRASS*	grass
 NATURE/BLENDROCKS*	mud
 NATURE/BLENDRUBBLE*	mud
@@ -306,18 +306,18 @@ AAATIX/*	plaster_painted
 # --- stone, brick, roof
 DE_AZTEC/STONEWORK*	stone_wall
 DE_AZTEC/STAIRSFAKE*	stone_wall
-CS_HAVANA/ROCKWALL*	stone_wall
+CS_HAVANA/ROCKWALL*	rock
 CS_HAVANA/STONEFLOOR*	stone_wall
 SKYBOX/STONEFLOOR*	stone_wall
-DE_CHATEAU/ROCKF	stone_wall
-NATURE/ROCKWALL*	stone_wall
-NATURE/BLENDCLIFF*	stone_wall
+DE_CHATEAU/ROCKF	rock
+NATURE/ROCKWALL*	rock
+NATURE/BLENDCLIFF*	rock
 DE_PIRANESI/STAIRMARBLE*	tile_floor
 DE_PIRANESI/PI_STEPTOP*	stone_wall
 CS_ITALY/BRICKWALL*	brick_red
 FDA/BRICK/*	brick_red
-CS_ITALY/TILEROOF*	roof_tiles
-DE_CHATEAU/ROOFA	roof_tiles
+CS_ITALY/TILEROOF*	roof_clay
+DE_CHATEAU/ROOFA	roof_clay
 TILE/INFROOFB	roof_tiles
 PROPS/RUBBERROOF*	roof_tiles
 MODELS/PROPS/CS_MILITIA/ROOFENDS	roof_tiles
@@ -332,7 +332,7 @@ CUSTOMTEXT/GC TEXTURES/CARPET/*	carpet
 # --- ground, plants, water, snow
 CS_HAVANA/GROUND*	mud
 CS_HAVANA/SWAMP*	mud
-NATURE/SANDFLOOR*	mud
+NATURE/SANDFLOOR*	sand
 NATURE/MUDFLOOR*	mud
 NATURE/DIRTFLOOR*	mud
 NATURE/BLEND*DIRT*	mud
@@ -385,7 +385,7 @@ NATURE/BLENDDIRTGRASS*	grass
 *BRICK*	brick_red
 *COBBLE*	stone_wall
 *STONE*	stone_wall
-*ROCK*	stone_wall
+*ROCK*	rock
 *MARBLE*	stone_wall
 *GRANITE*	stone_wall
 *SLATE*	stone_wall
@@ -401,7 +401,7 @@ NATURE/BLENDDIRTGRASS*	grass
 *WATER*	water
 *SNOW*	snow
 *DIRT*	mud
-*SAND*	mud
+*SAND*	sand
 *MUD*	mud
 *GRAVEL*	mud
 *GROUND*	mud
@@ -456,3 +456,11 @@ WASSERFALL/*	water
 FOREST/PUDDLE*	water
 EDITOR/*	flat	0.5,0.5,0.5
 SKYBOX/*	flat	0.8,0.85,0.95
+
+# --- 2026-10-23 Zombie Zone art pass: the most frequent names that fell to a flat colour or the wrong photo
+DE_DUST/ROCKWALL*	rock
+FOREST/*CLIFF*	rock
+NATURE/BLENDSANDSAND*	sand
+PROPS/ACOUSTICCEILING*	ceiling_tile
+TEST_SPEAKERS/*WOOD*	wood_planks
+CS_ASSAULT/*METALCRATE*	metal

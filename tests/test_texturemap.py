@@ -19,7 +19,7 @@ from dotbsp import docboxes, texturemap                    # noqa: E402
 GENERIC = {
     "wood_floor", "parquet", "carpet", "carpet_grey", "carpet_pattern", "carpet_red", "carpet_blue", "tile_floor", "tile_wall", "plaster_painted", "plaster_worn", "wallpaper",
     "concrete", "brick_red", "stone_wall", "wood_planks", "ceiling", "roof_tiles", "snow", "mud", "metal",
-    "door_wood", "glass", "glass_frosted", "grass", "water", "flat",
+    "door_wood", "glass", "glass_frosted", "grass", "water", "flat", "rock", "sand", "roof_clay", "ceiling_tile",
 }
 
 

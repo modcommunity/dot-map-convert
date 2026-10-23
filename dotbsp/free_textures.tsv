@@ -2,9 +2,9 @@
 # Columns: generic<TAB>kind<TAB>source<TAB>url<TAB>author<TAB>licence. Only CC0-1.0, MIT or Public Domain rows are accepted by licence.check.
 brick_red	brick	ambientCG	https://ambientcg.com/view?id=Bricks097	Lennart Demes and contributors	CC0-1.0
 concrete	concrete	ambientCG	https://ambientcg.com/view?id=Concrete047A	Lennart Demes and contributors	CC0-1.0
-stone_wall	concrete_clean	ambientCG	https://ambientcg.com/view?id=Concrete034	Lennart Demes and contributors	CC0-1.0
+stone_wall	stone_block	ambientCG	https://ambientcg.com/view?id=Bricks076A	Lennart Demes and contributors	CC0-1.0
 plaster_painted	plaster	ambientCG	https://ambientcg.com/view?id=PaintedPlaster017	Lennart Demes and contributors	CC0-1.0
-plaster_worn	plaster	ambientCG	https://ambientcg.com/view?id=PaintedPlaster017	Lennart Demes and contributors	CC0-1.0
+plaster_worn	plaster_worn	ambientCG	https://ambientcg.com/view?id=Plaster003	Lennart Demes and contributors	CC0-1.0
 wallpaper	plaster	ambientCG	https://ambientcg.com/view?id=PaintedPlaster017	Lennart Demes and contributors	CC0-1.0
 ceiling	concrete_clean	ambientCG	https://ambientcg.com/view?id=Concrete034	Lennart Demes and contributors	CC0-1.0
 tile_floor	tile_white	ambientCG	https://ambientcg.com/view?id=Tiles107	Lennart Demes and contributors	CC0-1.0
@@ -30,3 +30,8 @@ rust	rust	ambientCG	https://ambientcg.com/view?id=Rust009	Lennart Demes and cont
 asphalt	asphalt	ambientCG	https://ambientcg.com/view?id=Asphalt012	Lennart Demes and contributors	CC0-1.0
 tile_checker	tile_checker	ambientCG	https://ambientcg.com/view?id=Tiles074	Lennart Demes and contributors	CC0-1.0
 corrugated	corrugated	ambientCG	https://ambientcg.com/view?id=CorrugatedSteel009	Lennart Demes and contributors	CC0-1.0
+rock	rock	ambientCG	https://ambientcg.com/view?id=Rock023	Lennart Demes and contributors	CC0-1.0
+sand	sand	ambientCG	https://ambientcg.com/view?id=Ground080	Lennart Demes and contributors	CC0-1.0
+stone_block	stone_block	ambientCG	https://ambientcg.com/view?id=Bricks076A	Lennart Demes and contributors	CC0-1.0
+roof_clay	roof_clay	ambientCG	https://ambientcg.com/view?id=RoofingTiles014A	Lennart Demes and contributors	CC0-1.0
+ceiling_tile	ceiling_tile	ambientCG	https://ambientcg.com/view?id=OfficeCeiling005	Lennart Demes and contributors	CC0-1.0
