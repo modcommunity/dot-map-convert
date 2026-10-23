@@ -230,7 +230,7 @@ Not moved: deathrun's `merge` (one copy, and it keys on that importer's `invisib
 Every importer carried its own `TEXTURE_MAP` (a substring table in its own file), so each new conversion relearned that `PLASTER/OFFWLL*` is a painted wall and `CARPET/*` a carpet. `dotbsp/source_textures.tsv` is the one list: `pattern<TAB>material<TAB>tint`, reviewable as a diff.
 
 * `pattern` is a source texture name (matching ignores case) with `*` and `?` wildcards. The map's own folder (`MAPS/<map>/`) and a cubemap suffix are stripped first.
-* `material` is a generic id, what the surface *is*: `wood_floor`, `parquet`, `carpet`, `tile_floor`, `tile_wall`, `plaster_painted`, `plaster_worn`, `wallpaper`, `concrete`, `brick_red`, `stone_wall`, `wood_planks`, `ceiling`, `roof_tiles`, `snow`, `mud`, `metal`, `door_wood`, `glass`, `grass`, `water`, `flat`. A game draws each id from its own art; an id it does not know is drawn flat.
+* `material` is a generic id, what the surface *is*: `wood_floor`, `parquet`, `carpet`, `tile_floor`, `tile_wall`, `plaster_painted`, `plaster_worn`, `wallpaper`, `wallpaper_decrepit`, `concrete`, `brick_red`, `stone_wall`, `wood_planks`, `ceiling`, `roof_tiles`, `snow`, `mud`, `metal`, `door_wood`, `glass`, `grass`, `water`, `flat`. A game draws each id from its own art; an id it does not know is drawn flat.
 * `tint` (`r,g,b` in 0..1 or `#rrggbb`) keeps the colour the mapper meant, so one carpet is a blue office and a red hall.
 * The **most specific row wins**, not the first: an exact name beats any glob, a glob with more literal characters beats a shorter one, a tie goes to the earlier line. Order in the file is for the reader.
 

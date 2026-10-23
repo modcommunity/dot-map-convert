@@ -5,7 +5,8 @@ concrete	concrete	ambientCG	https://ambientcg.com/view?id=Concrete047A	Lennart D
 stone_wall	stone_block	ambientCG	https://ambientcg.com/view?id=Bricks076A	Lennart Demes and contributors	CC0-1.0
 plaster_painted	plaster	ambientCG	https://ambientcg.com/view?id=PaintedPlaster017	Lennart Demes and contributors	CC0-1.0
 plaster_worn	plaster_worn	ambientCG	https://ambientcg.com/view?id=Plaster003	Lennart Demes and contributors	CC0-1.0
-wallpaper	plaster	ambientCG	https://ambientcg.com/view?id=PaintedPlaster017	Lennart Demes and contributors	CC0-1.0
+wallpaper	wallpaper	ambientCG	https://ambientcg.com/view?id=Wallpaper002A	Lennart Demes and contributors	CC0-1.0
+wallpaper_decrepit	wallpaper_decrepit	Poly Haven	https://polyhaven.com/a/decrepit_wallpaper	Rob Tuytel	CC0-1.0
 ceiling	concrete_clean	ambientCG	https://ambientcg.com/view?id=Concrete034	Lennart Demes and contributors	CC0-1.0
 tile_floor	tile_white	ambientCG	https://ambientcg.com/view?id=Tiles107	Lennart Demes and contributors	CC0-1.0
 roof_tiles	tile_dark	ambientCG	https://ambientcg.com/view?id=Tiles138	Lennart Demes and contributors	CC0-1.0
