@@ -22,6 +22,7 @@ engine's (a door travels its size along its direction, less `lip`).
 - `paths(bsp)`: the `path_track` chains trains run on.
 """
 
+import fnmatch
 import math
 import re
 
@@ -362,6 +363,15 @@ def volumes(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
 _SPECIAL = ("!activator", "!caller", "!self", "!player", "!picker")
 
 
+def _resolve(target, named, classes):
+    """The entities a target names: an exact name, else a `*` wildcard over names, else a class name (the engine does all three)."""
+    if target in named:
+        return named[target]
+    if "*" in target:
+        return sorted(i for n, ids in named.items() if fnmatch.fnmatchcase(n, target) for i in ids)
+    return classes.get(target, [])
+
+
 def links(bsp):
     """Every output as a graph edge: the output's record plus `from` (entity index), `from_name`
     and `to`, the entity indices its target names (empty for a `!activator`-style special, which
@@ -370,13 +380,16 @@ def links(bsp):
     for i, e in enumerate(bsp.entities):
         if e.get("targetname"):
             named.setdefault(e["targetname"].lower(), []).append(i)
+    classes = {}
+    for i, e in enumerate(bsp.entities):
+        classes.setdefault(e.get("classname", "").lower(), []).append(i)
     out = []
     for i, e in enumerate(bsp.entities):
         for o in outputs(e):
             t = o["target"].lower()
             rec = dict(o)
             rec.update({"from": i, "from_name": e.get("targetname", ""), "from_class": e.get("classname", ""),
-                        "to": named.get(t, []), "special": t in _SPECIAL or t.startswith("!")})
+                        "to": _resolve(t, named, classes), "special": t in _SPECIAL or t.startswith("!")})
             out.append(rec)
     return out
 

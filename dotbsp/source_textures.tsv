@@ -406,3 +406,53 @@ NATURE/BLENDDIRTGRASS*	grass
 *GRAVEL*	mud
 *GROUND*	mud
 *DOOR*	door_wood
+
+# --- architectural families the 35 zombie-zone maps left unmapped (2026-10-23): chateau, havana, italy, piranesi, realworld, nature
+DE_CHATEAU/BRCK*	brick_red
+DE_CHATEAU/WLL*	plaster_worn
+DE_CHATEAU/FLR*	tile_floor
+DE_CHATEAU/*COL*	stone_wall
+DE_CHATEAU/WALLTRIM*	stone_wall
+DE_CHATEAU/DECWD*	wood_planks
+DE_CHATEAU/BARREL*	wood_planks
+DE_PIRANESI/*	stone_wall
+DE_AZTEC/*	stone_wall
+CS_HAVANA/WLL*	plaster_worn
+CS_HAVANA/IWLL*	plaster_worn
+CS_HAVANA/OFFFLR*	carpet_grey
+CS_HAVANA/STAIRS*	concrete
+CS_HAVANA/PLL*	stone_wall
+CS_HAVANA/IVY*	grass
+CS_ITALY/P3WAL*	plaster_worn
+CS_ITALY/PCURB*	concrete
+CS_ITALY/PCON*	concrete
+CS_ITALY/CUSTAIRS*	concrete
+CS_ITALY/CXBARREL*	wood_planks
+CS_ITALY/BOXSIDES*	wood_planks
+CS_ITALY/T_BENCH*	wood_planks
+CS_ITALY/T_BTM_EX*	stone_wall
+DE_CBBLE/CRATEBIG*	wood_planks
+DE_CBBLE/IVY*	grass
+DE_CBBLE/TELEPOLE*	wood_planks
+PROPS/RUBBERFLOOR*	concrete
+PROPS/CONTROLROOM_TABLES*	metal
+PROPS/LOCKS*	metal
+REALWORLDTEXTURES/FLOOR/*	tile_floor
+REALWORLDTEXTURES/WALLS/*	plaster_worn
+ZGMRVN/CARRELAGE*	tile_floor
+SUB/COUNTERTOP*	tile_floor
+HALO_TEXTURE_PACK/*/HALO_FLOOR*	metal
+ARCH/NUKE*	metal
+VERYSTILL/PIPES*	metal
+SAKUTEX/LAMBDAIBEAM*	metal
+TESTTEXT/EGYPT*	stone_wall
+NATURE/TREELINE*	grass
+NATURE/MILTREE*	grass
+NATURE/FOAM*	water
+NATURE/SHOREWAVE*	water
+NATURE/*TOXIC*	water
+OCEAN/*	water
+WASSERFALL/*	water
+FOREST/PUDDLE*	water
+EDITOR/*	flat	0.5,0.5,0.5
+SKYBOX/*	flat	0.8,0.85,0.95

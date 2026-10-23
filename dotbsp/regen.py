@@ -61,7 +61,13 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
             _t, _m, how, tier = rs.klass(e["classname"])
             e["component"] = rs.component(e["classname"])
             e["rule"] = tier if how != "fallback" else "fallback"
-        extra = {"movers": movers.movers(bsp, scale, y0), "volumes": movers.volumes(bsp, scale, y0),
+        every = movers.movers(bsp, scale, y0)
+        # a mover the source gave no brush model (a door that is a .mdl prop) has nothing to animate
+        drawn = {s.model for s in m.surfaces} | {h["model"] for h in m.hulls}
+        built = [r for r in every if r.get("model") in drawn]
+        bare = [{k: r.get(k) for k in ("classname", "targetname", "entity", "model_path", "origin")}
+                for r in every if r.get("model") not in drawn]
+        extra = {"movers": built, "movers_without_geometry": bare, "volumes": movers.volumes(bsp, scale, y0),
                  "destinations": movers.destinations(bsp, scale, y0), "spawns": movers.spawns(bsp, scale, y0), "entity_report": report,
                  "links": links, "entities": ents, "breakables": mesh.breakables(bsp, m),
                  "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0)}

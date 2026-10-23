@@ -156,5 +156,14 @@ class RoundTrip(unittest.TestCase):
             self.assertEqual(os.listdir(root), [])
 
 
+    def test_a_link_target_may_be_a_wildcard_or_a_class(self):
+        from dotbsp import movers
+        named = {"snow_p1": [3], "snow_p2": [4], "door": [5]}
+        self.assertEqual(movers._resolve("snow_p*", named, {}), [3, 4])
+        self.assertEqual(movers._resolve("door", named, {}), [5])
+        self.assertEqual(movers._resolve("weapon_x", named, {"weapon_x": [7]}), [7])
+        self.assertEqual(movers._resolve("nothing", named, {}), [])
+
+
 if __name__ == "__main__":
     unittest.main()

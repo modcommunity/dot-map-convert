@@ -1,4 +1,14 @@
 # regex on the normalised model path (first match wins) -> stand-in id, a glb in addons/dot_map/props/. Columns: pattern<TAB>stand_in<TAB>source<TAB>url<TAB>author<TAB>licence. Only CC0-1.0, MIT or Public Domain.
+garbage_truck|garbagetruck|dumptruck	vehicles/garbage-truck	Kenney Car Kit	https://kenney.nl/assets/car-kit	Kenney	CC0-1.0
+vehicles/van|(^|[/_])van\d|ambulance|bus\d|school_bus	vehicles/van	Kenney Car Kit	https://kenney.nl/assets/car-kit	Kenney	CC0-1.0
+truck|trailer|semi|tanker|firetruck	vehicles/truck	Kenney Car Kit	https://kenney.nl/assets/car-kit	Kenney	CC0-1.0
+props_vehicles/|vehicles?/(car|jeep|taxi|police|suv)|(^|[/_])(car|sedan|taxi|jeep)\d|police_car|cop_car|wagon	vehicles/sedan	Kenney Car Kit	https://kenney.nl/assets/car-kit	Kenney	CC0-1.0
+cargo_container|shipping_container|(^|[/_])container	crate_large	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+powerbox|fusebox|breaker|electricbox|transformer|junction_box|panelbox	cabinet	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+drawer|filing|file_cab	cabinet	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+laundry_cart|pushcart|(^|[/_])cart\d|shoppingcart|wheelbarrow	bin	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+paintcan|metal_can|oil_can|jerrycan|gascan|canister	bucket	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+debris|rubble|cinderblock|concrete_chunk|concretepiece|brick|chunk|gib	rock	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
 vending|fridge	fridge	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 sofa_chair|armchair|loungechair|recliner	armchair	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 sofa|couch	sofa	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
@@ -37,3 +47,4 @@ chest	chest	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0
 boulder|(^|[/_])rock|stalag|stag_	rock	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
 (^|[/_])log	log	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
 stump	stump	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
+foliage|grass|ivy|weed|reed|cattail	bush	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
