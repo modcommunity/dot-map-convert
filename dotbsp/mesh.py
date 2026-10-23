@@ -357,6 +357,10 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                 if flags & reader.SKIP_MASK:
                     out.skipped["face:" + reader.clean_material(name)] += 1
                     continue
+                hit = tmap.lookup(classify(name))
+                if hit is not None and hit[0] == "foliage_card":
+                    out.skipped["face:foliage_card"] += 1      # an alpha-cutout card drawn opaque is a slab
+                    continue
                 in_sky = _sky_face(bsp, f, off, sky)
                 if in_sky:
                     out.skipped["face:sky3d_moved"] += 1

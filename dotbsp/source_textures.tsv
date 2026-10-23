@@ -6,6 +6,7 @@
 # `python3 -I tools/bsp/bsp.py unmapped <maps>` lists every texture that hits no row below, with face counts.
 
 # --- never drawn as a surface a player reads
+# `foliage_card` is an alpha-cutout card (tree, ivy): the texture's alpha is not shipped, so drawn opaque it is a slab; the mesh leaves it out
 TOOLS/*	flat
 DEV/*	flat	0.8,0.8,0.82
 EFFECTS/*	flat
@@ -213,7 +214,7 @@ NATURE/GRASSFLOOR*	grass
 NATURE/BLENDPRODASPHALT*	concrete
 NATURE/BLENDDIRT*	mud
 NATURE/PORTCLIFF*	rock
-NATURE/TREE_CARD*	grass
+NATURE/TREE_CARD*	foliage_card
 CS_HAVANA/GROUND01GRASS	grass
 
 # --- found by `bsp.py unmapped` over the murder maps (2026-10-20)
@@ -422,7 +423,7 @@ CS_HAVANA/IWLL*	plaster_worn
 CS_HAVANA/OFFFLR*	carpet_grey
 CS_HAVANA/STAIRS*	concrete
 CS_HAVANA/PLL*	stone_wall
-CS_HAVANA/IVY*	grass
+CS_HAVANA/IVY*	foliage_card
 CS_ITALY/P3WAL*	plaster_worn
 CS_ITALY/PCURB*	concrete
 CS_ITALY/PCON*	concrete
@@ -432,7 +433,7 @@ CS_ITALY/BOXSIDES*	wood_planks
 CS_ITALY/T_BENCH*	wood_planks
 CS_ITALY/T_BTM_EX*	stone_wall
 DE_CBBLE/CRATEBIG*	wood_planks
-DE_CBBLE/IVY*	grass
+DE_CBBLE/IVY*	foliage_card
 DE_CBBLE/TELEPOLE*	wood_planks
 PROPS/RUBBERFLOOR*	concrete
 PROPS/CONTROLROOM_TABLES*	metal
@@ -446,8 +447,8 @@ ARCH/NUKE*	metal
 VERYSTILL/PIPES*	metal
 SAKUTEX/LAMBDAIBEAM*	metal
 TESTTEXT/EGYPT*	stone_wall
-NATURE/TREELINE*	grass
-NATURE/MILTREE*	grass
+NATURE/TREELINE*	foliage_card
+NATURE/MILTREE*	foliage_card
 NATURE/FOAM*	water
 NATURE/SHOREWAVE*	water
 NATURE/*TOXIC*	water
