@@ -142,7 +142,7 @@ One JSON object. Map units and map axes throughout (Z up, 1 unit = 0.01905 m, Go
 | `format`, `version` | `"dot-bsp-intermediate"`, `1`. A reader refuses a newer version (`intermediate.check`) |
 | `units` | the conventions above, in words, and `metres_per_unit` (0.01905 by default; `--scale hull` writes 0.0254) |
 | `source` | `name`, `file`, `bytes`, `sha256`, `bsp_version`, `revision`: which download this was |
-| `credit` | `author`, `page`, `licence`, `no_share_check` (when and what the page said about sharing), `notes`, and any other key the caller passed (a credit line for the map-change screen). `convert` warns when there is no author or page |
+| `credit` | `author`, `page`, `licence`, `no_share_check` (`DATE, STATUS: evidence URL`; STATUS is `none` when nothing forbids it, `ask` when the author or licence wants to be asked first (NC/ND, permission to alter), `forbidden` when the author refuses; `store --audit` counts the unchecked and exits 1 only on `forbidden`), `notes`, and any other key the caller passed (a credit line for the map-change screen). `convert` warns when there is no author or page |
 | `world` | `mins`, `maxs`, and the worldspawn `keys` (sky name and so on) |
 | `materials` | `[{name, clean}]`; sides and faces index into it. `clean` drops the compiler's decoration |
 | `models` | `[{index, entity, origin, mins, maxs, brushes}]`: model 0 is the world, the rest one brush entity each, already moved to the entity's origin |

@@ -372,7 +372,7 @@ def main(argv):
     st.add_argument("--root", help="default $DOTBSP_STORE or ~/mapsrc/store")
     st.add_argument("--check", action="store_true", help="rebuild every document from its source.bsp and compare")
     st.add_argument("--game")
-    st.add_argument("--audit", action="store_true", help="list entries with an empty author, page, licence or no_share_check, and licence terms that restrict reuse")
+    st.add_argument("--audit", action="store_true", help="list entries with an empty author, page, licence or no_share_check, and licence terms that restrict reuse; exit 1 only on a no_share_check of `forbidden`")
     st.add_argument("--scripts", action="store_true", help="list every distinct lua_run snippet with its count and whether the converter translates it")
     st.add_argument("--entry", help="update this stored entry's credit.json (<game>/<map> or hash prefix) from the credit flags, overwriting those keys")
     st.add_argument("--credit", help="a JSON file with author, page, licence, no_share_check")

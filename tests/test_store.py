@@ -176,6 +176,23 @@ class Audit(unittest.TestCase):
             self.assertEqual(rows["g/a"], ([], ["NC", "ND"]))
             self.assertEqual(rows["g/b"][0], ["author", "page", "licence", "no_share_check"])
 
+    def test_share_status_and_exit(self):
+        self.assertEqual(store.share_status("2026-10-23, forbidden: page says no"), "forbidden")
+        self.assertEqual(store.share_status("2026-10-23, ask: NC-ND"), "ask")
+        self.assertEqual(store.share_status("2026-10-19, none"), "none")
+        self.assertEqual(store.share_status(""), "unchecked")
+        with tempfile.TemporaryDirectory() as root:
+            json.dump({"g/a": "h0"}, open(os.path.join(root, "index.json"), "w"))
+            os.makedirs(os.path.join(root, "h0"))
+            c = {"author": "a", "page": "p", "licence": "x", "no_share_check": "2026-10-23, forbidden: no"}
+            json.dump(c, open(os.path.join(root, "h0", "credit.json"), "w"))
+            self.assertIn("forbidden", store.audit(root)[0][2])
+            args = type("A", (), {"root": root, "audit": True, "scripts": False})()
+            self.assertEqual(store.cmd(args), 1)
+            c["no_share_check"] = "2026-10-23, ask: NC-ND"
+            json.dump(c, open(os.path.join(root, "h0", "credit.json"), "w"))
+            self.assertEqual(store.cmd(args), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

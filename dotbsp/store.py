@@ -155,6 +155,13 @@ def check(root):
     return bad
 
 
+def share_status(text):
+    """`forbidden`, `ask`, `none` or `unchecked` from a no_share_check note written as `DATE, STATUS: evidence`."""
+    parts = (text or "").split(",", 1)
+    word = (parts[1] if len(parts) == 2 else "").strip().split(":", 1)[0].strip().lower()
+    return word if word in ("forbidden", "ask", "none") else ("unchecked" if not text else "none")
+
+
 def audit(root):
     """(key, problems, flags) per entry: problems are credit fields still empty (regen needs author and
     page; licence and no_share_check should be there); flags are licence terms that restrict reuse."""
@@ -165,7 +172,9 @@ def audit(root):
         problems = [k for k in ("author", "page", "licence", "no_share_check") if not c.get(k)]
         lic = (c.get("licence") or "").lower()
         flags = [t for t, hit in (("NC", "-nc" in lic or "noncommercial" in lic), ("ND", "nd " in lic + " " or "-nd" in lic),
-                                  ("no licence", "no licen" in lic or "none stated" in lic), ("unknown", "unknown" in lic or "not recorded" in lic)) if hit]
+                                  ("no licence", "no licen" in lic or "none stated" in lic), ("unknown", "unknown" in lic or "not recorded" in lic),
+                                  ("forbidden", share_status(c.get("no_share_check")) == "forbidden"),
+                                  ("ask", share_status(c.get("no_share_check")) == "ask")) if hit]
         out.append((key, problems, flags))
     return out
 
@@ -205,8 +214,11 @@ def cmd(args):
         for key, problems, flags in rows:
             if problems or flags:
                 print("%-48s missing: %-34s flags: %s" % (key, ",".join(problems) or "-", ",".join(flags) or "-"))
-        print("store --audit: %d entries, %d with a missing field" % (len(rows), sum(1 for r in rows if r[1])))
-        return 1 if any("author" in r[1] or "page" in r[1] for r in rows) else 0
+        unchecked = sum(1 for r in rows if "no_share_check" in r[1])
+        forbidden = [r[0] for r in rows if "forbidden" in r[2]]
+        print("store --audit: %d entries, %d with a missing field, %d unchecked for sharing, %d ask the author, %d forbidden" % (
+            len(rows), sum(1 for r in rows if r[1]), unchecked, sum(1 for r in rows if "ask" in r[2]), len(forbidden)))
+        return 1 if forbidden else 0
     if args.check:
         if not os.path.isdir(root):
             print("store: no store at %s" % root, file=sys.stderr)
