@@ -68,7 +68,7 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
         bare = [{k: r.get(k) for k in ("classname", "targetname", "entity", "model_path", "origin")}
                 for r in every if r.get("model") not in drawn]
         extra = {"movers": built, "movers_without_geometry": bare, "volumes": movers.volumes(bsp, scale, y0),
-                 "destinations": movers.destinations(bsp, scale, y0), "spawns": movers.spawns(bsp, scale, y0), "entity_report": report,
+                 "destinations": movers.destinations(bsp, scale, y0), "spawns": movers.spawns(bsp, scale, y0), "pickups": movers.pickups(bsp, scale, y0), "entity_report": report,
                  "links": links, "entities": ents, "breakables": mesh.breakables(bsp, m),
                  "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0),
                  "settings": mapcfg.defaults(store.commands(bsp.entities))}

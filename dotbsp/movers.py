@@ -237,6 +237,8 @@ def movers(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
             rec.update(axis=gdir(axis), degrees_per_second=round(-sp if flags & SF_ROTATING_REVERSE else sp, 3),
                        start_on=bool(flags & SF_ROTATING_START_ON), solid=not flags & SF_ROTATING_NOT_SOLID)
             rec.pop("speed")
+            if _f(e, "fanfriction") > 0:
+                rec["fan_friction"] = round(_f(e, "fanfriction"), 3)
         elif cls in ("func_tracktrain", "func_tanktrain", "func_train"):
             rec.update(path=chain(bsp, e.get("target", ""), named, g, scale), solid=not flags & SF_TRAIN_NOT_SOLID,
                        start_speed=round(_f(e, "startspeed", 0.0) * scale, 4),
@@ -310,7 +312,7 @@ def chain(bsp, first, named, g, scale=_units.VISUAL, limit=512):
 
 VOLUME_KINDS = {"trigger_multiple": "multiple", "trigger_once": "once", "trigger_teleport": "teleport", "trigger_push": "push", "trigger_hurt": "hurt",
                 "trigger_gravity": "gravity", "func_water_analog": "water", "func_water": "water",
-                "func_ladder": "ladder"}
+                "func_ladder": "ladder", "trigger_soundscape": "soundscape"}
 
 
 def volumes(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
@@ -431,6 +433,28 @@ def spawns(bsp, scale=_units.VISUAL, y0=0.0):
         out.append({"classname": c, "team": team, "targetname": e.get("targetname", ""),
                     "at": [round(p[0] * scale, 4), round(p[2] * scale - y0, 4), round(-p[1] * scale, 4)],
                     "yaw": round(reader.yaw_to_godot(reader.entity_yaw(e)), 3)})
+    return out
+
+
+PICKUP_PATTERNS = ("weapon_*", "item_*", "ammo_*")
+
+
+def pickups(bsp, scale=_units.VISUAL, y0=0.0):
+    """Weapons, items and ammunition the source lays in the map, as the entity dictionaries
+    dot-weapon's `DotWeaponSpawner.add_entities` takes: {classname, origin, angle, props}. What each
+    one gives is the game's `classes:` mapping in its spawner.yml, never decided here; a class
+    the source marks `dropped` (a bomb defuser) is not a pickup."""
+    import fnmatch
+    from . import classes
+    out = []
+    for e in bsp.entities:
+        c = e.get("classname", "")
+        if not any(fnmatch.fnmatchcase(c, pat) for pat in PICKUP_PATTERNS) or classes.treatment(c)[0] != "point":
+            continue
+        p = reader.entity_vec(e)
+        out.append({"classname": c, "origin": [round(p[0] * scale, 4), round(p[2] * scale - y0, 4), round(-p[1] * scale, 4)],
+                    "angle": round(reader.yaw_to_godot(reader.entity_yaw(e)), 3),
+                    "props": {"targetname": e["targetname"]} if e.get("targetname") else {}})
     return out
 
 
