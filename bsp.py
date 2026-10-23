@@ -9,7 +9,7 @@
     python3 -I tools/bsp/bsp.py --unmapped <dir | file>...   (the same as `unmapped`)
     python3 -I tools/bsp/bsp.py mesh <map.bsp | archive> --out <prefix> [--member NAME] [credit flags]
             [--y0 M] [--coverage] [--allow-unknown]
-    python3 -I tools/bsp/bsp.py classes [<dir | file>...] [--markdown]
+    python3 -I tools/bsp/bsp.py classes [<dir | file>...] [--markdown | --keys]
     python3 -I tools/bsp/bsp.py regen <hash | game/name> --out <prefix> [--game-rules DIR] [--addon-rules DIR]...
             [--map-rules FILE] [--ratchet] [--baseline FILE] [--coverage FILE] [--root R]
     python3 -I tools/bsp/bsp.py store <dir | file>... [--root R] [--game G] [credit flags] | store --check
@@ -18,7 +18,7 @@
 movers, volumes and teleport destinations (dotbsp/movers.py) and what became of every entity
 (dotbsp/classes.py) in the manifest; it fails (3) on an entity class nobody decided about
 unless `--allow-unknown`, and `--coverage` samples the source against what was written.
-`classes` prints each class's treatment over the maps given, or the whole table.
+`classes` prints each class's treatment over the maps given, or the whole table; `--keys` reports each map's keys, outputs and inputs against the class catalogue, with the runtime component of each class.
 
 `convert` writes the intermediate JSON (README.md, "The intermediate") that every game's
 adapter reads. `list` prints one line a map: name, BSP version, size, entity and spawn
@@ -159,7 +159,28 @@ def cmd_import(args):
     return 4 if problems else 0
 
 
+def cmd_classes_keys(args):
+    """Per map: the keys, outputs and inputs the class catalogue lacks, and the component of each class."""
+    from dotbsp import coverage
+    rc = 0
+    for s in sources.find(args.paths):
+        try:
+            bsp = reader.Bsp(s.member or s.origin, data=s.read()).load()
+        except (ValueError, OSError) as e:
+            print("%s: %s" % (s.label(), e), file=sys.stderr)
+            rc = 1
+            continue
+        rep = coverage.class_report(bsp)
+        plain = sum(1 for r in rep.values() if r["component"] == "DotMapEntity")
+        print("%s: %d classes, %d without a component" % (s.label(), len(rep), plain))
+        for line in coverage.class_text(rep):
+            print("  " + line)
+    return rc
+
+
 def cmd_classes(args):
+    if args.keys:
+        return cmd_classes_keys(args)
     if not args.paths:
         print(classes.markdown(), end="")
         return 0
@@ -345,6 +366,7 @@ def main(argv):
     im.add_argument("--allow-unknown", action="store_true")
     cl.add_argument("paths", nargs="*")
     cl.add_argument("--markdown", action="store_true")
+    cl.add_argument("--keys", action="store_true", help="per map: keys, outputs and inputs the class catalogue lacks, and each class's component")
     st = sub.add_parser("store", help="copy maps into the lossless store (dotbsp/store.py), or --check it")
     st.add_argument("paths", nargs="*")
     st.add_argument("--root", help="default $DOTBSP_STORE or ~/mapsrc/store")

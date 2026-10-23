@@ -9,7 +9,9 @@ python3 -I tools/bsp/tests/test_dotbsp.py            # 26 tests on maps written 
 python3 -I tools/bsp/tests/test_texturemap.py        # the shared texture list: specificity, tints, the unmapped report
 python3 -I tools/bsp/bsp.py unmapped ~/mapsrc --top 40   # every texture that hits no row of source_textures.tsv, with face counts
 python3 -I tools/bsp/bsp.py mesh map.bsp --out world/map --author "A" --page https://... --coverage   # the drawn mesh, hulls, movers
-python3 -I tools/bsp/bsp.py classes ~/mapsrc --markdown   # every entity class and what the importer makes of it
+python3 -I tools/bsp/bsp.py classes ~/mapsrc --markdown   # every entity class, what the importer makes of it and which runtime component runs it
+python3 -I tools/bsp/bsp.py classes <map | dir> --keys    # per map: keys, outputs and inputs the class catalogue lacks, and each class's component
+python3 -I tools/bsp/defs/runtime.py                      # rewrites addons/dot_map/io/catalogue.json (what DotMapIO.load_catalogue reads) from rules/entity_defs.json
 python3 -I tools/bsp/tests/test_mesh.py              # the mesh, movers and class table on maps written from scratch
 python3 -I tools/bsp/tests/test_licence.py           # the raw store, the licence pass, environment and sound data
 python3 -I tools/bsp/tests/test_regen.py             # rule tiers, fallbacks, regen, coverage, ratchet
@@ -73,7 +75,7 @@ The split is: dot-map reads the format and cuts brushes into boxes; the game dec
 | `dotbsp/texturemap.py`, `dotbsp/source_textures.tsv` | the one list of source texture names to generic material ids (`wood_floor`, `carpet`, `brick_red`...) with an optional tint, most specific row first; `bsp.py unmapped` lists what it misses |
 | `dotbsp/mesh.py` | `build(bsp)`: every face the map draws as triangles per (model, material) with normals and texture UVs, displacements, the 3D skybox room moved to where it is seen, and one convex hull (points and planes) per player-solid brush; `write`/`read` (`<prefix>.json` + `<prefix>.bin`, `dot-bsp-mesh` v1); `coverage` and `silhouette_diff`, which sample the source and ask the output |
 | `dotbsp/movers.py` | `links` (the output to input graph) and `generic` (entities kept as data) beside `movers`: doors, buttons, rotators, trains with their paths, lifts and conveyors as records (direction, distance, speed, wait, what opens them); `volumes` (teleport, push, hurt, gravity, water, ladder with brush planes); `destinations` |
-| `dotbsp/classes.py`, `docs/entity-classes.md` | the one table of entity classes: what each meant in the source and what it becomes (world, drawn, mover, volume, point, data, dropped); `report(bsp)` is the coverage report `mesh` prints, and an undecided class fails it |
+| `dotbsp/classes.py`, `dotbsp/classes.tsv`, `docs/entity-classes.md` | the one table of entity classes (`classes.tsv`: class or `prefix*`, treatment, meaning, runtime component; the default tier of `rules.py`): what each meant in the source and what it becomes (world, drawn, mover, volume, point, data, dropped); `report(bsp)` is the coverage report `mesh` prints, and an undecided class fails it |
 | `bsp.py` | the CLI |
 | `tests/` | `synth.py` writes a small VBSP file from scratch (v19, v20, v21 in both record orders, a brush entity); `test_dotbsp.py`; `test_mesh.py` (with `faces=True` synth writes the drawn faces too) |
 

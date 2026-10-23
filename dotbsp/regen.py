@@ -59,7 +59,7 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
         ents = movers.generic(bsp)
         for e in ents:
             _t, _m, how, tier = rs.klass(e["classname"])
-            e["component"] = "DotMapEntity"
+            e["component"] = rs.component(e["classname"])
             e["rule"] = tier if how != "fallback" else "fallback"
         extra = {"movers": movers.movers(bsp, scale, y0), "volumes": movers.volumes(bsp, scale, y0),
                  "destinations": movers.destinations(bsp, scale, y0), "entity_report": report,

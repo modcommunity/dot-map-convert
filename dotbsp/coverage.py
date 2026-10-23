@@ -9,7 +9,7 @@ import collections
 import json
 import os
 
-from . import movers
+from . import classes as _classes, defs, movers
 
 FORMAT = "dot-bsp-coverage"
 VERSION = 1
@@ -124,3 +124,52 @@ def text(rep):
 
 def _fmt(d):
     return " ".join("%s %d" % kv for kv in d.items()) or "none"
+
+
+def class_report(bsp, doc=None):
+    """Per class of one map, against the catalogue: how many entities, the component that runs it,
+    keys the catalogue lacks, outputs the class fires that it lacks, and inputs other entities
+    send it that it lacks. A class the catalogue does not know is `known: False`."""
+    doc = doc or defs.load()
+    memo = {}
+
+    def res(c):
+        if c not in memo:
+            memo[c] = defs.resolve(doc, c)
+        return memo[c]
+
+    out = {}
+    for e in bsp.entities:
+        c = e.get("classname", "")
+        r = out.setdefault(c, {"count": 0, "component": _classes.component(c), "known": res(c) is not None,
+                               "keys": set(), "outputs": set(), "inputs": set()})
+        r["count"] += 1
+        d = res(c)
+        outs = {o["output"] for o in movers.outputs(e)}
+        if d is None:
+            continue
+        for k in e.keys():
+            if k.lower() not in COMMON_KEYS and k not in outs and k.lower() not in d["keys"]:
+                r["keys"].add(k.lower())
+        for o in outs:
+            if o.lower() not in d["outputs"]:
+                r["outputs"].add(o)
+    for k in movers.links(bsp):
+        for i in k["to"]:
+            c = bsp.entities[i].get("classname", "")
+            d = res(c)
+            if d is not None and k["input"].lower() not in d["inputs"]:
+                out[c]["inputs"].add(k["input"])
+    return out
+
+
+def class_text(rep):
+    """One line per class that has something the catalogue lacks, then the totals."""
+    lines = []
+    for c, r in sorted(rep.items(), key=lambda kv: (-kv[1]["count"], kv[0])):
+        miss = [("%s %s" % (w, ", ".join(sorted(r[w])))) for w in ("keys", "outputs", "inputs") if r[w]]
+        if not r["known"]:
+            miss.insert(0, "NOT IN THE CATALOGUE")
+        if miss:
+            lines.append("%-30s %4d  %s  | %s" % (c, r["count"], r["component"], "; ".join(miss)))
+    return lines

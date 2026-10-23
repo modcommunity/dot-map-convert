@@ -242,6 +242,14 @@ class RuleSet:
         self.used["classes"][name] = None
         return FALLBACK_CLASS + ("fallback",)
 
+    def component(self, name):
+        """The DotMapIO component class of a class: the highest tier's row, else the default table's."""
+        for t in self._high_first():
+            r = t.class_row(name)
+            if r:
+                return (r[3] if len(r) > 3 and r[3] else "DotMapEntity") if t.name != "default" else _classes.component(name)
+        return _classes.component(name)
+
     def treatment(self, name):
         """`classes.treatment` with the tiers and the fallback: the signature the converter calls."""
         return self.klass(name)[:3]
