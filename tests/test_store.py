@@ -165,5 +165,17 @@ class RoundTrip(unittest.TestCase):
         self.assertEqual(movers._resolve("nothing", named, {}), [])
 
 
+class Audit(unittest.TestCase):
+    def test_audit_lists_missing_fields_and_flags_restrictions(self):
+        with tempfile.TemporaryDirectory() as root:
+            for i, c in enumerate([{"author": "a", "page": "p", "licence": "CC BY-NC-ND", "no_share_check": "ok"}, {}]):
+                os.makedirs(os.path.join(root, "h%d" % i))
+                json.dump(c, open(os.path.join(root, "h%d" % i, "credit.json"), "w"))
+            json.dump({"g/a": "h0", "g/b": "h1"}, open(os.path.join(root, "index.json"), "w"))
+            rows = {k: (p, f) for k, p, f in store.audit(root)}
+            self.assertEqual(rows["g/a"], ([], ["NC", "ND"]))
+            self.assertEqual(rows["g/b"][0], ["author", "page", "licence", "no_share_check"])
+
+
 if __name__ == "__main__":
     unittest.main()

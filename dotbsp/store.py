@@ -154,6 +154,21 @@ def check(root):
     return bad
 
 
+def audit(root):
+    """(key, problems, flags) per entry: problems are credit fields still empty (regen needs author and
+    page; licence and no_share_check should be there); flags are licence terms that restrict reuse."""
+    index = _load(os.path.join(root, "index.json"))
+    out = []
+    for key, h in sorted(index.items()):
+        c = _load(os.path.join(root, h, "credit.json"))
+        problems = [k for k in ("author", "page", "licence", "no_share_check") if not c.get(k)]
+        lic = (c.get("licence") or "").lower()
+        flags = [t for t, hit in (("NC", "-nc" in lic or "noncommercial" in lic), ("ND", "nd " in lic + " " or "-nd" in lic),
+                                  ("no licence", "no licen" in lic or "none stated" in lic), ("unknown", "unknown" in lic or "not recorded" in lic)) if hit]
+        out.append((key, problems, flags))
+    return out
+
+
 def _walk(paths):
     """(game, Source) for every map under each path, directories searched all the way down."""
     for p in paths:
@@ -170,6 +185,13 @@ def _walk(paths):
 
 def cmd(args):
     root = args.root or default_root()
+    if getattr(args, "audit", False):
+        rows = audit(root)
+        for key, problems, flags in rows:
+            if problems or flags:
+                print("%-48s missing: %-34s flags: %s" % (key, ",".join(problems) or "-", ",".join(flags) or "-"))
+        print("store --audit: %d entries, %d with a missing field" % (len(rows), sum(1 for r in rows if r[1])))
+        return 1 if any("author" in r[1] or "page" in r[1] for r in rows) else 0
     if args.check:
         if not os.path.isdir(root):
             print("store: no store at %s" % root, file=sys.stderr)
