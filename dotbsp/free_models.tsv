@@ -48,3 +48,17 @@ boulder|(^|[/_])rock|stalag|stag_	rock	Kenney Nature Kit	https://kenney.nl/asset
 (^|[/_])log	log	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
 stump	stump	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
 foliage|grass|ivy|weed|reed|cattail	bush	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
+ladder	prototype/ladder	Kenney Prototype Kit	https://kenney.nl/assets/prototype-kit	Kenney	CC0-1.0
+gravestone_cross|(^|[/_])cross	graveyard/cross	Kenney Graveyard Kit	https://kenney.nl/assets/graveyard-kit	Kenney	CC0-1.0
+gravestone|tombstone|headstone	graveyard/gravestone	Kenney Graveyard Kit	https://kenney.nl/assets/graveyard-kit	Kenney	CC0-1.0
+lightpost|streetlight|street_light|utilitypole|lamppost|telephonepole	graveyard/lamppost	Kenney Graveyard Kit	https://kenney.nl/assets/graveyard-kit	Kenney	CC0-1.0
+pipe	factory/pipe	Kenney Factory Kit	https://kenney.nl/assets/factory-kit	Kenney	CC0-1.0
+(^|[/_])(gate_)?door(?!mat)	factory/door	Kenney Factory Kit	https://kenney.nl/assets/factory-kit	Kenney	CC0-1.0
+window|wndw	factory/window	Kenney Factory Kit	https://kenney.nl/assets/factory-kit	Kenney	CC0-1.0
+boat|canoe|dinghy|kayak	pirate/boat	Kenney Pirate Kit	https://kenney.nl/assets/pirate-kit	Kenney	CC0-1.0
+palm|ot_tropic	pirate/palm	Kenney Pirate Kit	https://kenney.nl/assets/pirate-kit	Kenney	CC0-1.0
+trafficcone|(^|[/_])cone	vehicles/cone	Kenney Car Kit	https://kenney.nl/assets/car-kit	Kenney	CC0-1.0
+fl[ou]+rescentlight|lightsconce|floodlight|lantern	ceiling_light	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+pottery|metalpot|(^|[/_])pot\d|vase|planter	bucket	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+kitchen_counter|workspace|(^|[/_])counter	desk	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+acunit|roof_vent|radiator|boiler|gasmeter|electricalbox|wall_console|servers|combine_interface|eyescanner	cabinet	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0

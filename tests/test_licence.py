@@ -111,7 +111,7 @@ class Import(unittest.TestCase):
         root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "addons", "dot_map")
         m, s = standins.models(), standins.sounds()
         self.assertEqual(m.get("props/cs_office/sofa.mdl")["stand_in"], "sofa")
-        self.assertIsNone(m.get("props_pipes/pipe03_straight01_long.mdl"))     # no sensible match: stays a box
+        self.assertIsNone(m.get("props_junk/sewer_grate01.mdl"))     # no sensible match: stays a box
         self.assertEqual(s.get("ambient/water/wave2.wav")["stand_in"], "water_run")
         self.assertEqual(s.get("music/dust.mp3")["stand_in"], "")               # music and voices are never replaced
         for rx, row in m.rows:
