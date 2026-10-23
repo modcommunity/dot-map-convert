@@ -1,8 +1,9 @@
 """A starter `<map_name>.yml` for a converted map, from the console commands its entities send.
 
-The commands are only ever suggestions: every value is written commented out, so a file the
-converter emits changes nothing until an author or operator uncomments a line and the game
-whitelists the key (docs/map-config.md). Nothing here runs a command.
+The commands are only ever suggestions: every value is written commented out in the file, so it
+changes nothing until an author or operator uncomments a line and the game whitelists the key
+(docs/map-config.md). The same values are the manifest's `settings` (`defaults`), the weakest
+layer of `DotMapConfig`, behind the same whitelist. Nothing here runs a command.
 
     python3 -m dotbsp.mapcfg OUT_DIR map1.bsp [map2.bsp ...]    (from tools/bsp)
 """
@@ -32,6 +33,22 @@ def _scalar(value):
         return value
     except ValueError:
         return '"%s"' % value.replace('"', "'")
+
+
+def defaults(cmds):
+    """The `{cvar: value}` a map's own `point_servercommand` entities set, numbers as numbers.
+
+    The manifest carries it as `settings` and `DotMapWorld` hands it to `DotMapConfig` as its
+    weakest layer: a key the game does not whitelist is still refused, so this adds no command."""
+    out = {}
+    for c in cmds:
+        if c.get("classname") == "point_servercommand":
+            for key, value in parse(c.get("command", ""))[0]:
+                try:
+                    out[key] = int(value) if value.lstrip("-").isdigit() else float(value)
+                except ValueError:
+                    out[key] = value
+    return out
 
 
 def suggest(map_name, cmds):

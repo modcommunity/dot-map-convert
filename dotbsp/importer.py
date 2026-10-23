@@ -96,13 +96,14 @@ def ship(bsp, name, prefix, credit=None, prop_table=None, scale=units.VISUAL, y0
     """Write the shipped map at `prefix` (`.json`, `.bin`, `textures/`, `CREDITS.md`).
     Returns (manifest, problems); problems is non-empty when the licence check fails or a class
     is undecided, and the caller must not commit such a map."""
-    from . import classes
+    from . import classes, mapcfg, store
     m = mesh.build(bsp, scale=scale, y0=y0)
     report = classes.report(bsp)
     extra = {"movers": movers.movers(bsp, scale, y0), "volumes": movers.volumes(bsp, scale, y0),
              "destinations": movers.destinations(bsp, scale, y0), "spawns": movers.spawns(bsp, scale, y0), "entity_report": report,
              "links": movers.links(bsp), "entities": movers.generic(bsp),
-             "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0)}
+             "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0),
+             "settings": mapcfg.defaults(store.commands(bsp.entities))}
     doc = mesh.write(m, prefix, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(prefix))
     licence.annotate(doc, outdir, prop_table=prop_table, models=placed_models(bsp))
@@ -113,6 +114,7 @@ def ship(bsp, name, prefix, credit=None, prop_table=None, scale=units.VISUAL, y0
     with open(prefix + ".json", "w") as f:
         json.dump(doc, f, indent=1, sort_keys=True)
         f.write("\n")
+    store.ship_document(bsp.d, prefix)
     with open(os.path.join(outdir, "CREDITS.md"), "w") as f:
         f.write(licence.credits_markdown(doc))
     return doc, problems

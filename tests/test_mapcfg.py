@@ -38,6 +38,13 @@ class MapCfg(unittest.TestCase):
                 self.assertIn("mine: 1", f.read())
 
 
+class Defaults(unittest.TestCase):
+    def test_defaults_are_typed_and_skip_what_is_not_a_setting(self):
+        d = mapcfg.defaults([{"classname": "point_servercommand", "command": "sv_airaccelerate 150; sv_gravity 7.5; say hi; mp_name \"x y\""},
+                             {"classname": "point_clientcommand", "command": "cl_foo 1"}])
+        self.assertEqual(d, {"sv_airaccelerate": 150, "sv_gravity": 7.5, "mp_name": "x y"})
+
+
 class Automatic(unittest.TestCase):
     """store and regen write the starter file for every map that sends commands, without being asked."""
 
@@ -60,6 +67,13 @@ class Automatic(unittest.TestCase):
         self.assertIn(regen.cmd(args), (0, 4))
         with open(os.path.join(os.path.dirname(out), "dot_map", "map", "surf_fix.yml")) as f:
             self.assertIn("# sv_airaccelerate: 150", f.read())
+        import json
+        with open(out + ".json") as f:
+            self.assertEqual(json.load(f)["settings"], {"sv_airaccelerate": 150})
+        with open(out + ".doc.json") as f:
+            doc = json.load(f)
+        self.assertEqual(doc["format"], "dot-bsp-source")
+        self.assertEqual(doc["sha256"], h)
 
 
 if __name__ == "__main__":

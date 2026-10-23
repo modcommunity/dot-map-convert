@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-from . import classes, coverage, environment, licence, mesh, movers, reader, rules, standins, store, units
+from . import classes, coverage, environment, licence, mapcfg, mesh, movers, reader, rules, standins, store, units
 
 
 def _json(path):
@@ -70,7 +70,8 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
         extra = {"movers": built, "movers_without_geometry": bare, "volumes": movers.volumes(bsp, scale, y0),
                  "destinations": movers.destinations(bsp, scale, y0), "spawns": movers.spawns(bsp, scale, y0), "entity_report": report,
                  "links": links, "entities": ents, "breakables": mesh.breakables(bsp, m),
-                 "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0)}
+                 "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0),
+                 "settings": mapcfg.defaults(store.commands(bsp.entities))}
     doc = mesh.write(m, out, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(out))
     from . import importer
@@ -79,12 +80,12 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     doc["props"] = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0)
     problems = licence.check(doc)
     # The starter per-map config: every map gets one, from the commands its entities send, commented out.
-    from . import mapcfg, store
     mapcfg.write_suggestion(os.path.join(outdir, "dot_map", "map"), name.lower(), store.commands(bsp.entities))
     rep = coverage.build(rs, bsp, doc, links, name, sha, cat)
     with open(out + ".json", "w") as f:
         json.dump(doc, f, indent=1, sort_keys=True)
         f.write("\n")
+    store.ship_document(bsp.d, out, os.path.join(os.path.dirname(path), "doc.json"))
     with open(os.path.join(outdir, "CREDITS.md"), "w") as f:
         f.write(licence.credits_markdown(doc))
     return doc, rep, problems
