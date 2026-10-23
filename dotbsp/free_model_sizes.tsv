@@ -8,3 +8,8 @@
 (?:^|/)(harddrive|camera|notebook|clipboard|book\d+|mouse\d*)(?![a-z_])(?![^/]*/)	0.2
 (?:^|/)(keyboard|cashregister)(?![a-z_])(?![^/]*/)	0.4
 (?:^|/)(pistol|w_\w+)(?![a-z_])(?![^/]*/)	0.25
+(?:^|/)carparts_(tire|tyre|wheel)\w*	0.8
+(?:^|/)carparts_(muffler|exhaust)\w*	1.1
+(?:^|/)carparts_(axel|axle|driveshaft)\w*	1.5
+(?:^|/)carparts_door\w*	1.1
+(?:^|/)carparts_\w*	0.9

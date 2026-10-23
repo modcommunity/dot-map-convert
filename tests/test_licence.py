@@ -167,6 +167,19 @@ class Defects(unittest.TestCase):
         self.assertIsNone(sz.get("plants/bananatree.mdl"))          # a banana tree is not a banana
         self.assertEqual(sz.get("props/banana01.mdl"), 0.1)
 
+    def test_carparts_have_sizes(self):
+        from dotbsp import standins
+        sz, fm = standins.Sizes(), standins.models()
+        self.assertEqual(sz.get("props_vehicles/carparts_wheel01a.mdl"), 0.8)
+        self.assertEqual(fm.get("props_vehicles/carparts_wheel01a")["stand_in"], "barrel")
+        self.assertEqual(fm.get("props_vehicles/carparts_door01a")["stand_in"], "crate")
+        self.assertEqual(fm.get("props_vehicles/car001a")["stand_in"], "vehicles/sedan")
+
+    def test_unmeasured_stock_debris_is_not_drawn(self):
+        from dotbsp import standins
+        self.assertTrue(standins.UNMEASURED_DEBRIS.search("models/props_debris/walldestroyed08a.mdl"))
+        self.assertFalse(standins.UNMEASURED_DEBRIS.search("models/props_c17/oildrum001a.mdl"))
+
     def test_black_name_keeps_dark_colour(self):
         self.assertLess(licence.name_colour("tools/black")[0], 0.1)
         self.assertGreater(licence.name_colour("metal/white")[0], 0.8)

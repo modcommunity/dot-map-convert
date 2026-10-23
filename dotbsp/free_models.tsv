@@ -1,4 +1,7 @@
 # regex on the normalised model path (first match wins) -> stand-in id, a glb in addons/dot_map/props/. Columns: pattern<TAB>stand_in<TAB>source<TAB>url<TAB>author<TAB>licence. Only CC0-1.0, MIT or Public Domain.
+carparts_(tire|tyre|wheel)	barrel	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+carparts_(muffler|axel|axle|exhaust|driveshaft)	log	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
+carparts_	crate	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
 garbage_truck|garbagetruck|dumptruck	vehicles/garbage-truck	Kenney Car Kit	https://kenney.nl/assets/car-kit	Kenney	CC0-1.0
 vehicles/van|(^|[/_])van\d|ambulance|bus\d|school_bus	vehicles/van	Kenney Car Kit	https://kenney.nl/assets/car-kit	Kenney	CC0-1.0
 truck|trailer|semi|tanker|firetruck	vehicles/truck	Kenney Car Kit	https://kenney.nl/assets/car-kit	Kenney	CC0-1.0

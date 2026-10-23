@@ -178,6 +178,8 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
         rec = {"stand_in": p["id"], "model": p["model"],
                "at": [round(o[0] * scale, 4), round(o[2] * scale - y0, 4), round(-o[1] * scale, 4)],
                "yaw": round(p["yaw"], 2), "scale": round(float(p.get("scale") or 1.0), 3)}
+        if p["id"] == "rock" and packed.get(p["model"]) is None and UNMEASURED_DEBRIS.search(p["model"].lower()):
+            continue
         size = sizes.get(p["model"])
         if size:
             rec["size"] = size
@@ -201,6 +203,9 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
 # is its height), the longest side for the rest.
 NATURAL_UPRIGHT = frozenset({"tree", "plant", "pirate/palm"})
 NATURAL_LOW = frozenset({"rock", "bush", "stump"})
+# A stock debris model (not packed, so unmeasurable) is left out: a rock at its origin hangs in the air, small or
+# sized, where the real chunk lay on or hung from something the converter does not know.
+UNMEASURED_DEBRIS = re.compile(r"debris|rubble|cinderblock|concrete_chunk|concretepiece|brick|chunk|gib")
 NATURAL_RANGE = (0.2, 40.0)   # metres: outside is a measuring accident (a tree-named sprite sheet), not a plant
 
 
