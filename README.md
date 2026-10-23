@@ -12,6 +12,7 @@ python3 -I tools/bsp/bsp.py mesh map.bsp --out world/map --author "A" --page htt
 python3 -I tools/bsp/bsp.py classes ~/mapsrc --markdown   # every entity class and what the importer makes of it
 python3 -I tools/bsp/tests/test_mesh.py              # the mesh, movers and class table on maps written from scratch
 python3 -I tools/bsp/tests/test_licence.py           # the raw store, the licence pass, environment and sound data
+python3 -I tools/bsp/tests/test_store.py             # the lossless store, repeated keys, outputs of any name
 python3 -I tools/bsp/tests/test_lift.py              # the pieces lifted from the adapters (flood, classifier, props, lights, plan, .gma, guards)
 DOTBSP_TEST_MAPS=~/maps python3 -I tools/bsp/tests/test_dotbsp.py RealMaps   # and on real ones
 ```
@@ -34,6 +35,10 @@ Always `python3 -I`: the maps are downloads, and `-I` keeps a planted module bes
 - `nearest.py` for an unmapped texture: by name (`brickwall12` is brick), then by average colour against `photo_colours.tsv` within 0.2, else the flat generated image. The record's `how` says which (`table`, `name`, `colour`, `flat`). Rows for every photo kind are in `free_textures.tsv` so credits resolve.
 
 `DotMapBspMesh` applies the data with hooks and no scene path or autoload: `build_environment()` (sky, sun, fog, tonemap, probes), `build_sounds(stream_for, make_node)` (a callable for the stream, one for the node so a game can play through dot-audio), `build_props(scene_for)`, `licence()`, `is_free()`. `tools/screenshot.sh <world prefix> <png>` renders a frame of a converted map dressed this way.
+
+## The lossless store (converter v2, package 1)
+
+`bsp.py store <dir | file>...` copies each map into `$DOTBSP_STORE` (default `~/mapsrc/store`, outside every repository) as `<sha256>/source.bsp`, `credit.json` and `doc.json` (entities with every key in file order, repeats kept, and outputs of any key whose value has the `target,input,param,delay,times` shape), and `index.json` maps `<game>/<map>` to the hash. `doc.json` also lists `commands` (console commands the map sends to `point_servercommand`/`point_clientcommand`, recorded and never run; a later package emits them as per-map config). `credit.json` and rules are the small data meant for git; originals stay outside git, referenced by sha256. `store --check` rebuilds each `doc.json` from its `source.bsp`. A cut-off file is reported and skipped. Entities from `reader.parse_entities` are dicts as before, with `.pairs` holding the ordered keys; `movers.outputs` appends non-`On` outputs after the `On` ones, so existing manifests only gain links.
 
 ## Why here, and why not in the games
 

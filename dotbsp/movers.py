@@ -81,27 +81,54 @@ def gdir(v):
     return [round(v[0], 5), round(v[2], 5), round(-v[1], 5)]
 
 
+def _output_link(key, line):
+    parts = _OUTPUT_SPLIT.split(line)
+    if len(parts) < 2:
+        return None
+    parts += [""] * (5 - len(parts))
+    try:
+        delay = float(parts[3] or 0)
+    except ValueError:
+        delay = 0.0
+    try:
+        times = int(float(parts[4] or -1))
+    except ValueError:
+        times = -1
+    return {"output": key, "target": parts[0].strip(), "input": parts[1].strip(),
+            "param": parts[2].strip(), "delay": round(delay, 3), "times": times}
+
+
+def output_shaped(value):
+    """True for a value written as `target,input,param,delay,times`: the shape decides, because
+    input-capture entities name their outputs `PressedAttack` and counters `OutValue`."""
+    parts = _OUTPUT_SPLIT.split(str(value))
+    if len(parts) != 5 or not parts[0].strip() or not parts[1].strip():
+        return False
+    try:
+        float(parts[3])
+        int(float(parts[4]))
+    except ValueError:
+        return False
+    return True
+
+
 def outputs(e):
-    """Every output of an entity: [{output, target, input, param, delay, times}]."""
+    """Every output of an entity: [{output, target, input, param, delay, times}].
+
+    Keys starting with `On` first, as always; then, from the ordered pairs, any other key whose
+    value has the output shape (repeats included).
+    """
     out = []
     for k, v in e.items():
         if not k.startswith("On"):
             continue
         for line in str(v).split("\n"):
-            parts = _OUTPUT_SPLIT.split(line)
-            if len(parts) < 2:
-                continue
-            parts += [""] * (5 - len(parts))
-            try:
-                delay = float(parts[3] or 0)
-            except ValueError:
-                delay = 0.0
-            try:
-                times = int(float(parts[4] or -1))
-            except ValueError:
-                times = -1
-            out.append({"output": k, "target": parts[0].strip(), "input": parts[1].strip(),
-                        "param": parts[2].strip(), "delay": round(delay, 3), "times": times})
+            rec = _output_link(k, line)
+            if rec:
+                out.append(rec)
+    for k, v in getattr(e, "pairs", ()):
+        if not k.startswith("On") and output_shaped(v):
+            out.append(_output_link(k, v))
     return out
 
 

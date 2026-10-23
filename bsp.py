@@ -10,6 +10,9 @@
     python3 -I tools/bsp/bsp.py mesh <map.bsp | archive> --out <prefix> [--member NAME] [credit flags]
             [--y0 M] [--coverage] [--allow-unknown]
     python3 -I tools/bsp/bsp.py classes [<dir | file>...] [--markdown]
+    python3 -I tools/bsp/bsp.py regen <hash | game/name> --out <prefix> [--game-rules DIR] [--addon-rules DIR]...
+            [--map-rules FILE] [--ratchet] [--baseline FILE] [--coverage FILE] [--root R]
+    python3 -I tools/bsp/bsp.py store <dir | file>... [--root R] [--game G] [credit flags] | store --check
 
 `mesh` writes the full geometry (`<prefix>.json` + `<prefix>.bin`, dotbsp/mesh.py) with the
 movers, volumes and teleport destinations (dotbsp/movers.py) and what became of every entity
@@ -30,7 +33,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import classes, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, texturemap  # noqa: E402
+from dotbsp import classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -341,10 +344,32 @@ def main(argv):
     im.add_argument("--allow-unknown", action="store_true")
     cl.add_argument("paths", nargs="*")
     cl.add_argument("--markdown", action="store_true")
+    st = sub.add_parser("store", help="copy maps into the lossless store (dotbsp/store.py), or --check it")
+    st.add_argument("paths", nargs="*")
+    st.add_argument("--root", help="default $DOTBSP_STORE or ~/mapsrc/store")
+    st.add_argument("--check", action="store_true", help="rebuild every document from its source.bsp and compare")
+    st.add_argument("--game")
+    st.add_argument("--credit", help="a JSON file with author, page, licence, no_share_check")
+    for k in ("author", "page", "licence", "no_share_check"):
+        st.add_argument("--" + k.replace("_", "-"), dest=k)
+    rg = sub.add_parser("regen", help="rebuild a map from its store entry and the rule tiers, with a coverage report")
+    rg.add_argument("entry", help="a store hash (prefix) or <game>/<map>")
+    rg.add_argument("--out", required=True, help="prefix: writes <prefix>.json, .bin, .coverage.json")
+    rg.add_argument("--root", help="the store; default $DOTBSP_STORE or ~/mapsrc/store")
+    rg.add_argument("--addon-rules", action="append", metavar="DIR|FILE", help="an addon's tier (repeatable)")
+    rg.add_argument("--game-rules", metavar="DIR|FILE", help="the game's tier, <maps repo>/tools/convert")
+    rg.add_argument("--map-rules", metavar="FILE", help="the map's tier, tools/convert/maps/<id>.json")
+    rg.add_argument("--ratchet", action="store_true", help="fail (5) when anything new is unmapped against the committed coverage")
+    rg.add_argument("--baseline", help="the coverage to ratchet against; default <prefix>.coverage.json")
+    rg.add_argument("--coverage", help="where to write the coverage; default <prefix>.coverage.json")
+    rg.add_argument("--catalogue", help="the class catalogue; default rules/entity_defs.json")
+    rg.add_argument("--name")
+    rg.add_argument("--scale", default="visual")
+    rg.add_argument("--y0", type=float, default=0.0)
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "import": cmd_import}[args.cmd](args)
+                "classes": cmd_classes, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2

@@ -579,24 +579,33 @@ def to_metres(p, scale=METRES_PER_UNIT):
     return (p[0] * scale, p[2] * scale, -p[1] * scale)
 
 
+class Entity(dict):
+    """One entity as the dict every reader uses, plus `pairs`: every key and value in file order."""
+
+    pairs = ()
+
+
 def parse_entities(text):
-    """The entity lump as one dict per entity.
+    """The entity lump as one `Entity` per entity.
 
     [b]An output key repeats, and every repeat is kept.[/b] A trigger that does two things
     on touch carries two OnTrigger keys, and a dict that kept only the first lost the second
     (32 traps imported as nothing). Repeats of an On* key are joined with newlines, which
     every reader of outputs already scans with a regex that stops at whitespace. Any other
-    key keeps its first value.
+    key keeps its first value in the dict; `pairs` keeps all of them, for outputs that are
+    not named On* and for the lossless store.
     """
     out = []
     for blk in re.findall(r"\{([^{}]*)\}", text):
-        kv = {}
-        for k, v in re.findall(r'"([^"]*)"\s*"([^"]*)"', blk):
+        kv = Entity()
+        pairs = re.findall(r'"([^"]*)"\s*"([^"]*)"', blk)
+        for k, v in pairs:
             if k in kv and k.startswith("On"):
                 kv[k] += "\n" + v
             else:
                 kv.setdefault(k, v)
         if kv:
+            kv.pairs = pairs
             out.append(kv)
     return out
 
