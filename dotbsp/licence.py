@@ -128,7 +128,8 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
         s["stand_in"] = row["stand_in"] if row else ""
         if row and row["stand_in"]:
             used_sounds.setdefault(row["stand_in"], dict(row, count=0))["count"] += 1
-    block = {"textures": free, "models": mods, "model_stand_ins": sorted(used_models.values(), key=lambda r: r["stand_in"]),
+    skipped = sum(m["count"] for m in mods if m["stand_in"] == "skybox")
+    block = {"textures": free, "models": mods, "skipped_skybox_models": skipped, "model_stand_ins": sorted(used_models.values(), key=lambda r: r["stand_in"]),
              "sounds": sorted(used_sounds.values(), key=lambda r: r["stand_in"]),
              "note": "No source texture, model or sound is shipped; each source name is only the name a replacement stands for."}
     doc["licence"] = block

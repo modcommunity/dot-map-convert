@@ -150,9 +150,9 @@ def cmd_import(args):
     doc, problems = importer.ship(bsp, src.name, args.out, credit=credit, scale=scale, y0=args.y0,
                                   allow_unknown=args.allow_unknown)
     lic = doc["licence"]
-    print("%s: %d surfaces; %d free replacements (%s); %d models stood in; %d ambient sounds, %d soundscapes; environment: %s -> %s.json" % (
+    print("%s: %d surfaces; %d free replacements (%s); %d models stood in, %d skybox models skipped; %d ambient sounds, %d soundscapes; environment: %s -> %s.json" % (
         src.name, len(doc["surfaces"]), len(lic["textures"]), ", ".join(sorted({t["kind"] for t in lic["textures"]})),
-        len(lic["models"]), len(doc["sounds"]["ambient"]), len(doc["sounds"]["soundscapes"]),
+        len(lic["models"]), lic.get("skipped_skybox_models", 0), len(doc["sounds"]["ambient"]), len(doc["sounds"]["soundscapes"]),
         ", ".join(k for k in doc["environment"] if k != "sky") or "sky only", args.out))
     for p in problems:
         print("  NOT SHIPPABLE: %s" % p, file=sys.stderr)

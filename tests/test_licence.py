@@ -88,8 +88,22 @@ class Free(unittest.TestCase):
 class Defects(unittest.TestCase):
     def test_skybox_model_is_recognised(self):
         from dotbsp import standins
-        self.assertTrue(standins.is_skybox("models/props/sky_cube.mdl"))
         self.assertFalse(standins.is_skybox("models/props/crate.mdl"))
+        for ok in ("models/props/sky_scraper01.mdl", "models/props/de_sky_sign.mdl", "models/props/sky_cube.mdl"):
+            self.assertFalse(standins.is_skybox(ok), ok)
+        for sky in ("models/props/skybox/city.mdl", "models/sky/tree.mdl", "models/props/skybox_tower.mdl"):
+            self.assertTrue(standins.is_skybox(sky), sky)
+
+    def test_size_classes_by_name(self):
+        from dotbsp import standins
+        sz = standins.Sizes()
+        small = {"props_junk/popcan01a.mdl": 0.13, "props_junk/garbage_can01a.mdl": None, "props_junk/trashcan01a.mdl": None,
+                 "props_junk/bottle001a.mdl": 0.28, "props_junk/beach_ball01.mdl": None, "props_junk/wrecking_ball01.mdl": None,
+                 "props_street/phone_booth01.mdl": None, "props_c17/phone01a.mdl": 0.15, "props_junk/ball001a.mdl": 0.1,
+                 "props_c17/storage_w_shelf01.mdl": None, "props_street/food_stand01.mdl": None, "props_junk/food01.mdl": 0.25,
+                 "weapons/w_pistol.mdl": 0.25, "props_junk/watermelon01.mdl": None, "props/cup01.mdl": 0.1}
+        for name, want in small.items():
+            self.assertEqual(sz.get(name), want, name)
 
     def test_black_name_keeps_dark_colour(self):
         self.assertLess(licence.name_colour("tools/black")[0], 0.1)

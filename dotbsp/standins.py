@@ -18,7 +18,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 COLUMNS = ("stand_in", "source", "url", "author", "licence")
 
 # A model of the 3D skybox (a distant city, forest or refinery) is drawn by the sky, never placed.
-SKYBOX = re.compile(r"(^|[/_])skybox(?![a-z])|(^|[/_])sky[/_]")
+# Only a `skybox` or `sky` directory segment (or a skybox-named file): props/sky_scraper and de_sky_sign are props.
+SKYBOX = re.compile(r"(^|[/_])skybox(?![a-z])|(^|/)sky/")
 
 
 def is_skybox(model):

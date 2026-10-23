@@ -591,6 +591,31 @@ class DoorHinge(unittest.TestCase):
         self.assertNotIn("panel_yaw", b)                                  # armed: the stale helper changes nothing
         self.assertAlmostEqual(b["origin"][2], -352 * 0.01905, 4)
 
+    def _hung(self, yaw, opendir, spawn="0", off=28):
+        from dotbsp import movers
+        class B:
+            models = []
+            entities = [dict(self.door("608 %d -255" % (256 + off), "608 256 -255, 608 256 -255"), opendir=opendir, spawnpos=spawn,
+                             model="m.mdl", distance="90", angles="0 %d 0" % yaw)]
+        return movers.movers(B, 0.01905, 0.0, owners={})[0]
+
+    def test_hung_door_direction_follows_the_models_front(self):
+        # the hinge-to-origin line is source +Y (panel_yaw 0): a model whose yaw is 0 has its front on the panel frame's
+        fwd = self._hung(0, "1")
+        self.assertEqual(fwd["degrees"], 90.0)
+        self.assertEqual(self._hung(0, "2")["degrees"], -90.0)
+        # armed: a model turned 180 from that frame has forward and back swapped, and so has spawnpos
+        self.assertEqual(self._hung(180, "1")["degrees"], -90.0)
+        self.assertEqual(self._hung(180, "2")["degrees"], 90.0)
+        self.assertEqual(self._hung(0, "0", "1")["spawn_side"], 1.0)
+        self.assertEqual(self._hung(180, "0", "1")["spawn_side"], -1.0)
+
+    def test_panel_width_is_clamped_and_flagged_assumed(self):
+        r = self._hung(0, "0", off=10)
+        self.assertEqual(r["panel_width"], 0.6)
+        self.assertTrue(r["panel_assumed"])
+        self.assertEqual(self._hung(0, "0", off=60)["panel_width"], 1.6)
+
     def test_add_doors_hangs_from_the_hinge(self):
         wall = lambda x, z, w, d: {"at": [x, 1.25, z], "size": [w, 2.5, d], "mat": "plaster"}
         doc = {"boxes": [wall(-2.0, 0, 4.0, 0.2), wall(3.0, 0, 4.0, 0.2), {"at": [0, -0.1, 0], "size": [12, 0.2, 6], "mat": "wood"}], "props": []}

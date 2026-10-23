@@ -176,6 +176,9 @@ def touch_opens(e):
     return bool(_i(e, "spawnflags") & SF_DOOR_TOUCH_OPENS)
 
 
+PANEL_MIN, PANEL_MAX = 0.6, 1.6   # metres: the range a door panel is clamped to when its width is only inferred
+
+
 def movers(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
     """One record per moving brush entity (and per prop_door_rotating, which has no model)."""
     from . import mesh
@@ -231,7 +234,12 @@ def movers(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
                     # then runs from the hinge through it. Its yaw is the direction the panel lies in
                     # (source +Y turned to it), and `yaw` is that frame's, so "away from the opener" holds.
                     rec["origin"] = g(hinge)
-                    rec["panel_width"] = round(2.0 * math.hypot(*off) * scale, 4)
+                    # ASSUMPTION: the model's origin is mid-panel, so the panel is twice the offset. The
+                    # converter has no model bounds here, so the width is clamped to a door's range and the
+                    # record says it is assumed (`panel_assumed`); a game with the real model overrides it.
+                    rec["panel_width"] = round(min(max(2.0 * math.hypot(*off) * scale, PANEL_MIN), PANEL_MAX), 4)
+                    rec["panel_assumed"] = True
+                    rec["panel_offset"] = round(math.hypot(*off) * scale, 4)   # hinge to the model origin: where a real model sits
                     rec["panel_yaw"] = round(math.degrees(math.atan2(-off[0], off[1])), 3)
                 open_dir = _i(e, "opendir")
                 spawn = _i(e, "spawnpos")
@@ -241,10 +249,17 @@ def movers(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
                 ang = e.get("angles", "").split()
                 rec["open_dir"] = open_dir if open_dir in (0, 1, 2) else 0
                 rec["yaw"] = _f({"a": ang[1]}, "a") if len(ang) > 1 else 0.0
+                flip = False
                 if "panel_yaw" in rec:
+                    # Forward/back are about the model's own front (+X of its angles). The panel frame is
+                    # the one that lies along the hinge-to-origin line, so when that frame faces the other
+                    # way (the origin is on the model's -Y side) forward and back swap.
+                    flip = math.cos(math.radians(rec["yaw"] - rec["panel_yaw"])) < -0.5
                     rec["yaw"] = rec["panel_yaw"]
+                    if flip and open_dir in (1, 2):
+                        dist = -dist
                 if spawn in (1, 2):
-                    rec["spawn_side"] = 1.0 if spawn == 1 else -1.0
+                    rec["spawn_side"] = (1.0 if spawn == 1 else -1.0) * (-1.0 if flip else 1.0)
                 start_open = start_open or spawn in (1, 2)
             elif flags & SF_ROT_REVERSE:
                 dist = -dist
