@@ -95,7 +95,7 @@ def extract(bsp, out_dir=None, notes=None):
     """Convert every packed model into `out_dir` and write `models.json`; returns the index.
     With no `out_dir` nothing is written or textured: the sizes alone, for an importer."""
     notes = [] if notes is None else notes
-    pak = bsp.read_pak(notes)
+    pak = bsp.read_pak(notes, only=(".mdl", ".vvd", ".vtx", ".vmt", ".vtf"))
     counts = placed(bsp)
     index, cache = {}, {}
     for key in sorted(k for k in pak if k.endswith(".mdl") and k.startswith("models/")):

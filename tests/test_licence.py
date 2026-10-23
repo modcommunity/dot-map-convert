@@ -202,9 +202,22 @@ class Import(unittest.TestCase):
         for bad in ("..", "a/b", "", "x y"):
             with self.assertRaises(ValueError):
                 importer.raw_dir("zz", bad, "/tmp")
+        self.assertTrue(importer.raw_dir("hideseek", "ph_hotel~720da13f", "/tmp").endswith("ph_hotel~720da13f"))   # the store's duplicate-name suffix
         self.assertIsNone(importer._safe("../etc/passwd"))
         self.assertIsNone(importer._safe("c:/x"))
         self.assertEqual(importer._safe("\\materials\\a.vtf"), "materials/a.vtf")
+
+    def test_pak_view_reads_a_zip_in_place(self):
+        import io, zipfile
+        from dotbsp import reader
+        b = io.BytesIO()
+        with zipfile.ZipFile(b, "w") as z:
+            z.writestr("a.vmt", "x" * 50)
+            z.writestr("b.mdl", "y" * 50)
+        blob = b"junk" + b.getvalue() + b"tail"
+        z = zipfile.ZipFile(reader._View(blob, 4, len(b.getvalue())))
+        self.assertEqual(sorted(z.namelist()), ["a.vmt", "b.mdl"])
+        self.assertEqual(z.read("b.mdl"), b"y" * 50)
 
     def test_model_and_sound_stand_ins_are_free_and_exist(self):
         from dotbsp import standins

@@ -488,13 +488,13 @@ class Bsp:
         if not ln:
             return []
         try:
-            z = zipfile.ZipFile(io.BytesIO(self.d[off:off + ln]))
+            z = zipfile.ZipFile(_View(self.d, off, ln))
         except zipfile.BadZipFile:
             return []
         return sorted(_pak_key(i).lower() for i in z.infolist())
 
-    def read_pak(self, notes):
-        """Every file in the embedded zip, by lowercased name.
+    def read_pak(self, notes, only=None):
+        """Every file in the embedded zip, by lowercased name; `only` is a tuple of suffixes to keep (a 1.7 GB pakfile fits in memory only when asked for what is used).
 
         [b]One entry at a time, and a broken one is missing rather than fatal.[/b] A map
         whose zip has a bad CRC on one soundscape nobody reads must not import as a
@@ -505,13 +505,15 @@ class Bsp:
         if not ln:
             return {}
         try:
-            z = zipfile.ZipFile(io.BytesIO(self.d[off:off + ln]))
+            z = zipfile.ZipFile(_View(self.d, off, ln))
         except zipfile.BadZipFile as e:
             notes.append("pakfile is unreadable (%s); every surface falls back to the "
                          "prototype grid" % e)
             return {}
         pak, bad = {}, []
         for info in z.infolist():
+            if only and not _pak_key(info).lower().endswith(only):
+                continue
             try:
                 pak[_pak_key(info).lower()] = z.read(info)
             except (zipfile.BadZipFile, EOFError, OSError) as e:
@@ -521,6 +523,32 @@ class Bsp:
                          % (len(bad), len(z.namelist()), ", ".join(sorted(bad)[:5])
                             + (" ..." if len(bad) > 5 else "")))
         return pak
+
+
+class _View(io.RawIOBase):
+    """A read-only file over a slice of a bytes object without copying it (a zip of a gigabyte pakfile)."""
+
+    def __init__(self, data, off, ln):
+        self._m, self._o, self._n, self._p = memoryview(data), off, ln, 0
+
+    def readable(self):
+        return True
+
+    def seekable(self):
+        return True
+
+    def tell(self):
+        return self._p
+
+    def seek(self, pos, whence=0):
+        self._p = max(0, pos if whence == 0 else self._p + pos if whence == 1 else self._n + pos)
+        return self._p
+
+    def readinto(self, b):
+        k = max(0, min(len(b), self._n - self._p))
+        b[:k] = self._m[self._o + self._p:self._o + self._p + k]
+        self._p += k
+        return k
 
 
 def _pak_key(info):

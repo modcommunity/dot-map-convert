@@ -22,7 +22,7 @@ DEFAULT_ROOT = os.path.expanduser(os.environ.get("DOTBSP_RAW_ROOT", "~/mapsrc"))
 def raw_dir(game, name, root=None):
     """`<root>/<game>/raw/<map>`; game and map are single path segments, nothing else is accepted."""
     for part in (game, name):
-        if not re.fullmatch(r"[A-Za-z0-9._-]+", part or "") or part in (".", ".."):
+        if not re.fullmatch(r"[A-Za-z0-9._~-]+", part or "") or part in (".", ".."):
             raise ValueError("not a plain name: %r" % part)
     return os.path.join(root or DEFAULT_ROOT, game, "raw", name)
 
@@ -78,7 +78,7 @@ def store_raw(bsp, name, game, credit=None, root=None, pak=False, scale=units.VI
         f.write("\n".join(names) + ("\n" if names else ""))
     if pak:
         notes = []
-        for key, data in bsp.read_pak(notes).items():
+        for key, data in bsp.read_pak(notes, only=(".vmt", ".vtf", ".txt", ".wav", ".mp3")).items():
             rel = _safe(key)
             if rel and rel.rsplit(".", 1)[-1] in ("vmt", "vtf", "txt", "wav", "mp3"):
                 p = os.path.join(d, "pak", rel)
