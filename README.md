@@ -70,7 +70,8 @@ The split is: dot-map reads the format and cuts brushes into boxes; the game dec
 | `dotbsp/props.py` | `PropTable` and `placed_props`: a map's placed models (entities and static props) matched to a game's own, `model_census` |
 | `dotbsp/lights.py` | `to_game` (lights to metres, range and energy, suns apart), `thin`, `thin_by_gap` and `strengthen` (the `--max-lights` loop exactly), `auto` |
 | `dotbsp/gamebox.py` | `model_boxes`: a model's brushes as game-metre boxes with the source material and kind |
-| `dotbsp/flood.py` | `Flood`: reachable space over boxes with step, jump, drop and head room; `floor_rects`, `keep_starts` |
+| `dotbsp/flood.py` | `Flood`: reachable space over boxes with step, jump, drop and head room, and over terrain by slope; `floor_rects`, `keep_starts`, `terrain_walk` |
+| `dotbsp/terrain.py` | `Heightfield`: displacement triangles as a heightfield in metres (highest surface wins), `encode`/`decode` (predicted int16 residuals, deflated, with a walk mask), `fit` to a byte budget over the reached ground, `walk_points`; the game reads it with `DotMapTerrain` (collision shape, mesh, nav points). Replaces `boxes.terrain_cells`' stepped boxes, which no flood or body could climb past a step per cell |
 | `dotbsp/plan.py` | `extract`: a room plan from walls that do not close (seal, outside flood, doorway erosion, rooms on a coarse grid) |
 | `dotbsp/gma.py` | `.gma` workshop archives through fastgmad (`sources.find` and `bsp.py` take a `.gma` like a zip) |
 | `dotbsp/texturemap.py`, `dotbsp/source_textures.tsv` | the one list of source texture names to generic material ids (`wood_floor`, `carpet`, `brick_red`...) with an optional tint, most specific row first; `bsp.py unmapped` lists what it misses |

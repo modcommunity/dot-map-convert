@@ -12,7 +12,9 @@ A box is a dict in **metres, Godot axes** (y up): {"at": [x, y, z], "size": [sx,
 have `head` metres of room above. The flood walks from the starts over surfaces: a neighbour
 at most `step` higher or lower is walked; one up to `jump` higher or `drop` lower is crossed
 (and recorded in `links` as a jump or a drop, for a game with an AI graph); `wide` demands a
-two-cell-wide way, so a doorway a prop half-fills does not count.
+two-cell-wide way, so a doorway a prop half-fills does not count. `terrain` (a
+`terrain.Heightfield`) adds displacement ground, walked by slope (`terrain.WALK_RISE`) rather
+than by step; `terrain_walk()` is its walk mask and `floor_rects` leaves it out.
 
 Where the repositories differed:
 
@@ -26,10 +28,12 @@ Where the repositories differed:
 import math
 from collections import deque
 
+from . import terrain as _terrain
+
 
 class Flood:
     def __init__(self, boxes, cell=0.5, head=1.7, step=0.42, jump=0.9, drop=3.0,
-                 thin_walls=False, thin_lintels=False, min_floor_y=None):
+                 thin_walls=False, thin_lintels=False, min_floor_y=None, terrain=None):
         self.cell, self.head, self.step, self.jump, self.drop = cell, head, step, jump, drop
         self.thin_walls, self.thin_lintels, self.min_floor_y = thin_walls, thin_lintels, min_floor_y
         self.boxes = [b for b in boxes if b.get("solid", True) and b.get("nav", True) is not False and not b.get("_sky")]
@@ -41,6 +45,9 @@ class Flood:
                 s = [h for h in s if h >= self.min_floor_y]
             if s:
                 self.surf[(ix, iz)] = s
+        # Displacement ground (a dotbsp.terrain.Heightfield): its surfaces walk by slope, not by step.
+        self.terrain = terrain
+        self.tsurf = _terrain.add_surfaces(terrain, self.surf, self.spans_at, cell, head) if terrain else set()
         self.seen, self.parent, self.dist, self.links = set(), {}, {}, {}
 
     # -- cells ----------------------------------------------------------------------------
@@ -61,14 +68,19 @@ class Flood:
         return (abs(b["at"][0] - (ix + 0.5) * c) < (b["size"][0] + c) / 2
                 and abs(b["at"][2] - (iz + 0.5) * c) < (b["size"][2] + c) / 2)
 
-    def surfaces_at(self, ix, iz):
-        """Walkable heights in a cell: box tops with headroom above."""
+    def spans_at(self, ix, iz):
+        """(lo, hi) of every box over a cell's centre."""
         cx, cz = self.centre_of(ix, iz)
         spans = []
         for bi in self.grid.get((ix, iz), ()):
             b = self.boxes[bi]
             if inside_box(b, cx, cz) or self._thin_wall_over(b, ix, iz):
                 spans.append((b["at"][1] - b["size"][1] / 2, b["at"][1] + b["size"][1] / 2))
+        return spans
+
+    def surfaces_at(self, ix, iz):
+        """Walkable heights in a cell: box tops with headroom above."""
+        spans = self.spans_at(ix, iz)
         out = []
         for lo, hi in spans:
             if any(l2 < hi + self.head and h2 > hi + 0.05 for l2, h2 in spans if (l2, h2) != (lo, hi)):
@@ -117,6 +129,18 @@ class Flood:
                         continue
                     dh = h2 - h
                     ok = not wide or (is_open(nx, nz, h2) and is_wide(nx, nz, h2))
+                    if (ix, iz, h) in self.tsurf and (nx, nz, h2) in self.tsurf:
+                        kind = _terrain.move(dh, self.cell, drop)
+                        if kind and ok:
+                            if kind == "drop":
+                                key = (ix // 3, iz // 3, round(h, 1), round(h2, 1))
+                                c0, c1 = self.centre_of(ix, iz), self.centre_of(nx, nz)
+                                links.setdefault(key, [round(c0[0], 3), round(h, 3), round(c0[1], 3), round(c1[0], 3), round(h2, 3), round(c1[1], 3)])
+                            seen.add((nx, nz, h2))
+                            parent[(nx, nz, h2)] = (ix, iz, h)
+                            dist[(nx, nz, h2)] = dist[(ix, iz, h)] + 1
+                            dq.append((nx, nz, h2))
+                        continue
                     if (-drop <= dh < -step or step < dh <= jump) and ok:
                         key = (ix // 3, iz // 3, round(h, 1), round(h2, 1))
                         if key not in links:
@@ -184,6 +208,10 @@ class Flood:
                 out[(ix, iz)] = h
         return out
 
+    def terrain_walk(self):
+        """The heightfield samples a walker reached (`Heightfield.encode(walk=)`)."""
+        return _terrain.walk_samples(self.terrain, {(a, b) for a, b, h in self.seen if (a, b, h) in self.tsurf}, self.cell) if self.terrain else set()
+
     def lost(self, other):
         """Cells `other` (an earlier flood) reached that this one did not: a prop that cut a
         room off shows here."""
@@ -211,6 +239,8 @@ class Flood:
             i = j + 1
         byh = {}
         for ix, iz, h in self.seen:
+            if (ix, iz, h) in self.tsurf:
+                continue      # terrain is the heightfield's walk mask, not a flat floor
             byh.setdefault(snap[h], set()).add((ix, iz))
         out = []
 
