@@ -13,14 +13,11 @@ sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
 import bsp as cli                                          # noqa: E402
-from dotbsp import docboxes, texturemap                    # noqa: E402
+from dotbsp import docboxes, licence, texturemap                    # noqa: E402
 
-# The ids a game may be asked to draw; a row naming anything else is a typo until this list grows.
-GENERIC = {
-    "wood_floor", "parquet", "carpet", "carpet_grey", "carpet_pattern", "carpet_red", "carpet_blue", "tile_floor", "tile_wall", "plaster_painted", "plaster_worn", "wallpaper",
-    "concrete", "brick_red", "stone_wall", "wood_planks", "ceiling", "roof_tiles", "snow", "mud", "metal",
-    "door_wood", "glass", "glass_frosted", "grass", "water", "flat", "rock", "sand", "roof_clay", "ceiling_tile", "wallpaper_decrepit", "foliage_card", "fence", "grate", "bars", "ladder", "shield", "invisible",
-}
+# The ids a game may be asked to draw: the generic list the replacements table (free_textures.tsv)
+# defines, so a row naming anything else is a typo and a new generic is added in exactly one place.
+GENERIC = set(licence.load())
 
 
 def table(text):
@@ -85,8 +82,13 @@ class TextureMapTests(unittest.TestCase):
             self.assertNotIn(r.pattern, seen, "%s is on lines %s and %d twice" % (r.pattern, seen.get(r.pattern), r.line))
             seen[r.pattern] = r.line
 
+    def test_drawn_in_code_generics_credit_the_script_that_draws_them(self):
+        free = licence.load()
+        for name in ("fence", "grate", "bars", "ladder", "shield", "invisible"):
+            self.assertIn("dot_map_bsp_mesh.gd", free[name]["url"], name)
+            self.assertNotIn("textures.py", free[name]["url"], name)
+
     def test_carpet_and_snow_names_reach_a_photo_set(self):
-        from dotbsp import licence
         t, free = texturemap.load(), licence.load()
         want = {
             "carpet/offflra": "carpet", "carpet/offflrb": "carpet", "cs_italy/carpet-sn03": "carpet_red",
