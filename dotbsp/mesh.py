@@ -51,6 +51,7 @@ import random
 import struct
 
 from . import docboxes, reader, texturemap
+from . import vis as _vis
 from . import units as _units
 
 FORMAT = "dot-bsp-mesh"
@@ -221,7 +222,7 @@ def _sky_face(bsp, f, off, sky):
 class Surface:
     __slots__ = ("model", "entity", "classname", "targetname", "material", "generic", "tint",
                  "colour", "texels", "water", "glass", "displacement", "collide", "sky3d", "chunk", "verts",
-                 "index", "_dedupe")
+                 "index", "_dedupe", "clusters")
 
     def __init__(self, model, entity, classname, targetname, material):
         self.model, self.entity, self.classname, self.targetname = model, entity, classname, targetname
@@ -229,7 +230,7 @@ class Surface:
         self.generic, self.tint, self.colour, self.texels = None, None, None, None
         self.water = self.displacement = self.collide = self.sky3d = False
         self.glass = None
-        self.chunk = None
+        self.chunk = self.clusters = None
         self.verts, self.index, self._dedupe = [], [], {}
 
     def vertex(self, p, n, uv):
@@ -262,6 +263,7 @@ class Mesh:
         self.sky = None
         self.skipped = collections.Counter()
         self.translucent_unmapped = collections.Counter()
+        self.vis = None
 
     def triangles(self, displacements=True):
         """Every drawn triangle as three game-metre points, for a coverage test."""
@@ -305,14 +307,16 @@ CHUNK = 32.0
 
 
 def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classify_material,
-          drawn_classes=DRAWN_BRUSH_ENTITIES, solid_classes=SOLID_BRUSH_ENTITIES, chunk=CHUNK):
+          drawn_classes=DRAWN_BRUSH_ENTITIES, solid_classes=SOLID_BRUSH_ENTITIES, chunk=CHUNK,
+          visibility=True):
     """The drawn and solid world of a loaded `reader.Bsp` as a `Mesh`, in metres and Godot axes.
 
     `tmap` is a `texturemap.TextureMap` (the shared list by default). `y0` is subtracted from
     every height, for a game whose floor is at 0. `drawn_classes` and `solid_classes` say which
     brush entities are drawn and which collide. The world's faces are split into `chunk`-metre
     columns (x, z), one surface per material per column, so a renderer culls what is out of
-    view instead of drawing one map-sized surface per material (0 turns it off).
+    view instead of drawing one map-sized surface per material (0 turns it off). `visibility` keeps
+    the map's precomputed visibility and occluders (`vis.attach`).
     """
     tmap = tmap or texturemap.load()
     out = Mesh()
@@ -411,6 +415,8 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     if out.translucent_unmapped:
         out.notes.append("translucent faces whose texture maps to no glass kind or water, drawn opaque (add a row to "
                          "source_textures.tsv): " + ", ".join("%s %d" % kv for kv in out.translucent_unmapped.most_common(12)))
+    if visibility:
+        _vis.attach(bsp, out, tmap, classify)
     return out
 
 
@@ -522,6 +528,8 @@ def write(mesh, prefix, credit=None, name=None, extra=None):
                 rec[k] = True
         if s.glass:
             rec["glass"] = s.glass
+        if s.clusters is not None:
+            rec["clusters"] = s.clusters
         surfaces.append(rec)
     hulls = []
     for h in mesh.hulls:
@@ -536,6 +544,8 @@ def write(mesh, prefix, credit=None, name=None, extra=None):
                       "plane_offset": qoff, "plane_count": len(h["planes"])})
     doc["surfaces"] = surfaces
     doc["hulls"] = hulls
+    if mesh.vis is not None:
+        doc["vis"] = _vis.pack(mesh.vis, blob)
     packed = gzip.compress(bytes(blob), compresslevel=9, mtime=0)
     doc["bin"] = {"file": os.path.basename(prefix) + ".bin", "compression": "gzip", "bytes": len(blob),
                   "stored_bytes": len(packed), "sha256": hashlib.sha256(packed).hexdigest()}
