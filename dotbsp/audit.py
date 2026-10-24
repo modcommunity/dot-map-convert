@@ -301,10 +301,11 @@ def brushes(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, keep=None):
 
 
 class Boxes:
-    """A document's boxes (`{at, size, yaw}`, metres, Godot axes; `solid: false` is skipped) as an output."""
+    """A document's boxes (`{at, size, yaw}`, metres, Godot axes; `solid: false` is skipped) as an output,
+    with its terrain field (`terrain.Heightfield`) if it has one: anything under the field is buried and held."""
 
-    def __init__(self, boxes, cell=4.0):
-        self.cell, self.grid = cell, collections.defaultdict(list)
+    def __init__(self, boxes, cell=4.0, terrain=None):
+        self.cell, self.grid, self.terrain = cell, collections.defaultdict(list), terrain
         for b in boxes:
             if b.get("solid") is False:
                 continue
@@ -327,10 +328,19 @@ class Boxes:
             if abs(dx) <= b["size"][0] / 2 + pad and abs(dz) <= b["size"][2] / 2 + pad:
                 yield b
 
+    def _terrain(self, x, z):
+        return None if self.terrain is None else self.terrain.height(x, z)
+
     def contains(self, x, y, z, pad=0.05):
+        h = self._terrain(x, z)
+        if h is not None and y <= h + pad:
+            return True
         return any(abs(y - b["at"][1]) <= b["size"][1] / 2 + pad for b in self._column(x, z, pad))
 
     def ground(self, x, y, z, depth):
+        h = self._terrain(x, z)
+        if h is not None and h >= y - depth:
+            return True
         for b in self._column(x, z, 0.02):
             top, bottom = b["at"][1] + b["size"][1] / 2, b["at"][1] - b["size"][1] / 2
             if bottom - 0.02 <= y and top >= y - depth:

@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, texturemap  # noqa: E402
+from dotbsp import audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -148,7 +148,8 @@ def cmd_audit(args):
     else:
         with open(args.doc) as f:
             doc = json.load(f)
-        out, y0, scale = audit.Boxes(doc.get("boxes", [])), args.y0, units.parse_scale(args.scale)
+        field = terrain.Heightfield.decode(doc["terrain"])[0] if doc.get("terrain") else None
+        out, y0, scale = audit.Boxes(doc.get("boxes", []), terrain=field), args.y0, units.parse_scale(args.scale)
         # a box document stands still: the world and the classes dot-map treats as world collide
         classes_of = lambda c: c == "worldspawn" or classes.treatment(c)[0] == "world"  # noqa: E731
     r = audit.audit(bsp, out, scale, y0, classes_of, keep=audit.region(args.within, args.band, args.skip))

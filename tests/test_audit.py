@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
 import synth                                   # noqa: E402
-from dotbsp import audit, boxes, mesh, reader, units  # noqa: E402
+from dotbsp import audit, boxes, mesh, reader, terrain, units  # noqa: E402
 
 MATS = ("concrete/concretefloor001", "metal/metalwall001")
 
@@ -89,6 +89,16 @@ class Audit(unittest.TestCase):
         r = audit.audit(bsp, out, keep=audit.region(skips=[skip]))
         self.assertEqual(r["brushes_collided"], r["brushes_expected"])
         self.assertIsNone(audit.region())
+
+    def test_terrain_holds_what_it_buries(self):
+        """A document's terrain field stands for the brushes under it and is ground for the tops at it."""
+        bsp = load(boxes=self.BOXES[:1])
+        lo, hi = audit.to_game(self.BOXES[0][:3]), audit.to_game(self.BOXES[0][3:])
+        x0, z0 = min(lo[0], hi[0]) - 1, min(lo[2], hi[2]) - 1
+        field = terrain.Heightfield(x0, z0, 1.0, 10, 10, [max(lo[1], hi[1]) + 0.01] * 100)
+        r = audit.audit(bsp, audit.Boxes([], terrain=field))
+        self.assertEqual(r["brushes_collided"], r["brushes_expected"])
+        self.assertEqual(r["floor_missed"], 0)
 
     def test_non_solid_box_does_not_count(self):
         bsp = load(boxes=self.BOXES[:1])
