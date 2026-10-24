@@ -18,7 +18,7 @@ python3 -I tools/bsp/tests/test_regen.py             # rule tiers, fallbacks, re
 python3 -I tools/bsp/tests/test_store.py             # the lossless store, repeated keys, outputs of any name
 python3 -I tools/bsp/tests/test_audit.py             # the brush and floor audit on maps written from scratch
 python3 -I tools/bsp/bsp.py audit map.bsp --mesh world/map            # every player-solid brush and standable top vs the output's collision; exit 1 on loss
-python3 -I tools/bsp/bsp.py audit map.bsp --doc maps/map.json --y0 5.49   # the same against a game's box document
+python3 -I tools/bsp/bsp.py audit map.bsp --doc maps/map.json --y0 5.49   # the same against a game's box document (its terrain field counts; --passable CLASS, --within, --band, --skip for what it leaves out on purpose)
 python3 -I tools/bsp/tests/test_lift.py              # the pieces lifted from the adapters (flood, classifier, props, lights, plan, .gma, guards)
 DOTBSP_TEST_MAPS=~/maps python3 -I tools/bsp/tests/test_dotbsp.py RealMaps   # and on real ones
 ```

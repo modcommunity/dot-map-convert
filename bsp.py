@@ -151,7 +151,7 @@ def cmd_audit(args):
         field = terrain.Heightfield.decode(doc["terrain"])[0] if doc.get("terrain") else None
         out, y0, scale = audit.Boxes(doc.get("boxes", []), terrain=field), args.y0, units.parse_scale(args.scale)
         # a box document stands still: the world and the classes dot-map treats as world collide
-        classes_of = lambda c: c == "worldspawn" or classes.treatment(c)[0] == "world"  # noqa: E731
+        classes_of = lambda c: c == "worldspawn" or (classes.treatment(c)[0] == "world" and c not in args.passable)  # noqa: E731
     r = audit.audit(bsp, out, scale, y0, classes_of, keep=audit.region(args.within, args.band, args.skip))
     print("%s: brushes collided %d of %d; floor samples with ground %d of %d" % (
         src.name, r["brushes_collided"], r["brushes_expected"], r["floor_samples"] - r["floor_missed"], r["floor_samples"]))
@@ -400,6 +400,7 @@ def main(argv):
     au.add_argument("--within", help="x0,z0,x1,z1 (game metres): audit only this rectangle, for an output cropped on purpose")
     au.add_argument("--band", help="lo,hi (game metres): audit only heights in this band")
     au.add_argument("--skip", action="append", default=[], help="x0,y0,z0,x1,y1,z1 (game metres): a region removed on purpose; repeatable")
+    au.add_argument("--passable", action="append", default=[], help="a brush entity class the document leaves passable on purpose (--doc); repeatable")
     au.add_argument("--json")
     cl = sub.add_parser("classes", help="entity classes and what each becomes")
     im = sub.add_parser("import", help="raw import outside the repo, then the licence pass into --out")
