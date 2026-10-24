@@ -394,7 +394,9 @@ class Hulls:
 
 def collision_hulls(hulls, sel, kinds=("solid", "clip", "glass")):
     """The hulls of `kinds` a document's `world_collision` selects: `models` whole, `flat` only hulls at
-    most `flat_height` tall, none with its centre in a `skip` region [x0,y0,z0,x1,y1,z1]."""
+    most `flat_height` tall, none with its centre in a `skip` region [x0,y0,z0,x1,y1,z1], and, for a document
+    cropped on purpose, only those touching `within` [x0,z0,x1,z1] and `band` [lo,hi] (game metres)."""
+    within, band = sel.get("within"), sel.get("band")
     models, flat, fh = set(sel.get("models", [])), set(sel.get("flat", [])), float(sel.get("flat_height", 0.5))
     out = []
     for h in hulls:
@@ -403,6 +405,10 @@ def collision_hulls(hulls, sel, kinds=("solid", "clip", "glass")):
         lo = [min(p[k] for p in h["points"]) for k in range(3)]
         hi = [max(p[k] for p in h["points"]) for k in range(3)]
         if h["model"] not in models and hi[1] - lo[1] > fh:
+            continue
+        if within and (hi[0] < within[0] or lo[0] > within[2] or hi[2] < within[1] or lo[2] > within[3]):
+            continue
+        if band and (hi[1] <= band[0] or lo[1] >= band[1]):
             continue
         c = [(lo[k] + hi[k]) / 2 for k in range(3)]
         if any(r[0] <= c[0] <= r[3] and r[1] <= c[1] <= r[4] and r[2] <= c[2] <= r[5] for r in sel.get("skip", [])):
