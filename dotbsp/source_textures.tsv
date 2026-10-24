@@ -6,11 +6,13 @@
 # `python3 -I tools/bsp/bsp.py unmapped <maps>` lists every texture that hits no row below, with face counts.
 
 # --- never drawn as a surface a player reads
-# `foliage_card` is an alpha-cutout card (tree, ivy): the texture's alpha is not shipped, so drawn opaque it is a slab; the mesh leaves it out
+# `invisible` faces are left out of the mesh (decal overlays, fog cards, screens: drawn opaque they are slabs).
+# `foliage_card`, `fence`, `grate`, `bars`, `ladder` are alpha-cutout cards and `shield` an additive energy sheet: the original's alpha is not
+# shipped, so each is drawn as a generated cutout pattern in the see-through kinds (DotMapBspMesh.GLASS_LOOKS), never as an opaque slab.
 TOOLS/*	flat
 DEV/*	flat	0.8,0.8,0.82
 EFFECTS/*	flat
-DECALS/*	flat
+DECALS/*	invisible
 TEST_SPEAKERS/*	flat
 
 # --- floors: wood
@@ -350,7 +352,7 @@ CUSTOM/SRWATER	water
 SHADERTEST/GOOINGLASS	glass
 # --- never a surface a player reads: sprites, screens, cables, lights
 SPRITES/*	flat
-VGUI/*	flat
+VGUI/*	invisible
 CABLE/*	flat
 CS_HAVANA/LIGHTB	flat
 CS_ITALY/CULIGHTA	flat
@@ -365,7 +367,6 @@ NATURE/BLENDDIRTGRASS*	grass
 # palettes (COLOR/*, COLORS_PACK/*) and developer numbers; a game that wants those draws them itself.
 *METAL*	metal
 *STEEL*	metal
-*GRATE*	metal
 *IRON*	metal
 *RUST*	metal
 *FENCE*	metal
@@ -465,3 +466,75 @@ NATURE/BLENDSANDSAND*	sand
 PROPS/ACOUSTICCEILING*	ceiling_tile
 TEST_SPEAKERS/*WOOD*	wood_planks
 CS_ASSAULT/*METALCRATE*	metal
+
+# --- see-through surfaces: alpha-cutout wire, bars and foliage (translucent in the original, drawn as a generated cutout)
+*METALFENCE*	fence
+CS_HAVANA/FENCE*	fence
+*TELEPORTGATE_FENCE*	fence
+*GRATE*	grate
+*METALVENT*	grate
+*MILGRATE*	grate
+*FIREESCAPE*	grate
+*METALTRUSS*	grate
+*METALREBAR*	bars
+*METALRAIL*	bars
+*IRONGATE*	bars
+*METALGATE*	bars
+*PRODRAIL*	bars
+*IRONWIN*	bars
+*PI_WINDOW*	bars
+*METALARCH*	bars
+HALFLIFE/LADDER*	ladder
+*/BUSH*	foliage_card
+*PRODGRASS*	foliage_card
+*MARIO_VINE*	foliage_card
+*RAVI_GORGE*	foliage_card
+*CURAILA*	glass_frosted
+*WOODDOOR*	door_wood
+*TIDDECCLOSED*	door_wood
+*WOODWALL019A	wood_planks
+*WOODTRACK001A	wood_planks
+*MILDOOR001	metal
+*CITADEL_CABLE*	metal
+
+# --- energy sheets (additive, see-through)
+EFFECTS/*SHIELD*	shield
+EFFECTS/LASERPLANE*	shield
+EFFECTS/*BEAM*	shield
+*COMBINE_BINOCOVERLAY*	shield
+*TPRINGS_GLOBE*	shield
+
+# --- overlays and cards that are nothing as a surface
+*DECAL*	invisible
+*FOOTPRINT*	invisible
+*FAKE_FOG*	invisible
+*FOREST_FOG*	invisible
+*LIGHT_ORANGE*_FADE	invisible
+EFFECTS/FLICKER*	invisible
+*BUILDING_CARD*	invisible
+CARD/CARD_*	invisible
+*STREAMER_RENDER*	invisible
+*BLADEBLUR*	invisible
+
+# --- custom signage (named, never a CUSTOM/* glob: some are snow and carpet) and colour blocks: the original's average colour as a flat surface beats a photo of the wrong thing
+CUSTOM/SRNATURE	flat
+CUSTOM/SRCOCA	flat
+CUSTOM/SRFROOT	flat
+CUSTOM/SROJ	flat
+CUSTOM/L4D	flat
+CUSTOM/BF3_GAMESTOP	flat
+CUSTOM/TACBOBELLMENU	flat
+CUSTOM/DOOM3	flat
+CUSTOM/FIFA12	flat
+CUSTOM/BWW*	flat
+CUSTOM/D1	flat
+CUSTOM/APPLECOMINGSOON	flat
+CUSTOM/GS	flat
+CUSTOM/BESTBUYA2	flat
+CUSTOM/FG*	flat
+CUSTOM/MALLAD	flat
+CUSTOM/GAPAD1	flat
+CUSTOM/BLUEMIX	flat
+BOHAROX/LEGO/*	flat
+BLOCKFORT/*	flat
+SPONGEBOB/BOX*	wood_planks

@@ -31,7 +31,7 @@ CONTENTS_TRANSLUCENT = 0x10000000
 SURF_TRANS = 0x10
 # Faces of these kinds are not drawn opaque (or at all), so a brush carrying one is never an occluder.
 SEE_THROUGH_FLAGS = SURF_TRANS | reader.SURF_SKY | reader.SURF_SKY2D | reader.SURF_TRIGGER
-SEE_THROUGH_GENERIC = ("glass", "foliage_card", "water", "fence", "grate", "chainlink")
+SEE_THROUGH_GENERIC = ("glass", "foliage_card", "water", "fence", "grate", "chainlink", "bars", "ladder", "shield", "invisible")
 # An occluder is a brush whose two larger extents are at least this (metres), and is pulled this far inside.
 OCCLUDER_MIN_SIDE = 1.5
 OCCLUDER_MIN_AREA = 6.0

@@ -292,13 +292,15 @@ def _is_water(name, generic):
 
 SURF_TRANS = 0x10
 GLASS_CLASSES = ("func_reflective_glass",)
+# Generic ids drawn as a see-through generated pattern (alpha-cut wire, bars, foliage; additive energy) in the glass path.
+SEE_THROUGH = ("fence", "grate", "bars", "ladder", "foliage_card", "shield")
 BREAKABLE_CLASSES = ("func_breakable", "func_breakable_surf")
 
 
 def glass_kind(generic, classname):
     """The glass kind (a generic id starting `glass`, from `source_textures.tsv`) or None. A
     reflective-glass brush is glass whatever its texture is called."""
-    if generic and generic.startswith("glass"):
+    if generic and (generic.startswith("glass") or generic in SEE_THROUGH):
         return generic
     return "glass" if classname in GLASS_CLASSES else None
 
@@ -362,8 +364,8 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                     out.skipped["face:" + reader.clean_material(name)] += 1
                     continue
                 hit = tmap.lookup(classify(name))
-                if hit is not None and hit[0] == "foliage_card":
-                    out.skipped["face:foliage_card"] += 1      # an alpha-cutout card drawn opaque is a slab
+                if hit is not None and hit[0] == "invisible":
+                    out.skipped["face:invisible"] += 1         # a decal or fog card drawn opaque is a slab
                     continue
                 in_sky = _sky_face(bsp, f, off, sky)
                 if in_sky:
