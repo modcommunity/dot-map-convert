@@ -55,7 +55,7 @@ class PropTable:
 
 def placed_props(doc, table, include_static=True, classes=None):
     """Every placed prop the table has a stand-in for: [{id, model, origin, yaw, angles, scale,
-    source}], `source` being "entity" or "static". `origin` and `angles` are map units and degrees.
+    source, solid}], `solid` being a prop_dynamic's own key (0 for the rest), `source` being "entity" or "static". `origin` and `angles` are map units and degrees.
 
     `classes` replaces the default entity classes (the prop and physics-box classes).
     """
@@ -72,7 +72,8 @@ def placed_props(doc, table, include_static=True, classes=None):
             continue
         ang = reader.entity_vec(k, "angles")
         out.append({"id": cid, "model": norm_model(k.get("model")), "origin": reader.entity_vec(k),
-                    "yaw": ang[1], "angles": ang, "scale": _num(k.get("modelscale"), 1.0), "source": "entity"})
+                    "yaw": ang[1], "angles": ang, "scale": _num(k.get("modelscale"), 1.0), "source": "entity",
+                    "solid": int(_num(k.get("solid"), 0)) if rec["classname"].startswith("prop_dynamic") else 0})
     if include_static:
         for sp in doc.get("static_props", []):
             cid = table.get(sp.get("model"))

@@ -195,6 +195,13 @@ class Props(unittest.TestCase):
         self.assertEqual((chair["origin"], chair["yaw"]), ([10.0, 20.0, 0.0], 45.0))
         self.assertEqual([p["id"] for p in props.placed_props(d, table, include_static=False)].count("sofa"), 0)
 
+    def test_prop_dynamic_solid_is_carried(self):
+        d = self.doc()
+        d["entities"][2]["keys"]["solid"] = "6"
+        d["entities"][1]["keys"]["solid"] = "6"
+        got = {p["id"]: p["solid"] for p in props.placed_props(d, {"models/props_c17/chair.mdl": "chair", "models/props/table.mdl": "table"})}
+        self.assertEqual(got, {"chair": 0, "table": 6})
+
     def test_unmatched_and_census(self):
         d = self.doc()
         t = props.PropTable({"models/props/couch.mdl": "sofa"})

@@ -218,6 +218,8 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
         rec = {"stand_in": p["id"], "model": p["model"],
                "at": [round(o[0] * scale, 4), round(o[2] * scale - y0, 4), round(-o[1] * scale, 4)],
                "yaw": round(p["yaw"], 2), "scale": round(float(p.get("scale") or 1.0), 3)}
+        if p.get("solid"):
+            rec["solid"] = p["solid"]
         if p["id"] == "rock" and packed.get(p["model"]) is None and UNMEASURED_DEBRIS.search(p["model"].lower()):
             continue
         size = sizes.get(p["model"])
