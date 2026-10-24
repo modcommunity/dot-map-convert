@@ -140,8 +140,62 @@ class Heightfield:
                     h[j * nx + i] = self.h[k]
         return Heightfield(self.x0 + i0 * self.cell, self.z0 + j0 * self.cell, self.cell, nx, nz, h)
 
-    def encode(self, step=0.05, walk=None, mat=""):
-        """The dictionary `DotMapTerrain.from_dict` reads. `walk` is a set of (i, j) samples."""
+    def triangles(self):
+        """Present triangles as {(i, j, half): corner samples}: half 0 is (i,j) (i+1,j) (i+1,j+1),
+        half 1 is (i,j) (i+1,j+1) (i,j+1), the split `DotMapTerrain.faces` uses."""
+        out = {}
+        for j in range(self.nz - 1):
+            for i in range(self.nx - 1):
+                for half, c in ((0, ((i, j), (i + 1, j), (i + 1, j + 1))), (1, ((i, j), (i + 1, j + 1), (i, j + 1)))):
+                    if all(self.at(*p) is not None for p in c):
+                        out[(i, j, half)] = c
+        return out
+
+    def outer_edges(self):
+        """Sample pairs along the outer rim: an edge of a present triangle whose other side is
+        outside the grid or a missing triangle the outside reaches through missing ones. A hole the
+        field surrounds (a building's footprint) is not rim. `DotMapTerrain.skirt_edges` is the same."""
+        tris = self.triangles()
+
+        def across(t):
+            i, j, half = t
+            if half == 0:
+                return [((i, j - 1, 1), ((i, j), (i + 1, j))), ((i + 1, j, 1), ((i + 1, j), (i + 1, j + 1))), ((i, j, 1), ((i, j), (i + 1, j + 1)))]
+            return [((i, j + 1, 0), ((i, j + 1), (i + 1, j + 1))), ((i - 1, j, 0), ((i, j), (i, j + 1))), ((i, j, 0), ((i, j), (i + 1, j + 1)))]
+
+        def inside(t):
+            return 0 <= t[0] < self.nx - 1 and 0 <= t[1] < self.nz - 1
+
+        outside = set()
+        stack = []
+        for j in range(self.nz - 1):
+            for i in range(self.nx - 1):
+                for half in (0, 1):
+                    t = (i, j, half)
+                    if t not in tris and t not in outside and any(not inside(n) for n, _ in across(t)):
+                        outside.add(t)
+                        stack.append(t)
+                    while stack:
+                        cur = stack.pop()
+                        for n, _ in across(cur):
+                            if inside(n) and n not in tris and n not in outside:
+                                outside.add(n)
+                                stack.append(n)
+        out = []
+        for t in sorted(tris):
+            for n, e in across(t):
+                if not inside(n) or n in outside:
+                    out.append(e)
+        return out
+
+    def skirt_level(self, depth=2.0):
+        """Where a skirt ends: `depth` metres under the lowest ground, so the rim is closed to the
+        ground's own foot and a wall never ends above something walkable."""
+        return min(v for v in self.h if v is not None) - depth
+
+    def encode(self, step=0.05, walk=None, mat="", skirt=None):
+        """The dictionary `DotMapTerrain.from_dict` reads. `walk` is a set of (i, j) samples;
+        `skirt` is the height the rim's skirt drops to (see `skirt_level`), none by default."""
         known = [v for v in self.h if v is not None]
         base = min(known)
         step = max(step, (max(known) - base) / LEVELS)
@@ -162,6 +216,8 @@ class Heightfield:
             out["walk"] = base64.b64encode(zlib.compress(wm, 9)).decode("ascii")
         if mat:
             out["mat"] = mat
+        if skirt is not None:
+            out["skirt"] = round(skirt, 4)
         return out
 
     @classmethod
@@ -328,13 +384,27 @@ def terrain_tris(bsp):
     return tris
 
 
-def swap_terrain(doc, tris, mat, tint, budget=24000, scale=0.01905):
+def add_skirt(doc, depth=2.0):
+    """Gives a committed document's `terrain` a skirt without re-importing it (hand edits stay).
+    Returns the level, or None when there is no terrain."""
+    enc = doc.get("terrain")
+    if not enc:
+        return None
+    enc["skirt"] = round(Heightfield.decode(enc)[0].skirt_level(depth), 4)
+    return enc["skirt"]
+
+
+def swap_terrain(doc, tris, mat, tint, budget=24000, scale=0.01905, skirt=True):
     """Replaces the stepped box field `--terrain` cut with dot-map's heightfield (`doc["terrain"]`).
 
     The field is found in the finished document by cutting it again and matching boxes, which also
     gives the shift the importer moved the map by, so this runs on a fresh import and on a
     committed document (`--graft-terrain`) alike. What stood on a box of the field is set down on
-    the heightfield instead; the rest of the document is untouched."""
+    the heightfield instead; the rest of the document is untouched.
+
+    `skirt` (default on) writes the height of a skirt `DotMapTerrain` hangs under the field's outer
+    rim (mesh only, one float): the field ends in air where the source's hillsides were brushes
+    that are not imported, and its rim floated with sky under it."""
     cells = []
     for c in _boxes.terrain_cells(tris):
         (x0, x1), (y0, y1), (z0, z1) = c["x"], c["z"], c["y"]
@@ -392,7 +462,7 @@ def swap_terrain(doc, tris, mat, tint, budget=24000, scale=0.01905):
     hf, size = fit(gtris, (lo[0], lo[2], hi[0], hi[2]), budget, margin_m=0.5, keep=under_field)
     if hf is None:
         raise SystemExit("swap_terrain: the displacements produced no heightfield")
-    enc = hf.encode(0.05, None, mat)
+    enc = hf.encode(0.05, None, mat, hf.skirt_level() if skirt else None)
     if tint:
         enc["tint"] = list(tint)
     ground = Heightfield.decode(enc)[0]

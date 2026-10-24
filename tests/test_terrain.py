@@ -39,6 +39,7 @@ def fixture_field():
     tris = grid_tris(hill, 0, 0, 40, 40, 1.6)
     hf = terrain.Heightfield.from_tris(tris, 2.0)
     hf.h[hf.nx * 3 + 4] = None          # a hole the reader must keep
+    hf.h[hf.nx * 5] = None              # a notch in the rim, which is rim
     return hf
 
 
@@ -62,7 +63,7 @@ class TestHeightfield(unittest.TestCase):
     def test_round_trip(self):
         hf = fixture_field()
         walk = {(i, j) for i in range(5) for j in range(6)}
-        d = hf.encode(walk=walk, mat="grass")
+        d = hf.encode(walk=walk, mat="grass", skirt=hf.skirt_level())
         back, w = terrain.Heightfield.decode(d)
         self.assertEqual(w, walk)
         self.assertEqual(d["mat"], "grass")
@@ -122,17 +123,61 @@ class TestFloodOnTerrain(unittest.TestCase):
         self.assertFalse([t for t in fl.tsurf if t[:2] == fl.cell_of(10, 10)], "no ground inside the crate")
 
 
+class TestSkirt(unittest.TestCase):
+    def plane(self, n=6):
+        return terrain.Heightfield(0, 0, 1.0, n, n, [1.0 + 0.1 * (k % n) for k in range(n * n)])
+
+    def test_rim_of_a_square_is_its_perimeter(self):
+        edges = self.plane().outer_edges()
+        self.assertEqual(len(edges), 4 * 5)
+        self.assertTrue(all(0 in (a[0], a[1], b[0], b[1]) or 5 in (a[0], a[1], b[0], b[1]) for a, b in edges))
+
+    def test_enclosed_hole_is_not_rim(self):
+        hf = self.plane()
+        hf.h[2 * 6 + 2] = None
+        self.assertEqual(len(hf.outer_edges()), 20, "a building's footprint keeps no wall")
+
+    def test_notch_in_the_border_is_rim(self):
+        hf = self.plane()
+        hf.h[0] = None
+        self.assertGreater(len(hf.outer_edges()), 20 - 2, "the corner is cut off, its two new edges are rim")
+        hf = self.plane()
+        hf.h[2 * 6 + 2] = None
+        hf.h[3 * 6 + 2] = None
+        hf.h[3 * 6 + 1] = None
+        hf.h[3 * 6] = None
+        self.assertGreater(len(hf.outer_edges()), 20, "a hole opened to the border by a channel is rim all round")
+
+    def test_add_skirt_to_a_committed_document(self):
+        hf = self.plane()
+        doc = {"terrain": hf.encode(mat="grass")}
+        before = {k: v for k, v in doc["terrain"].items()}
+        self.assertAlmostEqual(terrain.add_skirt(doc), hf.skirt_level(), places=1)
+        self.assertEqual({k: v for k, v in doc["terrain"].items() if k != "skirt"}, before)
+        self.assertIsNone(terrain.add_skirt({}))
+
+    def test_level_is_under_the_lowest_ground_and_only_a_float(self):
+        hf = self.plane()
+        lvl = hf.skirt_level()
+        self.assertAlmostEqual(lvl, 1.0 - 2.0)
+        plain, walled = hf.encode(), hf.encode(skirt=lvl)
+        self.assertNotIn("skirt", plain)
+        self.assertEqual(walled["skirt"], lvl)
+        self.assertEqual({k: v for k, v in walled.items() if k != "skirt"}, plain, "heights, walk and size untouched")
+        self.assertEqual(terrain.Heightfield.decode(walled)[0].h, terrain.Heightfield.decode(plain)[0].h)
+
+
 def fixture():
     hf = fixture_field()
     walk = {(i, j) for j in range(hf.nz) for i in range(hf.nx) if hf.at(i, j) is not None and (i - 10) ** 2 + (j - 10) ** 2 < 40}
-    d = hf.encode(walk=walk, mat="grass")
+    d = hf.encode(walk=walk, mat="grass", skirt=hf.skirt_level())
     q, w = terrain.Heightfield.decode(d)
     probes = []
     for x, z in ((20.0, 20.0), (7.3, 11.9), (11.9, 7.3), (0.1, 39.5), (9.0, 7.0), (50.0, 5.0)):
         h = q.height(x, z)
         probes.append([x, z, None if h is None else round(h, 6)])
     pts = terrain.walk_points(q, w, 1.0)
-    return {"terrain": d, "probes": probes, "walk_points": len(pts),
+    return {"terrain": d, "skirt_edges": ";".join("%d,%d,%d,%d" % (a + b) for a, b in hf.outer_edges()), "probes": probes, "walk_points": len(pts),
             "walk_first": [round(v, 6) for v in pts[0]], "walk_last": [round(v, 6) for v in pts[-1]],
             "faces": 3 * sum(1 for j in range(q.nz - 1) for i in range(q.nx - 1)
                              for c in ((q.at(i, j), q.at(i + 1, j), q.at(i + 1, j + 1)), (q.at(i, j), q.at(i, j + 1), q.at(i + 1, j + 1)))
