@@ -16,6 +16,9 @@ python3 -I tools/bsp/tests/test_mesh.py              # the mesh, movers and clas
 python3 -I tools/bsp/tests/test_licence.py           # the raw store, the licence pass, environment and sound data
 python3 -I tools/bsp/tests/test_regen.py             # rule tiers, fallbacks, regen, coverage, ratchet
 python3 -I tools/bsp/tests/test_store.py             # the lossless store, repeated keys, outputs of any name
+python3 -I tools/bsp/tests/test_audit.py             # the brush and floor audit on maps written from scratch
+python3 -I tools/bsp/bsp.py audit map.bsp --mesh world/map            # every player-solid brush and standable top vs the output's collision; exit 1 on loss
+python3 -I tools/bsp/bsp.py audit map.bsp --doc maps/map.json --y0 5.49   # the same against a game's box document
 python3 -I tools/bsp/tests/test_lift.py              # the pieces lifted from the adapters (flood, classifier, props, lights, plan, .gma, guards)
 DOTBSP_TEST_MAPS=~/maps python3 -I tools/bsp/tests/test_dotbsp.py RealMaps   # and on real ones
 ```
@@ -60,6 +63,7 @@ The split is: dot-map reads the format and cuts brushes into boxes; the game dec
 | File | What it is |
 | --- | --- |
 | `dotbsp/reader.py` | `Bsp`: lumps (LZMA too), brushes and hulls, the BSP-tree walk to a model's brushes, faces, displacements, static props, the packed zip; unit and axis helpers |
+| `dotbsp/audit.py` | `audit(bsp, out)`: every brush the map's models reach by owner class and CONTENTS kind (solid, detail, window, grate, ladder, clip, playerclip, npcclip, water, slime, sky, nodraw, origin, areaportal), which player-solid ones the output collides with, and a walk test (a 24-unit grid on every exposed top with body room above, inside the sealed world) asking the output for ground under each point; `Hulls` reads a mesh, `Boxes` a box document |
 | `dotbsp/boxes.py` | `decompose(planes, hull)`: a brush as boxes, the union of the converters' fixes |
 | `dotbsp/docboxes.py` | the importers' shared passes over a *document's* boxes (metres, Godot axes): `within`, `classify_material`, `brush_material_names`, `majority_material`, `suburban_surface`, `widen_doors`, `drop_door_leaves`, `add_doors`, `prune_far_scenery`, `prune_pockets`, `scatter_cover` |
 | `dotbsp/intermediate.py` | `build(bsp, credit)` writes the intermediate; `summary` is what `list` prints; `check(doc)` before trusting one |

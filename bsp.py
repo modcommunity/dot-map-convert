@@ -10,6 +10,7 @@
     python3 -I tools/bsp/bsp.py mesh <map.bsp | archive> --out <prefix> [--member NAME] [credit flags]
             [--y0 M] [--coverage] [--allow-unknown]
     python3 -I tools/bsp/bsp.py classes [<dir | file>...] [--markdown | --keys]
+    python3 -I tools/bsp/bsp.py audit <map.bsp> (--mesh <prefix> | --doc <doc.json> --y0 M) [--max-loss 0.002] [--within ..] [--band ..] [--skip ..] [--json F]
     python3 -I tools/bsp/bsp.py regen <hash | game/name> --out <prefix> [--game-rules DIR] [--addon-rules DIR]...
             [--map-rules FILE] [--ratchet] [--baseline FILE] [--coverage FILE] [--root R]
     python3 -I tools/bsp/bsp.py store <dir | file>... [--root R] [--game G] [credit flags] | store --check | store --scripts
@@ -18,6 +19,9 @@
 movers, volumes and teleport destinations (dotbsp/movers.py) and what became of every entity
 (dotbsp/classes.py) in the manifest; it fails (3) on an entity class nobody decided about
 unless `--allow-unknown`, and `--coverage` samples the source against what was written.
+`audit` counts every brush by owner class and CONTENTS kind and asks the converted output (a
+mesh's hulls or a document's boxes) for each player-solid one and for ground under every exposed
+floor (dotbsp/audit.py); it fails (1) when either share lost is over `--max-loss`.
 `classes` prints each class's treatment over the maps given, or the whole table; `--keys` reports each map's keys, outputs and inputs against the class catalogue, with the runtime component of each class.
 
 `convert` writes the intermediate JSON (README.md, "The intermediate") that every game's
@@ -33,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, texturemap  # noqa: E402
+from dotbsp import audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -130,6 +134,40 @@ def cmd_mesh(args):
         if not args.allow_unknown:
             return 3
     return 0
+
+
+def cmd_audit(args):
+    src = _one(args)
+    if src is None:
+        return 2
+    bsp = reader.Bsp(src.member or src.origin, data=src.read()).load()
+    if args.mesh:
+        man, m = mesh.read(args.mesh)
+        out, y0, scale = audit.Hulls(m.hulls), man["units"]["y0"], man["units"]["metres_per_unit"]
+        classes_of = None
+    else:
+        with open(args.doc) as f:
+            doc = json.load(f)
+        out, y0, scale = audit.Boxes(doc.get("boxes", [])), args.y0, units.parse_scale(args.scale)
+        # a box document stands still: the world and the classes dot-map treats as world collide
+        classes_of = lambda c: c == "worldspawn" or classes.treatment(c)[0] == "world"  # noqa: E731
+    r = audit.audit(bsp, out, scale, y0, classes_of, keep=audit.region(args.within, args.band, args.skip))
+    print("%s: brushes collided %d of %d; floor samples with ground %d of %d" % (
+        src.name, r["brushes_collided"], r["brushes_expected"], r["floor_samples"] - r["floor_missed"], r["floor_samples"]))
+    print("  %-28s %-11s %6s %6s %6s" % ("class", "kind", "count", "solid", "kept"))
+    for key, (n, exp, got) in r["brushes"].items():
+        cls, kind = key.split("|")
+        print("  %-28s %-11s %6d %6s %6s%s" % (cls, kind, n, exp or "-", got if exp else "-", "  LOST %d" % (exp - got) if got < exp else ""))
+    for key, (miss, n) in sorted(r["floors"].items(), key=lambda kv: -kv[1][0])[:args.top]:
+        print("  floor without ground: %5d of %5d  %s" % (miss, n, key.replace("|", "  ")))
+    if args.json:
+        with open(args.json, "w") as f:
+            json.dump({k: v for k, v in r.items() if k not in ("floor_missed_points", "brushes_lost")}, f, indent=1, sort_keys=True)
+            f.write("\n")
+    bl = 1.0 - r["brushes_collided"] / r["brushes_expected"] if r["brushes_expected"] else 0.0
+    fl = r["floor_missed"] / r["floor_samples"] if r["floor_samples"] else 0.0
+    print("  lost: brushes %.4f, floor %.4f (limit %.4f)" % (bl, fl, args.max_loss))
+    return 1 if bl > args.max_loss or fl > args.max_loss else 0
 
 
 def cmd_import(args):
@@ -349,6 +387,19 @@ def main(argv):
     me.add_argument("--y0", type=float, default=0.0, help="metres subtracted from every height")
     me.add_argument("--coverage", action="store_true", help="sample the source against the output (slow on big maps)")
     me.add_argument("--allow-unknown", action="store_true", help="do not fail on an undecided entity class")
+    au = sub.add_parser("audit", help="every brush and floor of the source against a converted output (dotbsp/audit.py)")
+    au.add_argument("bsp")
+    au.add_argument("--member")
+    au.add_argument("--mesh", help="a dot-bsp-mesh prefix (its hulls)")
+    au.add_argument("--doc", help="a document with `boxes` (metres, Godot axes)")
+    au.add_argument("--y0", type=float, default=0.0, help="the document's y0 (a mesh carries its own)")
+    au.add_argument("--scale", default="visual")
+    au.add_argument("--max-loss", type=float, default=0.002, help="largest share of brushes or floor samples lost")
+    au.add_argument("--top", type=int, default=12)
+    au.add_argument("--within", help="x0,z0,x1,z1 (game metres): audit only this rectangle, for an output cropped on purpose")
+    au.add_argument("--band", help="lo,hi (game metres): audit only heights in this band")
+    au.add_argument("--skip", action="append", default=[], help="x0,y0,z0,x1,y1,z1 (game metres): a region removed on purpose; repeatable")
+    au.add_argument("--json")
     cl = sub.add_parser("classes", help="entity classes and what each becomes")
     im = sub.add_parser("import", help="raw import outside the repo, then the licence pass into --out")
     im.add_argument("bsp")
@@ -395,7 +446,7 @@ def main(argv):
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd}[args.cmd](args)
+                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2
