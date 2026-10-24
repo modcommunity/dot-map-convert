@@ -242,6 +242,17 @@ class Import(unittest.TestCase):
         self.assertEqual(sorted(z.namelist()), ["a.vmt", "b.mdl"])
         self.assertEqual(z.read("b.mdl"), b"y" * 50)
 
+    def test_hard_models_have_stand_ins_or_are_left_out(self):
+        from dotbsp import standins
+        fm = standins.models()
+        for name, want in (("props/de_piranesi/pi_apc.mdl", "vehicles/truck"), ("spongebob/ketchup.mdl", "food/bottle-ketchup"),
+                           ("johny-srka/arcade_machine.mdl", "arcade/arcade-machine"), ("props_c17/trappropeller_engine.mdl", "space/machine_generator"),
+                           ("firewavezzmodels/cargocontainer_green.mdl", "watercraft/cargo-container-a"), ("props/cs_office/exit_wall.mdl", "ceiling_light")):
+            self.assertEqual(fm.get(name)["stand_in"], want, name)
+        for name in ("knight3.mdl", "stegosaurus/stegosaurus.mdl", "props_c17/overhaingcluster_001a.mdl", "props_canal/canalmap001.mdl"):
+            self.assertIsNone(fm.get(name), name)
+            self.assertTrue(standins.is_detail(name), name)
+
     def test_model_and_sound_stand_ins_are_free_and_exist(self):
         from dotbsp import standins
         root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "addons", "dot_map")

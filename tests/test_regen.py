@@ -123,9 +123,17 @@ class RegenTests(unittest.TestCase):
     def test_unmapped_keys_against_a_catalogue(self):
         cat = os.path.join(tempfile.mkdtemp(), "defs.json")
         with open(cat, "w") as f:
-            json.dump({"classes": {"zz_brand_new_class": {"keys": {"weirdkey2": {}}}, "worldspawn": {"keys": {"skyname": []}}}}, f)
+            json.dump({"classes": {"zz_brand_new_class": {"keys": {"weirdkey2": ["", ""]}}, "worldspawn": {"keys": {"skyname": ["", ""]}}}}, f)
         self.run_regen(catalogue=cat)
         self.assertEqual(self.report()["lists"]["keys_unmapped"], ["zz_brand_new_class.weirdkey"])
+
+    def test_a_class_based_on_a_class_inherits_its_keys_and_handled_keys_are_not_listed(self):
+        from dotbsp import coverage
+        cat = coverage.catalogue()
+        self.assertIn("fademindist", cat["prop_physics_multiplayer"])      # prop_physics_multiplayer is based on prop_physics
+        hand = coverage.handled()
+        self.assertTrue(any(c.fullmatch("ambient_generic") and k.fullmatch("PitchStart") for c, k in hand))
+        self.assertFalse(any(c.fullmatch("ambient_generic") and k.fullmatch("zz_nothing") for c, k in hand))
 
     def test_credit_is_required(self):
         store.put(self.root, "t", "nocredit", synth.build(entities=ENTS, materials=MAT + ("X/Y",)))

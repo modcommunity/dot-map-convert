@@ -19,6 +19,19 @@ LISTS = ("textures_unmapped", "textures_flat", "models_unmapped", "sounds_unmapp
 COMMON_KEYS = frozenset(("classname", "origin", "angles", "targetname", "parentname", "hammerid", "id", "model"))
 
 
+def handled(path=None):
+    """[(class regex, key regex)] from `keys_handled.tsv`: keys a component applies or the importer drops on purpose."""
+    import re
+    path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "keys_handled.tsv")
+    out = []
+    with open(path, encoding="utf-8") as f:
+        for line in f.read().splitlines():
+            if line.strip() and not line.startswith("#"):
+                c = line.split("\t")
+                out.append((re.compile(c[0], re.I), re.compile(c[1], re.I)))
+    return out
+
+
 def catalogue(path=None):
     """{class: set of key names} from `rules/entity_defs.json`, or None when it is not there.
     Inherited keys are followed through `bases`."""
@@ -27,19 +40,18 @@ def catalogue(path=None):
         return None
     with open(path, encoding="utf-8") as f:
         raw = json.load(f)
-    defs, bases = raw.get("classes", raw), raw.get("bases", {})
+    # defs.resolve follows a class that names another class as a base (prop_physics_multiplayer -> prop_physics).
+    raw.setdefault("classes", {})
+    raw.setdefault("bases", {})
+    for table in (raw["classes"], raw["bases"]):
+        for d in table.values():
+            if isinstance(d, dict):
+                d.setdefault("in", [])
     memo = {}
-
-    def keys(d, seen=()):
-        out = set(d.get("keys", {})) | set(d.get("extra", []))
-        for b in d.get("bases", []) or []:
-            if b not in seen and isinstance(bases.get(b), dict):
-                out |= keys(bases[b], seen + (b,))
-        return out
-
-    for name, d in defs.items():
+    for name, d in raw["classes"].items():
         if isinstance(d, dict):
-            memo[name] = {k.lower() for k in keys(d) | keys(bases.get("_cbaseentity_", {}))}
+            r = defs.resolve(raw, name)
+            memo[name] = {k.lower() for k in r["keys"]} if r else set()
     return memo
 
 
@@ -62,6 +74,7 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
     for c in classes:
         rs.klass(c)
     keys = {}
+    hand = handled()
     if cat is not None:
         for e in bsp.entities:
             c = e.get("classname", "")
@@ -70,7 +83,7 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
             for k in e.keys():
                 if k.lower() in COMMON_KEYS or k in outs:
                     continue
-                if known is None or k.lower() not in known:
+                if (known is None or k.lower() not in known) and not any(c.fullmatch(e.get("classname", "")) and kk.fullmatch(k) for c, kk in hand):
                     keys.setdefault(c, set()).add(k)
     unresolved = sorted({"%s.%s->%s" % (k["from_class"], k["output"], k["target"])
                          for k in links if not k["to"] and not k["special"]})

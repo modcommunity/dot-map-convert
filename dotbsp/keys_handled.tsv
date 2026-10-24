@@ -1,0 +1,21 @@
+# class (regex, full match) <TAB> key (regex, full match, case-insensitive) <TAB> status <TAB> what it does or why it is dropped. status: read = the converter or a DotMapIO component applies it; ignored = dropped on purpose. `coverage.build` does not list a key a row here names as keys_unmapped.
+func_breakable|func_breakable_surf|func_physbox(_multiplayer)?	material	read	DotMapBreakable.material (Source's number as a name)
+func_breakable|func_breakable_surf|func_physbox(_multiplayer)?	spawnobject	read	DotMapBreakable: the "spawn_object" event on break, the number is Source's item list for the game to map
+func_breakable|func_breakable_surf	(error|upperleft|upperright|lowerleft|lowerright|surfacetype|fragility)	ignored	breakable-surface pane layout: DotMapGlass breaks its own panes
+light_spot|light|light_dynamic	(_cone|_inner_cone|_exponent|pitch|_quadratic_attn|_lighthdr)	read	lights.py: cone, inner cone, falloff and pitch of the converted lamp
+.*	_minlight	ignored	compile-time lighting floor of the original lightmaps; there are none here
+.*	vrad_brush_cast_shadows	ignored	compile-time lightmap shadow flag
+.*	(inputfilter)	ignored	input filtering by the original engine's damage filters; a brush has no such pass here
+prop_dynamic|prop_dynamic_override|func_.*	solid	read	collision mode of the placed model or brush (0 not solid)
+prop_dynamic|prop_dynamic_override	(setbodygroup|holdanimation|animateeveryframe)	ignored	the stand-in model has no body groups or animations
+ambient_generic	(pitchstart|volstart|spinup|spindown|fadeinsecs|fadeoutsecs)	read	DotMapSound: start pitch and volume, spin and fade times, as "sound_spin" and "sound_fade" events
+ambient_generic	(preset|lfotype|lforate|lfomodpitch|lfomodvol|cspinup|fadein|fadeout)	ignored	audio DSP presets and low-frequency modulation of the original sounds; the stand-in is a plain sample (fadein/fadeout are inputs written as keys by a decompiler)
+func_door|func_door_rotating|prop_door_rotating	(locked_sentence|unlocked_sentence|dmg)	ignored	voice lines of the original; never shipped
+info_node_hint|info_node_air_hint|info_hint|info_node	(targetnode|nodefov|minimumstate|maximumstate|ignorefacing)	ignored	the original's navigation hints; the family navigates over its own navmesh
+func_tracktrain|func_tanktrain|func_door.*	volume	ignored	loudness of the mover's original sound
+.*	(fademindist|fademaxdist|fadescale)	ignored	the original's distance fade of a model, not drawn at stand-in size
+.*	(disablereceiveshadows|disableshadows|shadowcastdist|renderfx|rendermode|mindxlevel|maxdxlevel|performancemode|gmod_allowphysgun)	ignored	render options of the original engine
+.*	(inertiascale|physdamagescale|damagetype|damagetoenablemotion|forcetoenablemotion|minhealthdmg|nodamageforces|massscale|explodedamage|exploderadius|pressuredelay|multiplayer_physics_mode)	ignored	physics-damage tuning of the original; bodies use the family's own physics
+prop_.*|func_breakable.*|func_physbox.*	(renderamt|rendercolor|skin)	ignored	a tint or skin of the original model; the stand-in has one look
+worldspawn	(mapversion|comment|message)	ignored	editor bookkeeping
+info_player_.*	disabled	read	the spawn starts disabled (DotMapEntity enabled state)

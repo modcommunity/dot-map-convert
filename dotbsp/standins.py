@@ -32,6 +32,9 @@ DETAIL = re.compile(
     r"|vent_|(^|[/_])vent\d|wall_vent|grill|wire|cable|conduit|conducter|conduct|spool|button|knob|doorhandle|(^|[/_])handle|hinge|lever|keypad|tpswitch|tpplug|prison_bracket|sprinkler"
     r"|offpainting|offinsp|offcert|offcork|gm_painting|(^|/)frame\d|billboard|noparking|nostopssign|clouds|meter(\.mdl)?$"
     r"|icicle|stalactite|moss_|vine|fan_ceiling|roof_dish|antenna|gutter|cleat|dock\d*_pole|pulley|dock_broken|canal_cap|truss"
+    r"|(^|/)(player|knight\d|stegosaurus|deinonychus|parrot|tyrant|combine_soldier|rodwy|madebycn/(stryge|artemis)|esther/)|jellyfish|rytirnormal|securityguard|kuctuk"
+    r"|wolfhead|(wind|sun)crest|armour|(^|/)(gold|wood(en)?)?shield|herb(\.mdl)?$|(^|/)(modisc|crank|herbicide|g_10|bone_\d+)|g-logo|zombie|statue"
+    r"|teleportplatform|satellite|canalmap|lowpoly_|windmill_blade|(^|/)fan\d*(off)?(\.mdl)?$|dock_bumper|pi_arch|pi_orrery|ventilation|cluser|cluster\d|overhaing|stripebox|utilityconn|skylight|shadertest|safetyarm|citadel|combine_(lock|wall|inner)|wallcrushed|combineinner"
     r"|picture_frame|ceiling_fan|(^|/)fan(off)?(\\.mdl)?$|teleplatform|info_speech|snowman_arm|(^|/)donut(\.mdl)?$|extras/")
 
 
