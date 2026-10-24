@@ -160,6 +160,25 @@ def slabs(planes, pts, slab=SLAB, min_size=0.5, max_slabs=400):
     axis = 0 if gx >= gy else 1
     lo, hi = (x0, x1) if axis == 0 else (y0, y1)
     n = max(1, min(max_slabs, int(math.ceil((hi - lo) / slab))))
+    out = _cut(planes, axis, lo, hi, n, min_size)
+    # A thin steep board (a ladder's rail, a leaning plank) cut at its middle leaves a saw-tooth whose
+    # teeth do not touch, and the board's own body falls in the gaps: double the cut until they meet.
+    while n < max_slabs and _has_gap(out, axis):
+        n = min(max_slabs, n * 2)
+        out = _cut(planes, axis, lo, hi, n, min_size)
+    return out
+
+
+def _has_gap(out, axis):
+    """True when two neighbouring slabs do not overlap in height."""
+    for a, b in zip(out, out[1:]):
+        if abs(a["x" if axis == 0 else "y"][1] - b["x" if axis == 0 else "y"][0]) < 1e-6 and (
+                a["z"][1] < b["z"][0] - 1e-6 or b["z"][1] < a["z"][0] - 1e-6):
+            return True
+    return False
+
+
+def _cut(planes, axis, lo, hi, n, min_size):
     w = (hi - lo) / n
     out = []
     for k in range(n):
