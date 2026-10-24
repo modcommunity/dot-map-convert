@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
 import synth                                   # noqa: E402
-from dotbsp import audit, mesh, reader, units  # noqa: E402
+from dotbsp import audit, boxes, mesh, reader, units  # noqa: E402
 
 MATS = ("concrete/concretefloor001", "metal/metalwall001")
 
@@ -40,6 +40,20 @@ class ContentsKind(unittest.TestCase):
         self.assertEqual(audit.contents_kind(0x1, ["TOOLS/TOOLSSKYBOX"]), "sky")
         self.assertIn("ladder", audit.COLLIDES)
         self.assertNotIn("water", audit.COLLIDES)
+
+
+class ThinBoard(unittest.TestCase):
+    def test_leaning_plank_is_kept(self):
+        """A board one unit thick leaning at 45 degrees is slab-cut, and every slab is grown, not dropped."""
+        r = 0.5 ** 0.5
+        u, n = (r, 0.0, r), (-r, 0.0, r)            # along the board, and across it in x-z
+        pts = [tuple(a * u[k] * 80 + b * n[k] * 6 + (c if k == 1 else 0) for k in range(3))
+               for a in (0, 1) for b in (0, 1) for c in (0, 1)]
+        planes = [(0.0, 1.0, 0.0, 1.0), (0.0, -1.0, 0.0, 0.0), u + (80.0,), (-u[0], 0.0, -u[2], 0.0),
+                  n + (6.0,), (-n[0], 0.0, -n[2], 0.0)]
+        out = boxes.decompose(planes, pts, slab=4.0, min_size=2.1)
+        self.assertTrue(out)
+        self.assertTrue(all(boxes.size(b)[1] >= 2.1 - 1e-6 for b in out))
 
 
 class Audit(unittest.TestCase):

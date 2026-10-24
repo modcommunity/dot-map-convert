@@ -182,8 +182,13 @@ def slabs(planes, pts, slab=SLAB, min_size=0.5, max_slabs=400):
             continue
         u0, u1 = min(v[0] for v in verts), max(v[0] for v in verts)
         z0, z1 = min(v[1] for v in verts), max(v[1] for v in verts)
-        if z1 - z0 < min_size or u1 - u0 < min_size:
+        if z1 - z0 < 1e-3 or u1 - u0 < 1e-3:
             continue
+        # a thin board (a leaning plank) is grown to `min_size`, never dropped: it is drawn, so it must stop a body
+        if z1 - z0 < min_size:
+            z0, z1 = (z0 + z1 - min_size) / 2, (z0 + z1 + min_size) / 2
+        if u1 - u0 < min_size:
+            u0, u1 = (u0 + u1 - min_size) / 2, (u0 + u1 + min_size) / 2
         a0, a1 = lo + k * w, lo + (k + 1) * w
         if axis == 0:
             out.append({"x": (a0, a1), "y": (u0, u1), "z": (z0, z1), "phi": 0.0, "kind": "slab"})
