@@ -150,6 +150,9 @@ def cmd_audit(args):
             doc = json.load(f)
         field = terrain.Heightfield.decode(doc["terrain"])[0] if doc.get("terrain") else None
         out, y0, scale = audit.Boxes(doc.get("boxes", []), terrain=field), args.y0, units.parse_scale(args.scale)
+        if doc.get("world_collision") and args.world:
+            # the game collides with these hulls of the world pack as well as the boxes
+            out = audit.Union(out, audit.Hulls(audit.collision_hulls(mesh.read(args.world)[1].hulls, doc["world_collision"])))
         # a box document stands still: the world and the classes dot-map treats as world collide
         classes_of = lambda c: c == "worldspawn" or (classes.treatment(c)[0] == "world" and c not in args.passable)  # noqa: E731
     r = audit.audit(bsp, out, scale, y0, classes_of, keep=audit.region(args.within, args.band, args.skip))
@@ -397,6 +400,7 @@ def main(argv):
     au.add_argument("--scale", default="visual")
     au.add_argument("--max-loss", type=float, default=0.002, help="largest share of brushes or floor samples lost")
     au.add_argument("--top", type=int, default=12)
+    au.add_argument("--world", help="the document's world pack prefix: its hulls count where the document has `world_collision`")
     au.add_argument("--within", help="x0,z0,x1,z1 (game metres): audit only this rectangle, for an output cropped on purpose")
     au.add_argument("--band", help="lo,hi (game metres): audit only heights in this band")
     au.add_argument("--skip", action="append", default=[], help="x0,y0,z0,x1,y1,z1 (game metres): a region removed on purpose; repeatable")

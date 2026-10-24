@@ -392,6 +392,38 @@ class Hulls:
         return False
 
 
+def collision_hulls(hulls, sel, kinds=("solid", "clip", "glass")):
+    """The hulls of `kinds` a document's `world_collision` selects: `models` whole, `flat` only hulls at
+    most `flat_height` tall, none with its centre in a `skip` region [x0,y0,z0,x1,y1,z1]."""
+    models, flat, fh = set(sel.get("models", [])), set(sel.get("flat", [])), float(sel.get("flat_height", 0.5))
+    out = []
+    for h in hulls:
+        if not h["points"] or h.get("kind", "solid") not in kinds or (h["model"] not in models and h["model"] not in flat):
+            continue
+        lo = [min(p[k] for p in h["points"]) for k in range(3)]
+        hi = [max(p[k] for p in h["points"]) for k in range(3)]
+        if h["model"] not in models and hi[1] - lo[1] > fh:
+            continue
+        c = [(lo[k] + hi[k]) / 2 for k in range(3)]
+        if any(r[0] <= c[0] <= r[3] and r[1] <= c[1] <= r[4] and r[2] <= c[2] <= r[5] for r in sel.get("skip", [])):
+            continue
+        out.append(h)
+    return out
+
+
+class Union:
+    """Several outputs as one: a point is held when any of them holds it."""
+
+    def __init__(self, *parts):
+        self.parts = parts
+
+    def contains(self, x, y, z, pad=0.05):
+        return any(p.contains(x, y, z, pad) for p in self.parts)
+
+    def ground(self, x, y, z, depth):
+        return any(p.ground(x, y, z, depth) for p in self.parts)
+
+
 def audit(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, grid=GRID, keep=None):
     """The whole report of one output: the brush table, the floor misses, and totals; `keep(game point)`
     limits both to where the output means to be whole."""

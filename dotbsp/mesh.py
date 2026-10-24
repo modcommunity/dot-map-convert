@@ -592,6 +592,16 @@ def read(prefix):
     return doc, m
 
 
+def write_collision(src_prefix, out_prefix, select=None):
+    """A hull-only copy of a written mesh (no faces): what a server that draws nothing collides
+    with. `select(hulls)` returns the hulls to keep; the movers stay, for their model origins."""
+    man, m = read(src_prefix)
+    m.y0, m.source, m.sky = man["units"].get("y0", 0.0), man.get("source") or {}, man.get("sky3d")
+    m.surfaces, m.vis = [], None
+    m.hulls = select(m.hulls) if select else m.hulls
+    return write(m, out_prefix, man.get("credit"), man.get("name"), {"movers": man.get("movers", [])})
+
+
 # --- checking what was kept ---------------------------------------------------------------
 
 class _TriGrid:
