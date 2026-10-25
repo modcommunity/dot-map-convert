@@ -244,6 +244,7 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
                "yaw": round(p["yaw"], 2), "scale": round(float(p.get("scale") or 1.0), 3)}
         if p.get("solid"):
             rec["solid"] = p["solid"]
+            _collide(rec, packed.get(p["model"]), p["origin"], p["yaw"], p.get("scale"), scale, y0)
         if p["id"] == "rock" and packed.get(p["model"]) is None and UNMEASURED_DEBRIS.search(p["model"].lower()):
             continue
         size = sizes.get(p["model"])
@@ -261,7 +262,7 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
         gone = {(b["model"], tuple(b["origin"])) for b in boxes}
         out = [r for r in out if (r["model"], tuple(r["at"])) not in gone]
     if shaped:
-        out += _shaped_placements(spots, shaped, scale, y0, {(b["model"], b["src"]) for b in boxes})
+        out += _shaped_placements(spots, shaped, scale, y0, {(b["model"], b["src"]) for b in boxes}, packed)
     out += [{k: v for k, v in b.items() if k not in ("origin", "src")} for b in boxes]
     return out
 
@@ -300,11 +301,12 @@ def _models_measure(bsp):
 
 
 def _spots(doc):
-    """[(model, origin, angles, modelscale)] of every placed .mdl, in source units."""
-    spots = [(e["keys"].get("model"), reader.entity_vec(e["keys"]), reader.entity_vec(e["keys"], "angles"), e["keys"].get("modelscale"))
+    """[(model, origin, angles, modelscale, solid)] of every placed .mdl, in source units."""
+    spots = [(e["keys"].get("model"), reader.entity_vec(e["keys"]), reader.entity_vec(e["keys"], "angles"), e["keys"].get("modelscale"),
+              _props.entity_solid(e["classname"], e["keys"]))
              for e in doc["entities"] if e["classname"] in (_ent.PROP_CLASSES | _ent.PHYSICS_PROP_CLASSES)
              and not str(e["keys"].get("model", "")).startswith("*")]
-    spots += [(p.get("model"), list(p["origin"]), list(p.get("angles", [0, 0, 0])), p.get("scale")) for p in doc.get("static_props", [])]
+    spots += [(p.get("model"), list(p["origin"]), list(p.get("angles", [0, 0, 0])), p.get("scale"), int(p.get("solid", 0))) for p in doc.get("static_props", [])]
     return spots
 
 
@@ -321,8 +323,8 @@ def _support_boxes(spots, packed, game_table, scale, y0, skip=frozenset()):
     something else rests on or inside (its origin lies over the model's footprint, at the model's top) and the shape table could not stand in for with the right size. Without it a stand-in table or shelf
     is smaller than the real one and the bottles on it hang in the air. The model itself is never copied."""
     out = []
-    pts = [(m, o, k) for m, o, _a, k in spots]
-    for model, o, ang, sc in spots:
+    pts = [(m, o, k) for m, o, _a, k, _s in spots]
+    for model, o, ang, sc, sol in spots:
         name = _props.norm_model(model)
         rec = packed.get(name)
         if rec is None or name in skip or is_skybox(name) or BOX_NOT.search(name) or (game_table is not None and game_table.get(name) is not None):
@@ -353,34 +355,55 @@ def _support_boxes(spots, packed, game_table, scale, y0, skip=frozenset()):
             out.append({"box": [round(sx, 3), round(sy, 3), round(sz, 3)], "model": name,
                         "at": [round(mx, 4), round(base - y0 + sy / 2, 4), round(mz, 4)],
                         "yaw": round(ang[1], 2), "scale": 1.0,
+                        **({"solid": sol} if sol else {}),
                         "origin": [round(o[0] * scale, 4), round(o[2] * scale - y0, 4), round(-o[1] * scale, 4)],
                         "src": tuple(round(v, 3) for v in o)})
     return out
 
 
-def _shaped_placements(spots, shaped, scale, y0, boxed=frozenset()):
+def _shaped_placements(spots, shaped, scale, y0, boxed=frozenset(), packed=None):
     """Placements of the models `shape_matches` stood in: put on the packed model's middle, turned to its long side,
     drawn at its measured longest side (`size`, before the placement's own scale). A spot in `boxed` has a block instead."""
     out = []
-    for model, o, ang, sc in spots:
+    for model, o, ang, sc, sol in spots:
         s = shaped.get(_props.norm_model(model))
         if s is None or (_props.norm_model(model), tuple(round(v, 3) for v in o)) in boxed:
             continue
         k = _props._num(sc, 1.0)
         a = math.radians(ang[1])
         if s.get("box"):
-            out.append(_box_record(model, o, ang, k, s, scale, y0))
+            out.append(_box_record(model, o, ang, k, s, scale, y0, sol))
             continue
         cx, cz = s["centre"][0] * k, -s["centre"][2] * k
         gx = o[0] * scale + cx * math.cos(a) - cz * math.sin(a)
         gz = -o[1] * scale - (cx * math.sin(a) + cz * math.cos(a))
-        out.append({"stand_in": s["stand_in"], "model": _props.norm_model(model), "shape": True,
-                    "at": [round(gx, 4), round(o[2] * scale - y0 + s["base"] * k, 4), round(gz, 4)],
-                    "yaw": round(ang[1] + 90.0 * s["turns"], 2), "scale": round(k, 3), "size": s["size"]})
+        rec = {"stand_in": s["stand_in"], "model": _props.norm_model(model), "shape": True,
+               "at": [round(gx, 4), round(o[2] * scale - y0 + s["base"] * k, 4), round(gz, 4)],
+               "yaw": round(ang[1] + 90.0 * s["turns"], 2), "scale": round(k, 3), "size": s["size"]}
+        if sol:
+            rec["solid"] = sol
+            _collide(rec, (packed or {}).get(_props.norm_model(model)), o, ang[1], sc, scale, y0)
+        out.append(rec)
     return out
 
 
-def _box_record(model, o, ang, k, s, scale, y0):
+def _collide(rec, measured, o, yaw, modelscale, scale, y0):
+    """Sets `collide` {box, at, yaw} on a solid prop record from the original model's measured bounds (metres, Godot
+    axes, world position), so the body is the size of what the map had and not of the stand-in drawn for it. Without a
+    measure (a stock model is not packed) the game boxes the drawn stand-in, which is sized to the original's longest side."""
+    if not measured:
+        return
+    k = _props._num(modelscale, 1.0)
+    a = math.radians(yaw)
+    ca, sa = math.cos(a), math.sin(a)
+    cx, cy, cz = (v * k for v in measured["centre"])
+    sx, sy, sz = (v * k for v in measured["size"])
+    rec["collide"] = {"box": [round(sx, 3), round(sy, 3), round(sz, 3)],
+                      "at": [round(o[0] * scale + cx * ca + cz * sa, 4), round(o[2] * scale - y0 + cy, 4), round(-o[1] * scale - cx * sa + cz * ca, 4)],
+                      "yaw": round(yaw, 2)}
+
+
+def _box_record(model, o, ang, k, s, scale, y0, solid=0):
     """The size-correct block for a packed model with no stand-in, on the model's own middle and turned with it."""
     a = math.radians(ang[1])
     ca, sa = math.cos(a), math.sin(a)
@@ -388,4 +411,4 @@ def _box_record(model, o, ang, k, s, scale, y0):
     sx, sy, sz = (v * k for v in s["dims"])
     return {"box": [round(sx, 3), round(sy, 3), round(sz, 3)], "model": _props.norm_model(model),
             "at": [round(o[0] * scale + cx * ca + cz * sa, 4), round(o[2] * scale - y0 + cy, 4), round(-o[1] * scale - cx * sa + cz * ca, 4)],
-            "yaw": round(ang[1], 2), "scale": 1.0}
+            "yaw": round(ang[1], 2), "scale": 1.0, **({"solid": solid} if solid else {})}

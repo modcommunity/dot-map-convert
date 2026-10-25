@@ -53,9 +53,21 @@ class PropTable:
         return sorted(out.items(), key=lambda kv: (-kv[1], kv[0]))
 
 
+def entity_solid(classname, keys):
+    """The `solid` value a placed entity collides with. prop_dynamic: its own key (0 when unset). prop_physics: its key,
+    else VPhysics (6), but 0 for a debris one (spawnflag 4). A model that is a brush (`*7`) has none here."""
+    if classname.startswith("prop_dynamic"):
+        return int(_num(keys.get("solid"), 0))
+    if classname.startswith("prop_physics"):
+        if int(_num(keys.get("spawnflags"), 0)) & 4:
+            return 0
+        return int(_num(keys.get("solid"), 6))
+    return 0
+
+
 def placed_props(doc, table, include_static=True, classes=None):
     """Every placed prop the table has a stand-in for: [{id, model, origin, yaw, angles, scale,
-    source, solid}], `solid` being a prop_dynamic's own key (0 for the rest), `source` being "entity" or "static". `origin` and `angles` are map units and degrees.
+    source, solid}], `solid` being the source's own (a static prop's lump field, `entity_solid` for entities), `source` being "entity" or "static". `origin` and `angles` are map units and degrees.
 
     `classes` replaces the default entity classes (the prop and physics-box classes).
     """
@@ -73,7 +85,7 @@ def placed_props(doc, table, include_static=True, classes=None):
         ang = reader.entity_vec(k, "angles")
         out.append({"id": cid, "model": norm_model(k.get("model")), "origin": reader.entity_vec(k),
                     "yaw": ang[1], "angles": ang, "scale": _num(k.get("modelscale"), 1.0), "source": "entity",
-                    "solid": int(_num(k.get("solid"), 0)) if rec["classname"].startswith("prop_dynamic") else 0})
+                    "solid": entity_solid(rec["classname"], k)})
     if include_static:
         for sp in doc.get("static_props", []):
             cid = table.get(sp.get("model"))
@@ -81,7 +93,7 @@ def placed_props(doc, table, include_static=True, classes=None):
                 continue
             ang = list(sp.get("angles", [0, 0, 0]))
             out.append({"id": cid, "model": norm_model(sp["model"]), "origin": list(sp["origin"]),
-                        "yaw": ang[1], "angles": ang, "scale": sp.get("scale", 1.0), "source": "static"})
+                        "yaw": ang[1], "angles": ang, "scale": sp.get("scale", 1.0), "source": "static", "solid": int(sp.get("solid", 0))})
     return out
 
 

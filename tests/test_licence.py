@@ -131,15 +131,15 @@ class Defects(unittest.TestCase):
         k = 1 / 0.01905
         # a 1.8 x 0.7 x 0.6 m table at the origin (its z runs 0 to -0.6), a bottle on top, a bottle on the floor
         packed = {"models/x/tbl.mdl": {"size": [1.8, 0.7, 0.6], "centre": [0.0, 0.35, -0.3], "min": [-0.9, 0.0, -0.6]}}
-        spots = [("models/x/tbl.mdl", [0, 0, 0], [0, 0, 0], None),
-                 ("models/x/bottle.mdl", [0.1 * k, 0.3 * k, 0.7 * k], [0, 0, 0], None)]
+        spots = [("models/x/tbl.mdl", [0, 0, 0], [0, 0, 0], None, 0),
+                 ("models/x/bottle.mdl", [0.1 * k, 0.3 * k, 0.7 * k], [0, 0, 0], None, 0)]
         got = standins._support_boxes(spots, packed, None, 0.01905, 0.0)
         self.assertEqual(len(got), 1)
         self.assertEqual(got[0]["box"], [1.8, 0.7, 0.6])
         self.assertAlmostEqual(got[0]["at"][1], 0.35, places=3)
-        floor = spots[:1] + [("models/x/bottle.mdl", [0.1 * k, 0.3 * k, 0.0], [0, 0, 0], None)]
+        floor = spots[:1] + [("models/x/bottle.mdl", [0.1 * k, 0.3 * k, 0.0], [0, 0, 0], None, 0)]
         self.assertEqual(standins._support_boxes(floor, packed, None, 0.01905, 0.0), [])
-        far = spots[:1] + [("models/x/bottle.mdl", [3.0 * k, 0.3 * k, 0.7 * k], [0, 0, 0], None)]
+        far = spots[:1] + [("models/x/bottle.mdl", [3.0 * k, 0.3 * k, 0.7 * k], [0, 0, 0], None, 0)]
         self.assertEqual(standins._support_boxes(far, packed, None, 0.01905, 0.0), [])
 
     def test_natural_stand_ins_take_a_packed_models_size_and_base(self):

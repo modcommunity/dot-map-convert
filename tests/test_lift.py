@@ -200,7 +200,18 @@ class Props(unittest.TestCase):
         d["entities"][2]["keys"]["solid"] = "6"
         d["entities"][1]["keys"]["solid"] = "6"
         got = {p["id"]: p["solid"] for p in props.placed_props(d, {"models/props_c17/chair.mdl": "chair", "models/props/table.mdl": "table"})}
-        self.assertEqual(got, {"chair": 0, "table": 6})
+        self.assertEqual(got, {"chair": 6, "table": 6})
+
+    def test_solidity_is_the_sources_own(self):
+        self.assertEqual(props.entity_solid("prop_physics", {}), 6)
+        self.assertEqual(props.entity_solid("prop_physics_multiplayer", {"spawnflags": "4"}), 0)
+        self.assertEqual(props.entity_solid("prop_dynamic", {}), 0)
+        self.assertEqual(props.entity_solid("prop_dynamic", {"solid": "2"}), 2)
+        d = self.doc()
+        d["static_props"][0]["solid"] = 6
+        d["static_props"][1]["solid"] = 0
+        got = {p["id"]: p["solid"] for p in props.placed_props(d, {"models/props/couch.mdl": "sofa", "models/props/lamp.mdl": "lamp"}) if p["source"] == "static"}
+        self.assertEqual(got, {"sofa": 6, "lamp": 0})
 
     def test_unmatched_and_census(self):
         d = self.doc()
