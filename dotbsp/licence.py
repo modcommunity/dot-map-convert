@@ -178,8 +178,59 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
         block["model_store"] = os.path.relpath(model_store, outdir).replace(os.sep, "/") if outdir else model_store
     if store and any(t["kind"] == "pbr" for t in free):
         block["pbr_store"] = os.path.relpath(store, outdir).replace(os.sep, "/") if outdir else store
+        if outdir:
+            small_albedos(block, outdir, store)
     doc["licence"] = block
     return block
+
+
+SMALL_PX = 64
+
+
+def small_albedos(block, outdir, store, px=SMALL_PX):
+    """Write a `px`-square albedo of each PBR set into the pack (`textures/fb_<id>.webp`, a few KB each) and name it
+    `fallback_file`, so a client without the store slices draws the set's own colours and pattern, not a guess.
+    Returns the bytes written."""
+    from PIL import Image
+    total = 0
+    for t in block.get("textures", []):
+        if t.get("kind") != "pbr":
+            continue
+        sid = t["file"].split("/")[-1]
+        rel = "textures/fb_%s.webp" % sid
+        out = os.path.join(outdir, rel)
+        if not os.path.exists(out):
+            src = None
+            for tier in (t.get("tier", "1k"), "1k", "2k"):
+                for ext in ("webp", "jpg", "png"):
+                    cand = os.path.join(store, sid, tier, "albedo." + ext)
+                    if os.path.exists(cand):
+                        src = src or cand
+            if src is None:
+                continue
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            with Image.open(src) as im:
+                im.convert("RGB").resize((px, px), Image.LANCZOS).save(out, "WEBP", quality=80, method=6)
+        t["fallback_file"] = rel
+        total += os.path.getsize(out)
+    return total
+
+
+def cmd_small(args):
+    """`bsp.py smallalbedo <manifest.json>...`: add the small albedos to packs already converted, without a regen."""
+    import json
+    for m in args.manifests:
+        with open(m) as f:
+            doc = json.load(f)
+        block = doc.get("licence", {})
+        outdir = os.path.dirname(os.path.abspath(m))
+        store = args.pbr_store or os.path.normpath(os.path.join(outdir, block.get("pbr_store", "pbr")))
+        n = small_albedos(block, outdir, store, args.px)
+        with open(m, "w") as f:
+            json.dump(doc, f, indent=1, sort_keys=True)
+            f.write("\n")
+        print("%s: %d small albedos, %d bytes" % (m, sum(1 for t in block.get("textures", []) if t.get("fallback_file")), n))
+    return 0
 
 
 def check(doc):

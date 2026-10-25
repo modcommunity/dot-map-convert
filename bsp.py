@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import pbrmap, modeldims, modelmap, storepack, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
+from dotbsp import licence, pbrmap, modeldims, modelmap, storepack, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -478,10 +478,14 @@ def main(argv):
     sp.add_argument("--shared", type=int, default=8, help="per map, how many of its biggest groups of items drawn by the same maps become shared slices (0: one self-contained slice per map)")
     sp.add_argument("--lossless", action="store_true", help="import textures lossless instead of VRAM-compressed")
     sp.add_argument("--dry-run", action="store_true", help="build the slice folders and stop")
+    sa = sub.add_parser("smallalbedo", help="add a small albedo per PBR set to converted packs, drawn when the store slices are missing (dotbsp/licence.py)")
+    sa.add_argument("manifests", nargs="+", help="a pack's manifest json")
+    sa.add_argument("--pbr-store", help="the PBR store; default the manifest's licence.pbr_store")
+    sa.add_argument("--px", type=int, default=64, help="side in pixels (default 64)")
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "storepack": storepack.run_cmd}[args.cmd](args)
+                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "storepack": storepack.run_cmd, "smallalbedo": licence.cmd_small}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2
