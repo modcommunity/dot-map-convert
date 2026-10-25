@@ -48,7 +48,7 @@ def applied(rs):
         classes.treatment = orig
 
 
-def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None):
+def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None):
     """Write the map at `out` (prefix); returns (manifest, coverage report, problems)."""
     with open(path, "rb") as f:
         bsp = reader.Bsp(path, data=f.read()).load()
@@ -79,7 +79,8 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     from . import importer
     shaped = standins.shape_matches(bsp, None, table=rs.models_view())
     licence.annotate(doc, outdir, table=rs.free_table(), models=importer.placed_models(bsp),
-                     free_models=rs.models_view(), free_sounds=rs.sounds_view(), shaped=shaped)
+                     free_models=rs.models_view(), free_sounds=rs.sounds_view(), shaped=shaped,
+                     pbr_store=os.path.abspath(pbr_store or os.path.join(outdir, os.pardir, "pbr-library")))
     doc["props"] = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0, shaped=shaped)
     problems = licence.check(doc)
     # The starter per-map config: every map gets one, from the commands its entities send, commented out.
@@ -129,7 +130,8 @@ def cmd(args):
         base = _json(cpath)
     try:
         doc, rep, problems = build(path, args.name or name, sha, credit, out, rs, scale=units.parse_scale(args.scale),
-                                   y0=args.y0, cat=coverage.catalogue(args.catalogue))
+                                   y0=args.y0, cat=coverage.catalogue(args.catalogue),
+                                   pbr_store=getattr(args, "pbr_store", None))
     except (ValueError, OSError) as e:
         print("regen: %s" % e, file=sys.stderr)
         return 1

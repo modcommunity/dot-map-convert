@@ -450,6 +450,7 @@ def main(argv):
     rg.add_argument("--scale", default="visual")
     rg.add_argument("--y0", type=float, default=0.0)
     rg.add_argument("--no-pbr", action="store_true", help="leave out the PBR library tier (rules/pbr)")
+    rg.add_argument("--pbr-store", help="where the shared PBR sets are written once, by id and tier (default: pbr-library beside the pack folder)")
     pm = sub.add_parser("pbrmap", help="pick a PBR library set for every texture name the converted maps use; writes rules/pbr")
     pm.add_argument("--root", action="append", help="a directory holding <game>/world/<map>/ (repeatable; default ~/godot)")
     pm.add_argument("--library", help="the library's materials folder; default $DOT_ART_LIBRARY or ~/art-library/materials")

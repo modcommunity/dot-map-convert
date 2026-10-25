@@ -39,6 +39,8 @@ The binary (`dot-bsp-mesh`, version 1; version 2 when the map carries lighting),
 - version 2 adds, per lightmapped surface, `uv2_offset`: `vertex_count` float32 pairs into
   the atlas page `lightmap_page`, and the manifest's `lightmap` record (pages of RGB9E5
   texels, `page_width` wide, stored in the same blob). A v1 reader ignores both;
+- a displacement of a `blend` material adds `alpha_offset`: `vertex_count` float32, the vertex's blend
+  between the material's two layers (the surface's `free` at 0, `free2` at 1);
 - then `index_count` uint32 triangle indices into that surface's vertices;
 - a hull is `point_count` float32 triples and `plane_count` float32 quads (nx, ny, nz, d with
   n.p <= d inside), in metres and Godot axes.
@@ -225,7 +227,7 @@ def _sky_face(bsp, f, off, sky):
 class Surface:
     __slots__ = ("model", "entity", "classname", "targetname", "material", "generic", "tint",
                  "colour", "texels", "water", "glass", "displacement", "collide", "sky3d", "chunk", "verts",
-                 "index", "_dedupe", "clusters", "page", "emissive", "uv2")
+                 "index", "_dedupe", "clusters", "page", "emissive", "uv2", "alpha")
 
     def __init__(self, model, entity, classname, targetname, material):
         self.model, self.entity, self.classname, self.targetname = model, entity, classname, targetname
@@ -235,18 +237,20 @@ class Surface:
         self.glass = None
         self.chunk = self.clusters = None
         self.page, self.emissive = None, False
-        self.verts, self.index, self._dedupe, self.uv2 = [], [], {}, []
+        self.verts, self.index, self._dedupe, self.uv2, self.alpha = [], [], {}, [], []
 
-    def vertex(self, p, n, uv, uv2=None):
+    def vertex(self, p, n, uv, uv2=None, alpha=None):
         k = (round(p[0], 4), round(p[1], 4), round(p[2], 4), round(n[0], 3), round(n[1], 3),
              round(n[2], 3), round(uv[0], 4), round(uv[1], 4),
-             None if uv2 is None else (round(uv2[0], 5), round(uv2[1], 5)))
+             None if uv2 is None else (round(uv2[0], 5), round(uv2[1], 5)),
+             None if alpha is None else round(alpha, 3))
         i = self._dedupe.get(k)
         if i is None:
             i = len(self.verts)
             self._dedupe[k] = i
             self.verts.append((p, n, uv))
             self.uv2.append(uv2)
+            self.alpha.append(alpha)
         return i
 
     def retain(self, keep):
@@ -263,11 +267,14 @@ class Surface:
                 kept.append(remap[i])
         verts = [None] * len(remap)
         uv2 = [None] * len(remap)
+        alpha = [None] * len(remap)
         for old, new in remap.items():
             verts[new] = self.verts[old]
             uv2[new] = self.uv2[old] if old < len(self.uv2) else None
+            alpha[new] = self.alpha[old] if old < len(self.alpha) else None
         self.verts, self.index = verts, kept
         self.uv2 = uv2 if any(u is not None for u in uv2) else []
+        self.alpha = alpha
         self._dedupe = {}
         return self
 
@@ -497,7 +504,8 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
         return _lightmap.uv2(atlas, f, ti, p)[1] if atlas is not None else None
 
     if disp:
-        tris = bsp.displacement_tris(f, with_base=True)
+        blend = "blend" in name.lower()
+        tris = bsp.displacement_tris(f, with_base=True, with_alpha=True)
         acc = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
         for t in tris:
             a, b, c = t[0][0], t[1][0], t[2][0]
@@ -506,17 +514,17 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
             # The stored order is the front face, whose right-hand cross points INTO the
             # surface; the outward normal is its negation.
             nn = [-(u[1] * v[2] - u[2] * v[1]), -(u[2] * v[0] - u[0] * v[2]), -(u[0] * v[1] - u[1] * v[0])]
-            for p, _base in t:
+            for p, _base, _al in t:
                 k = (round(p[0], 2), round(p[1], 2), round(p[2], 2))
                 for i in range(3):
                     acc[k][i] += nn[i]
         for t in tris:
             ids = []
-            for p, base in t:
+            for p, base, al in t:
                 nn = acc[(round(p[0], 2), round(p[1], 2), round(p[2], 2))]
                 ln = math.sqrt(sum(c * c for c in nn)) or 1.0
                 # A displacement's texture lies on the flat quad it was drawn from.
-                ids.append(s.vertex(g(p, off), gn([c / ln for c in nn]), uv(base), lm(base)))
+                ids.append(s.vertex(g(p, off), gn([c / ln for c in nn]), uv(base), lm(base), al if blend else None))
             if len(set(ids)) == 3:
                 s.index.extend(ids)
         return
@@ -561,12 +569,23 @@ def write(mesh, prefix, credit=None, name=None, extra=None):
         if s.page is not None:
             uv2off = len(blob)
             blob += struct.pack("<%df" % (2 * n), *[c for uv in s.uv2 for c in uv])
+        aoff = None
+        if s.alpha and any(a is not None for a in s.alpha):
+            aoff = len(blob)
+            blob += struct.pack("<%df" % n, *[0.0 if a is None else a for a in s.alpha])
         ioff = len(blob)
         blob += struct.pack("<%dI" % len(s.index), *s.index)
-        rec = {"model": s.model, "entity": s.entity, "classname": s.classname, "material": s.material,
+        area = 0.0
+        for t in range(0, len(s.index), 3):
+            a, b, c = (s.verts[i][0] for i in s.index[t:t + 3])
+            ux, uy, uz, vx, vy, vz = b[0] - a[0], b[1] - a[1], b[2] - a[2], c[0] - a[0], c[1] - a[1], c[2] - a[2]
+            area += 0.5 * ((uy * vz - uz * vy) ** 2 + (uz * vx - ux * vz) ** 2 + (ux * vy - uy * vx) ** 2) ** 0.5
+        rec = {"area": round(area, 2), "model": s.model, "entity": s.entity, "classname": s.classname, "material": s.material,
                "generic": s.generic, "vertex_count": n, "position_offset": poff,
                "normal_offset": noff, "uv_offset": uoff,
                "index_offset": ioff, "index_count": len(s.index)}
+        if aoff is not None:
+            rec["alpha_offset"] = aoff
         if uv2off is not None:
             rec["uv2_offset"] = uv2off
             rec["lightmap_page"] = s.page
@@ -647,7 +666,9 @@ def read(prefix):
         uvs = struct.unpack_from("<%df" % (2 * n), blob, rec["uv_offset"])
         uv2 = struct.unpack_from("<%df" % (2 * n), blob, rec["uv2_offset"]) if "uv2_offset" in rec else None
         s.page, s.emissive = rec.get("lightmap_page"), rec.get("emissive", False)
+        al = struct.unpack_from("<%df" % n, blob, rec["alpha_offset"]) if "alpha_offset" in rec else None
         for i in range(n):
+            s.alpha.append(al[i] if al else None)
             s.verts.append((pos[3 * i:3 * i + 3], nor[3 * i:3 * i + 3], uvs[2 * i:2 * i + 2]))
             s.uv2.append(uv2[2 * i:2 * i + 2] if uv2 else None)
         s.index = list(struct.unpack_from("<%dI" % rec["index_count"], blob, rec["index_offset"]))

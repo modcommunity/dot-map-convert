@@ -63,6 +63,22 @@ class PbrMap(unittest.TestCase):
         r = licence.replacement("pbr_Bricks1", (0.5, 0.5, 0.5), table)
         self.assertEqual((r["file"], r["how"]), ("pbr/Bricks1", "table"))
 
+    def test_shared_store_writes_a_set_once_per_tier_and_downsizes(self):
+        from PIL import Image
+        d = os.path.join(self.lib, "ambientcg", "Bricks1")
+        for fn in os.listdir(d):
+            Image.new("RGB", (1200, 1200), (120, 80, 60)).save(os.path.join(d, fn), "JPEG")
+        store = os.path.join(self.lib, "store")
+        pbrmap._cache.clear()
+        a = pbrmap.ship_shared("pbr_Bricks1", store, "1k", self.lib)
+        self.assertEqual(sorted(os.listdir(a)), ["albedo.webp", "ao.webp", "normal.webp", "roughness.webp"])
+        with Image.open(os.path.join(a, "albedo.webp")) as im:
+            self.assertEqual(im.size, (1024, 1024))
+        stamp = os.path.getmtime(os.path.join(a, "albedo.webp"))
+        pbrmap.ship_shared("pbr_Bricks1", store, "1k", self.lib)
+        self.assertEqual(os.path.getmtime(os.path.join(a, "albedo.webp")), stamp)
+        self.assertEqual((pbrmap.tier_for(0.2), pbrmap.tier_for(0.01)), ("2k", "1k"))
+
 
 if __name__ == "__main__":
     unittest.main()

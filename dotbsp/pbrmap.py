@@ -101,7 +101,8 @@ def load_library(root=None):
             if not cats and source == "polyhaven":
                 tt = _tokens(tags.replace(",", " "))
                 cats = {c for c, words in LIBRARY.items() if tt & set(words.split())}
-            out[sid] = {"id": sid, "source": source, "url": url, "author": author, "licence": lic,
+            out[sid] = {"id": sid, "source": source, "url": url, "author": author, "licence": lic, "toks": toks,
+                        "idcats": {c for c, words in LIBRARY.items() if toks & set(words.split())},
                         "colour": (float(row[6]), float(row[7]), float(row[8])), "cats": cats,
                         "dir": os.path.join(root, source.lower(), sid), "files": row[9].split(",")}
             if any(_find(out[sid], suff) is None for suff in REQUIRED):
@@ -124,9 +125,46 @@ def category(material, kind_hint=None):
     return KIND_CATEGORY.get(kind_hint)
 
 
-def pick(lib, cat, colour):
-    """The set of category `cat` nearest `colour` (sRGB, Euclidean); any category when `cat` has none."""
+def _keyword(material, cat):
+    """The word of the source name that put it in `cat` (`grass` of `tides_grass_a`), or None."""
+    text = str(material or "").lower().replace("\\", "/").rsplit("/", 1)[-1]
+    for c, rx in _NAMES:
+        if c == cat:
+            m = rx.search(text)
+            if m:
+                return m.group(0)
+    return None
+
+
+def layers(material):
+    """The two library categories (with their name word) a `blend` terrain texture mixes, in name order
+    (`blendcliffgrass001a` -> stone from `cliff`, then grass), or [] for a name that is not a blend."""
+    name = str(material or "").lower().replace("\\", "/").rsplit("/", 1)[-1]
+    if "blend" not in name:
+        return []
+    text = name.replace("blend", "", 1)
+    hits = []
+    for c, p in NAMES:
+        if c in ("wood", "plaster", "metal", "fabric", "tile"):
+            continue
+        for m in re.finditer(p, text):
+            hits.append((m.start(), c, m.group(0)))
+    hits.sort()
+    out, seen_c = [], set()
+    for _at, c, w in hits:
+        if c not in seen_c:
+            seen_c.add(c)
+            out.append((c, w))
+    return out[:2]
+
+
+def pick(lib, cat, colour, word=None):
+    """The set of category `cat` nearest `colour` (sRGB, Euclidean); any category when `cat` has none.
+    A set the library's id puts in `cat` beats one only a tag does (a tree bark is tagged grass), and one whose id holds `word` beats the rest."""
     pool = [e for e in lib.values() if cat in e["cats"]]
+    pool = [e for e in pool if cat in e["idcats"]] or pool
+    if word:
+        pool = [e for e in pool if word in e["toks"]] or pool
     while not pool and cat in WIDEN:
         cat = WIDEN[cat]
         pool = [e for e in lib.values() if cat in e["cats"]]
@@ -230,6 +268,52 @@ def ship(generic, outdir, library=None):
     return dest
 
 
+TIERS = {"2k": 2048, "1k": 1024}
+# Share of a map's drawn area (m2) from which a set earns the 2K tier; under it 1K is already 500 px per metre.
+TIER_2K_SHARE = 0.05
+WEBP_QUALITY = {"albedo": 86, "normal": 92, "roughness": 80, "ao": 80}
+
+
+def tier_for(share):
+    return "2k" if share >= TIER_2K_SHARE else "1k"
+
+
+def ship_shared(generic, store, tier, library=None):
+    """Write the set `generic` at `tier` to `<store>/<id>/<tier>/{albedo,normal,roughness,ao}.webp`, once:
+    a set already there is shared by every map that names it. The store is the delivered unit (by id and tier)."""
+    from PIL import Image
+    sid = generic[len(GENERIC):]
+    lib = _cache.get(library)
+    if lib is None:
+        lib = _cache[library] = load_library(library)
+    e = lib.get(sid)
+    if e is None:
+        raise ValueError("PBR set %s is not in the library %s" % (sid, library or library_root()))
+    dest = os.path.join(store, sid, tier)
+    os.makedirs(dest, exist_ok=True)
+    px = TIERS[tier]
+    wants = (("albedo", ("_color.", "_diff_")), ("normal", ("_normalgl.", "_nor_gl_")),
+             ("roughness", ("_roughness.", "_rough_")), ("ao", ("_ambientocclusion.", "_ao_")))
+    for name, suff in wants:
+        src = _find(e, suff)
+        dst = os.path.join(dest, name + ".webp")
+        if src is None:
+            if name in ("albedo", "normal", "roughness"):
+                raise ValueError("PBR set %s has no %s map" % (sid, name))
+            continue
+        if os.path.exists(dst):
+            continue
+        with Image.open(src) as im:
+            im = im.convert("RGB")
+            if max(im.size) > px:
+                k = px / float(max(im.size))
+                im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+            tmp = dst + ".part"
+            im.save(tmp, "WEBP", quality=WEBP_QUALITY[name], method=4)
+        os.replace(tmp, dst)
+    return dest
+
+
 _cache = {}
 ENABLED = False          # `regen` turns it on; the older `ship` path keeps the stock photo sets
 _warned = []
@@ -256,7 +340,17 @@ def choose(material, colour, kind_hint=None):
     lib = library()
     if lib is None:
         return None
-    return pick(lib, category(material, kind_hint), colour)
+    cat = category(material, kind_hint)
+    return pick(lib, cat, colour, _keyword(material, cat))
+
+
+def choose_layers(material):
+    """The two library entries a blend texture mixes (first at vertex alpha 0), or []. The pick is each
+    category's typical set, not the nearest colour: a blend's average says nothing of its layers."""
+    lib = library()
+    if lib is None:
+        return []
+    return [pick(lib, c, (0.45, 0.42, 0.36) if c != "grass" else (0.25, 0.33, 0.15), w) for c, w in layers(material)]
 
 
 def cmd(args):

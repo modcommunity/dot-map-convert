@@ -97,28 +97,49 @@ def replacement(generic, colour, table, material=None):
     return r
 
 
-def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_models=None, free_sounds=None, shaped=None):
+def _blend_records(s):
+    """The library sets a blend displacement mixes, as replacement records, or [] without a library."""
+    out = []
+    for e in pbrmap.choose_layers(s.get("material")) if pbrmap.ENABLED else []:
+        r = {"generic": pbrmap.GENERIC + e["id"], "colour": _snap(s.get("colour") or [0.5, 0.5, 0.5]), "how": "blend", "kind": "pbr",
+             "source": e["source"], "url": e["url"], "author": e["author"], "licence": e["licence"], "file": "pbr/" + e["id"]}
+        out.append(r)
+    return out
+
+
+def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_models=None, free_sounds=None, shaped=None, pbr_store=None):
     """Add `free` to every surface of the manifest `doc` and a `licence` block; write the generated
     images under `outdir` when given. `models` is the placed model paths (static props and
     prop entities); `prop_table` a `PropTable` of the game's stand-ins. Returns the block."""
     table = table or load()
     used = collections.OrderedDict()
     for s in doc["surfaces"]:
-        r = replacement(s.get("generic"), s.get("colour"), table, s.get("material"))
-        key = _key(r)
-        s["free"] = key
-        u = used.setdefault(key, dict(r, sources=collections.Counter(), surfaces=0))
-        u["sources"][s["material"]] += 1
-        u["surfaces"] += 1
+        recs = _blend_records(s) if s.get("alpha_offset") else []
+        if not recs:
+            recs = [replacement(s.get("generic"), s.get("colour"), table, s.get("material"))]
+        s["free"] = _key(recs[0])
+        if len(recs) > 1:
+            s["free2"] = _key(recs[1])
+        for r in recs:
+            key = _key(r)
+            u = used.setdefault(key, dict(r, sources=collections.Counter(), surfaces=0, area=0.0))
+            u["sources"][s["material"]] += 1
+            u["surfaces"] += 1
+            u["area"] += s.get("area", 0.0)
         if r["kind"] == "generated" and outdir:
             p = os.path.join(outdir, r["file"])
             if not os.path.exists(p):
                 textures.write(p, r["generic"], r["colour"])
-        elif r["kind"] == "pbr" and outdir:
-            pbrmap.ship(r["generic"], outdir)
+    total = sum(u["area"] for u in used.values() if u["kind"] == "pbr") or 1.0
+    store = pbr_store or (os.path.join(outdir, "pbr") if outdir else None)
     free = []
     for key, u in used.items():
         u["sources"] = sorted(u["sources"])
+        u["area"] = round(u["area"], 1)
+        if u["kind"] == "pbr":
+            u["tier"] = pbrmap.tier_for(u["area"] / total)
+            if store:
+                pbrmap.ship_shared(u["generic"], store, u["tier"])
         free.append(dict(u, key=key))
     counts = collections.Counter(_props.norm_model(m) for m in models if m)
     tbl = prop_table or _props.PropTable({})
@@ -145,6 +166,8 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
     block = {"textures": free, "models": mods, "skipped_skybox_models": skipped, "model_stand_ins": sorted(used_models.values(), key=lambda r: r["stand_in"]),
              "sounds": sorted(used_sounds.values(), key=lambda r: r["stand_in"]),
              "note": "No source texture, model or sound is shipped; each source name is only the name a replacement stands for."}
+    if store and any(t["kind"] == "pbr" for t in free):
+        block["pbr_store"] = os.path.relpath(store, outdir).replace(os.sep, "/") if outdir else store
     doc["licence"] = block
     return block
 

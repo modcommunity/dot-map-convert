@@ -329,5 +329,17 @@ class RetainTests(unittest.TestCase):
         struct.pack("<%df" % (2 * len(s.verts)), *[c for uv in s.uv2 for c in uv])
 
 
+    def test_a_cropped_blend_surface_keeps_one_alpha_per_vertex(self):
+        s = mesh.Surface(0, 0, "worldspawn", "", "nature/blendgrassrock")
+        for q in range(2):
+            o = 10.0 * q
+            ids = [s.vertex((o + x, 0.0, z), (0, 1, 0), (x, z), None, 0.25 * q + 0.5 * x)
+                   for x, z in ((0, 0), (1, 0), (1, 1), (0, 1))]
+            s.index += [ids[0], ids[1], ids[2], ids[0], ids[2], ids[3]]
+        s.retain(lambda c: c[0] < 5.0)
+        self.assertEqual((len(s.verts), len(s.alpha)), (4, 4))
+        self.assertEqual(sorted(set(s.alpha)), [0.0, 0.5])
+
+
 if __name__ == "__main__":
     unittest.main()
