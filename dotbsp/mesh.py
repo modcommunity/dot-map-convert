@@ -28,14 +28,17 @@ keeps its exact plane normal; `rendermode 10`, an alpha render mode at `renderam
 `func_brush` that starts disabled are not drawn. The 3D skybox
 (`skybox_of`, `sky_scale`) is g2g's too: its room's faces are moved out and scaled up around the
 world origin as the engine draws them, flagged `sky3d`, and never collide. Left in g2g for now:
-the baked lightmap atlas (a game that bakes its own light does not want the map's), packed
-textures (never shipped) and coplanar brush merging.
+packed textures (never shipped) and coplanar brush merging. The map's own baked light
+(`lightmap.py`) is imported: a second UV set per vertex into RGB9E5 atlas pages.
 
-The binary (`dot-bsp-mesh`, version 1), little-endian:
+The binary (`dot-bsp-mesh`, version 1; version 2 when the map carries lighting), little-endian:
 
 - a surface's vertices are `vertex_count` records of eight float32: position (3, metres),
   normal (3), uv (2: the source texture's own coordinate divided by its size, so one repeat
   of a replacement is one repeat of the original, laid where the mapper laid it);
+- version 2 adds, per lightmapped surface, `uv2_offset`: `vertex_count` float32 pairs into
+  the atlas page `lightmap_page`, and the manifest's `lightmap` record (pages of RGB9E5
+  texels, `page_width` wide, stored in the same blob). A v1 reader ignores both;
 - then `index_count` uint32 triangle indices into that surface's vertices;
 - a hull is `point_count` float32 triples and `plane_count` float32 quads (nx, ny, nz, d with
   n.p <= d inside), in metres and Godot axes.
@@ -50,12 +53,12 @@ import os
 import random
 import struct
 
-from . import docboxes, reader, texturemap
+from . import docboxes, lightmap as _lightmap, reader, texturemap
 from . import vis as _vis
 from . import units as _units
 
 FORMAT = "dot-bsp-mesh"
-VERSION = 1
+VERSION = 2
 
 # Brush entities a player SEES. The solid list decides collision and is the wrong list for
 # drawing: func_clip_vphysics is solid and invisible, func_illusionary visible and not solid.
@@ -222,7 +225,7 @@ def _sky_face(bsp, f, off, sky):
 class Surface:
     __slots__ = ("model", "entity", "classname", "targetname", "material", "generic", "tint",
                  "colour", "texels", "water", "glass", "displacement", "collide", "sky3d", "chunk", "verts",
-                 "index", "_dedupe", "clusters")
+                 "index", "_dedupe", "clusters", "page", "emissive", "uv2")
 
     def __init__(self, model, entity, classname, targetname, material):
         self.model, self.entity, self.classname, self.targetname = model, entity, classname, targetname
@@ -231,16 +234,19 @@ class Surface:
         self.water = self.displacement = self.collide = self.sky3d = False
         self.glass = None
         self.chunk = self.clusters = None
-        self.verts, self.index, self._dedupe = [], [], {}
+        self.page, self.emissive = None, False
+        self.verts, self.index, self._dedupe, self.uv2 = [], [], {}, []
 
-    def vertex(self, p, n, uv):
+    def vertex(self, p, n, uv, uv2=None):
         k = (round(p[0], 4), round(p[1], 4), round(p[2], 4), round(n[0], 3), round(n[1], 3),
-             round(n[2], 3), round(uv[0], 4), round(uv[1], 4))
+             round(n[2], 3), round(uv[0], 4), round(uv[1], 4),
+             None if uv2 is None else (round(uv2[0], 5), round(uv2[1], 5)))
         i = self._dedupe.get(k)
         if i is None:
             i = len(self.verts)
             self._dedupe[k] = i
             self.verts.append((p, n, uv))
+            self.uv2.append(uv2)
         return i
 
     def area(self):
@@ -264,6 +270,8 @@ class Mesh:
         self.skipped = collections.Counter()
         self.translucent_unmapped = collections.Counter()
         self.vis = None
+        self.atlas = None
+        self.ambient = []
 
     def triangles(self, displacements=True):
         """Every drawn triangle as three game-metre points, for a coverage test."""
@@ -310,7 +318,7 @@ CHUNK = 32.0
 
 def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classify_material,
           drawn_classes=DRAWN_BRUSH_ENTITIES, solid_classes=SOLID_BRUSH_ENTITIES, chunk=CHUNK,
-          visibility=True):
+          visibility=True, lighting=True):
     """The drawn and solid world of a loaded `reader.Bsp` as a `Mesh`, in metres and Godot axes.
 
     `tmap` is a `texturemap.TextureMap` (the shared list by default). `y0` is subtracted from
@@ -318,7 +326,8 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     brush entities are drawn and which collide. The world's faces are split into `chunk`-metre
     columns (x, z), one surface per material per column, so a renderer culls what is out of
     view instead of drawing one map-sized surface per material (0 turns it off). `visibility` keeps
-    the map's precomputed visibility and occluders (`vis.attach`).
+    the map's precomputed visibility and occluders (`vis.attach`). `lighting` imports the map's
+    baked lightmap (`lightmap.pack`) as a second UV set.
     """
     tmap = tmap or texturemap.load()
     out = Mesh()
@@ -326,6 +335,9 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     out.source = {"file": os.path.basename(bsp.path), "bytes": len(bsp.d),
                   "sha256": hashlib.sha256(bsp.d).hexdigest(), "bsp_version": bsp.version}
     owners = model_entities(bsp)
+    if lighting:
+        out.ambient = _lightmap.ambient(bsp, scale, y0)
+        out.atlas = _lightmap.pack(bsp, [f for f in bsp.faces if not bsp.face_material(f)[1] & reader.SKIP_MASK])
 
     sky, k = _sky_setup(bsp, drawn_classes)
     if sky is not None:
@@ -378,7 +390,7 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                         cell = [int(math.floor(c[0] / chunk)), int(math.floor(c[2] / chunk))]
                 _add_face(bsp, f, name, mi, ei, cls, e.get("targetname", ""), off, surfaces, tmap,
                           classify, g_sky if in_sky else g, gn, in_sky, cell,
-                          out.translucent_unmapped if flags & SURF_TRANS else None)
+                          out.translucent_unmapped if flags & SURF_TRANS else None, out.atlas)
         solid = mi == 0 or cls in solid_classes
         if not solid:
             continue
@@ -423,9 +435,14 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
 
 
 def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classify, g, gn, sky3d=False,
-              chunk=None, trans=None):
+              chunk=None, trans=None, atlas=None):
     disp = f[6] >= 0
-    key = (mi, name, disp, sky3d, tuple(chunk) if chunk else None)
+    ti = bsp.texinfo[f[5]]
+    page = None
+    if atlas is not None:
+        page = atlas.place[id(f)][0] if id(f) in atlas.place else 0
+    emissive = bool(int(ti[16]) & _lightmap.SURF_LIGHT)
+    key = (mi, name, disp, sky3d, tuple(chunk) if chunk else None, page, emissive)
     s = surfaces.get(key)
     if s is None:
         s = Surface(mi, ei, cls, targetname, reader.clean_material(name))
@@ -438,10 +455,10 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
         s.collide = disp and not sky3d
         s.sky3d = sky3d
         s.chunk = chunk
+        s.page, s.emissive = page, emissive
         surfaces[key] = s
     if trans is not None and not s.water and not s.glass:
         trans[classify(name)] += 1
-    ti = bsp.texinfo[f[5]]
     td = int(ti[17])
     tw = th = 1
     if 0 <= td < len(bsp.texdata):
@@ -453,6 +470,9 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
     def uv(p):
         return ((p[0] * ti[0] + p[1] * ti[1] + p[2] * ti[2] + ti[3]) / tw,
                 (p[0] * ti[4] + p[1] * ti[5] + p[2] * ti[6] + ti[7]) / th)
+
+    def lm(p):
+        return _lightmap.uv2(atlas, f, ti, p)[1] if atlas is not None else None
 
     if disp:
         tris = bsp.displacement_tris(f, with_base=True)
@@ -474,7 +494,7 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
                 nn = acc[(round(p[0], 2), round(p[1], 2), round(p[2], 2))]
                 ln = math.sqrt(sum(c * c for c in nn)) or 1.0
                 # A displacement's texture lies on the flat quad it was drawn from.
-                ids.append(s.vertex(g(p, off), gn([c / ln for c in nn]), uv(base)))
+                ids.append(s.vertex(g(p, off), gn([c / ln for c in nn]), uv(base), lm(base)))
             if len(set(ids)) == 3:
                 s.index.extend(ids)
         return
@@ -482,7 +502,7 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
     if len(pts) < 3:
         return
     n = gn(bsp.planes[f[0]][:3])
-    ring = [s.vertex(g(p, off), n, uv(p)) for p in pts]
+    ring = [s.vertex(g(p, off), n, uv(p), lm(p)) for p in pts]
     for k in range(1, len(ring) - 1):
         tri = (ring[0], ring[k], ring[k + 1])
         if len(set(tri)) == 3:
@@ -492,7 +512,7 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
 # --- writing ------------------------------------------------------------------------------
 
 def manifest(mesh, credit=None, name=None):
-    return {"format": FORMAT, "version": VERSION, "name": name,
+    return {"format": FORMAT, "version": VERSION if mesh.atlas is not None or mesh.ambient else 1, "name": name,
             "units": {"length": "metres", "metres_per_unit": mesh.scale, "y0": mesh.y0,
                       "axes": "Godot (x, z, -y) of the map's", "vertex": LAYOUT,
                       "uv": "source texture coordinate / source texture size"},
@@ -515,12 +535,21 @@ def write(mesh, prefix, credit=None, name=None, extra=None):
         blob += struct.pack("<%df" % (3 * n), *[c for v in s.verts for c in v[1]])
         uoff = len(blob)
         blob += struct.pack("<%df" % (2 * n), *[c for v in s.verts for c in v[2]])
+        uv2off = None
+        if s.page is not None:
+            uv2off = len(blob)
+            blob += struct.pack("<%df" % (2 * n), *[c for uv in s.uv2 for c in uv])
         ioff = len(blob)
         blob += struct.pack("<%dI" % len(s.index), *s.index)
         rec = {"model": s.model, "entity": s.entity, "classname": s.classname, "material": s.material,
                "generic": s.generic, "vertex_count": n, "position_offset": poff,
                "normal_offset": noff, "uv_offset": uoff,
                "index_offset": ioff, "index_count": len(s.index)}
+        if uv2off is not None:
+            rec["uv2_offset"] = uv2off
+            rec["lightmap_page"] = s.page
+        if s.emissive:
+            rec["emissive"] = True
         for k in ("targetname", "tint", "colour", "texels", "chunk"):
             v = getattr(s, k)
             if v:
@@ -544,6 +573,18 @@ def write(mesh, prefix, credit=None, name=None, extra=None):
         hulls.append({"brush": h["brush"], "model": h["model"], "entity": h["entity"], "kind": h["kind"],
                       "point_offset": poff, "point_count": len(h["points"]),
                       "plane_offset": qoff, "plane_count": len(h["planes"])})
+    if mesh.atlas is not None:
+        pages = []
+        for img, height in zip(mesh.atlas.pages, mesh.atlas.heights):
+            pages.append({"offset": len(blob), "width": _lightmap.PAGE, "height": height})
+            blob += img.astype("<u4").tobytes()
+        doc["lightmap"] = {"format": "rgbe9995", "page_width": _lightmap.PAGE, "pages": pages,
+                           "lit_faces": mesh.atlas.lit_faces, "texels": mesh.atlas.texels, "scale": 1.0}
+    if mesh.ambient:
+        aoff = len(blob)
+        for x, y, z, cube in mesh.ambient:
+            blob += struct.pack("<21f", x, y, z, *[c for rgb in cube for c in rgb])
+        doc.setdefault("lightmap", {})["ambient"] = {"offset": aoff, "count": len(mesh.ambient), "stride": 84}
     doc["surfaces"] = surfaces
     doc["hulls"] = hulls
     if mesh.vis is not None:
@@ -582,8 +623,11 @@ def read(prefix):
         pos = struct.unpack_from("<%df" % (3 * n), blob, rec["position_offset"])
         nor = struct.unpack_from("<%df" % (3 * n), blob, rec["normal_offset"])
         uvs = struct.unpack_from("<%df" % (2 * n), blob, rec["uv_offset"])
+        uv2 = struct.unpack_from("<%df" % (2 * n), blob, rec["uv2_offset"]) if "uv2_offset" in rec else None
+        s.page, s.emissive = rec.get("lightmap_page"), rec.get("emissive", False)
         for i in range(n):
             s.verts.append((pos[3 * i:3 * i + 3], nor[3 * i:3 * i + 3], uvs[2 * i:2 * i + 2]))
+            s.uv2.append(uv2[2 * i:2 * i + 2] if uv2 else None)
         s.index = list(struct.unpack_from("<%dI" % rec["index_count"], blob, rec["index_offset"]))
         m.surfaces.append(s)
     for rec in doc["hulls"]:
