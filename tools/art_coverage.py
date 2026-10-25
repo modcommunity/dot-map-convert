@@ -1,11 +1,14 @@
 #!/usr/bin/env python3 -I
-"""How much of each converted map's art is real, and how much fell to a generic stand-in.
+"""How much of each converted map's art is real, and how much is a flat or stand-in surface.
 
     tools/art_coverage.py [--root DIR] [--max-default PCT] [--json PATH] [--worst N]
 
 Reads every `*.coverage.json` under DIR/*/world/*/ (default: the folder holding this repo's
-siblings) and prints the share of textures and models that landed on the `default` or `fallback`
-tier. Exits 1 when any map is over --max-default (default 5), so it can gate a map as done.
+siblings). A texture counts as real when a free photo or PBR set was found for it
+(`free_by_tier`), anything else is a generated flat colour; a model counts as unmapped when no
+rule tier named it (`fallback`). A `default` tier answer only means the built-in rule table
+matched, which says nothing about how good the match is. Exits 1 when any map has more than
+--max-default percent flat textures or unmapped models (default 5), so it can gate a map as done.
 """
 
 import argparse
@@ -17,10 +20,12 @@ import sys
 KINDS = ("textures", "models")
 
 
-def share(entry):
+def share(kind, entry):
     n = entry.get("looked_up", 0)
-    tiers = entry.get("by_tier", {})
-    generic = tiers.get("default", 0) + tiers.get("fallback", 0)
+    if kind == "textures":
+        generic = n - sum(entry.get("free_by_tier", {}).values())
+    else:
+        generic = entry.get("by_tier", {}).get("fallback", 0)
     return n, generic, (100.0 * generic / n if n else 0.0)
 
 
@@ -34,15 +39,20 @@ def main():
     a = ap.parse_args()
 
     maps = []
+    seen = set()
     for path in sorted(glob.glob(os.path.join(a.root, "*", "world", "*", "*.coverage.json"))):
         try:
             with open(path, encoding="utf-8") as f:
                 d = json.load(f)
         except (OSError, ValueError):
             continue
+        key = (d.get("map"), d.get("sha256"))
+        if key in seen:
+            continue
+        seen.add(key)
         row = {"map": d.get("map") or os.path.basename(path).split(".")[0], "repo": path[len(a.root) + 1:].split(os.sep)[0]}
         for k in KINDS:
-            n, g, pct = share(d.get(k, {}))
+            n, g, pct = share(k, d.get(k, {}))
             row[k] = {"total": n, "generic": g, "pct": round(pct, 1)}
         maps.append(row)
 
@@ -53,7 +63,7 @@ def main():
         totals[k] = {"total": n, "generic": g, "pct": round(100.0 * g / n, 1) if n else 0.0}
     failing = [m for m in maps if any(m[k]["pct"] > a.max_default for k in KINDS)]
 
-    print("art coverage: %d maps; generic textures %.1f%% (%d/%d), generic models %.1f%% (%d/%d); %d over %.0f%%" % (
+    print("art coverage: %d maps; flat textures %.1f%% (%d/%d), unmapped models %.1f%% (%d/%d); %d over %.0f%%" % (
         len(maps), totals["textures"]["pct"], totals["textures"]["generic"], totals["textures"]["total"],
         totals["models"]["pct"], totals["models"]["generic"], totals["models"]["total"], len(failing), a.max_default))
     for m in sorted(maps, key=lambda m: -(m["textures"]["generic"] + m["models"]["generic"]))[:a.worst]:
