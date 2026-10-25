@@ -125,4 +125,7 @@ def ship(bsp, name, prefix, credit=None, prop_table=None, scale=units.VISUAL, y0
     store.ship_document(bsp.d, prefix)
     with open(os.path.join(outdir, "CREDITS.md"), "w") as f:
         f.write(licence.credits_markdown(doc))
+    with open(os.path.join(outdir, "credits.json"), "w") as f:
+        json.dump({"map": {k: doc.get("credit", {}).get(k, "") for k in ("author", "page", "licence")}, "works": licence.credits_list(doc)}, f, indent=1)
+        f.write("\n")
     return doc, problems

@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import pbrmap, modeldims, modelmap, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
+from dotbsp import pbrmap, modeldims, modelmap, storepack, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -464,10 +464,22 @@ def main(argv):
     mm = sub.add_parser("modelmap", help="pick a free library model (or generate a plain one) for every ranked prop model (rules/models/picks.tsv)")
     mm.add_argument("--out", help="directory for picks.tsv; default rules/models")
     mm.add_argument("--report", help="write the models that got a generated stand-in (reason, instances, model, size) to this file")
+    sp = sub.add_parser("storepack", help="publish the PBR sets and models maps draw as dot-cloud slices (dotbsp/storepack.py)")
+    sp.add_argument("packs", nargs="+", help="a map pack folder (or its manifest.json), regenerated with its stores beside it")
+    sp.add_argument("--out", required=True, help="the Godot project folder the slices are built and imported in")
+    sp.add_argument("--dist", required=True, help="where the published packs go")
+    sp.add_argument("--owner", default="gamemann", help="dot-cloud id owner segment (the site username)")
+    sp.add_argument("--prefix", default="store-", help="slice name prefix")
+    sp.add_argument("--key", help="signing key for dot-cloud publish")
+    sp.add_argument("--cloud", default=os.path.expanduser("~/godot/dot-cloud"), help="the dot-cloud checkout")
+    sp.add_argument("--godot", help="the engine binary")
+    sp.add_argument("--combined", action="store_true", help="one slice for all the packs instead of one each")
+    sp.add_argument("--lossless", action="store_true", help="import textures lossless instead of VRAM-compressed")
+    sp.add_argument("--dry-run", action="store_true", help="build the slice folders and stop")
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd}[args.cmd](args)
+                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "storepack": storepack.run_cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2

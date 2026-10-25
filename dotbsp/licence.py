@@ -221,3 +221,34 @@ def credits_markdown(doc):
             lines += ["", "# " + title, ""]
             lines += ["- %s: %s, %s, %s, %s" % (t["stand_in"], t["source"], t["author"], t["licence"], t["url"]) for t in rows]
     return "\n".join(lines) + "\n"
+
+
+# Licences that require the author to be named where the work is shown.
+ATTRIBUTION = frozenset(("CC-BY-4.0",))
+
+
+def credits_list(doc):
+    """The machine-readable credits of a map: one dict per distinct work it shows (kind, name, author, licence, url,
+    source, `attribution` true when the licence requires naming the author, `uses` how many times it is drawn).
+    The same rows `credits_markdown` prints; `DotMapCredits` reads them from the manifest's licence block."""
+    out, seen = [], {}
+    block = doc.get("licence", {})
+
+    def add(kind, name, row, uses):
+        k = (kind, row.get("url") or name)
+        if k in seen:
+            seen[k]["uses"] += uses
+            return
+        seen[k] = {"kind": kind, "name": name, "author": row.get("author", ""), "licence": row.get("licence", ""),
+                   "url": row.get("url", ""), "source": row.get("source", ""),
+                   "attribution": row.get("licence") in ATTRIBUTION, "uses": uses}
+        out.append(seen[k])
+
+    for t in block.get("textures", []):
+        if t["kind"] != "generated":
+            add("texture", t["generic"], t, int(t.get("surfaces", 1)))
+    for t in block.get("model_stand_ins", []):
+        add("model", t["stand_in"], t, int(t.get("count", 1)))
+    for t in block.get("sounds", []):
+        add("sound", t["stand_in"], t, int(t.get("count", 1)))
+    return out

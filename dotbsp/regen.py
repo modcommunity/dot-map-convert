@@ -93,6 +93,9 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     store.ship_document(bsp.d, out, os.path.join(os.path.dirname(path), "doc.json"))
     with open(os.path.join(outdir, "CREDITS.md"), "w") as f:
         f.write(licence.credits_markdown(doc))
+    with open(os.path.join(outdir, "credits.json"), "w") as f:
+        json.dump({"map": {k: doc.get("credit", {}).get(k, "") for k in ("author", "page", "licence")}, "works": licence.credits_list(doc)}, f, indent=1)
+        f.write("\n")
     return doc, rep, problems
 
 
