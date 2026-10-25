@@ -342,7 +342,12 @@ def glass_kind(generic, classname):
     return "glass" if classname in GLASS_CLASSES else None
 
 
-CHUNK = 32.0
+import os as _os
+
+# Metres of a drawn-world cell across (x, z) and up (y). A cell is the unit the renderer and DotMapVisibility cull, so
+# it is as small as the draw-call cost of a map seen whole allows; DOTBSP_CHUNK / DOTBSP_CHUNK_Y override for measuring.
+CHUNK = float(_os.environ.get("DOTBSP_CHUNK", "16"))
+CHUNK_Y = float(_os.environ.get("DOTBSP_CHUNK_Y", "6"))
 
 
 def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classify_material,
@@ -353,7 +358,7 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     `tmap` is a `texturemap.TextureMap` (the shared list by default). `y0` is subtracted from
     every height, for a game whose floor is at 0. `drawn_classes` and `solid_classes` say which
     brush entities are drawn and which collide. The world's faces are split into `chunk`-metre
-    columns (x, z), one surface per material per column, so a renderer culls what is out of
+    columns (x, z), and `CHUNK_Y` bands up, one surface per material per column, so a renderer culls what is out of
     view instead of drawing one map-sized surface per material (0 turns it off). `visibility` keeps
     the map's precomputed visibility and occluders (`vis.attach`). `lighting` imports the map's
     baked lightmap (`lightmap.pack`) as a second UV set.
@@ -417,6 +422,8 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                     if fp:
                         c = g([sum(p[i] for p in fp) / len(fp) for i in range(3)], off)
                         cell = [int(math.floor(c[0] / chunk)), int(math.floor(c[2] / chunk))]
+                        if CHUNK_Y > 0:
+                            cell.append(int(math.floor(c[1] / CHUNK_Y)))
                 _add_face(bsp, f, name, mi, ei, cls, e.get("targetname", ""), off, surfaces, tmap,
                           classify, g_sky if in_sky else g, gn, in_sky, cell,
                           out.translucent_unmapped if flags & SURF_TRANS else None, out.atlas)
