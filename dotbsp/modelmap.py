@@ -23,7 +23,7 @@ CATEGORIES = "categories.tsv"
 PICKS = "picks.tsv"
 ALT_STEP = 0.08         # a later alternative in a category's library regex costs this much distance
 REACH = 0.85            # largest shape distance (log units) a library model may have from the original
-BIAS = {"Poly Haven": -0.12, "Quaternius": -0.06}
+BIAS = {"Poly Haven": -0.12, "Quaternius": -0.06, "Sketchfab": -0.1}
 OWN_AUTHOR = "TMC (generated for dot-map)"
 OWN_URL = "https://github.com/modcommunity/dot-map"
 
