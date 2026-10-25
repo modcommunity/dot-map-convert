@@ -101,6 +101,7 @@ def slice_for(docs, pbr_store, model_store, dest, vram=True):
         pbr |= p
         models.update(m)
     files = []
+    os.makedirs(dest, exist_ok=True)    # a map that draws no stored art (Raven Street) still gets its credits.json
 
     def put(src, rel, normal=False, marker=True):
         out = os.path.join(dest, rel)
@@ -191,7 +192,29 @@ def run_cmd(args):
         for mp, _ in items:
             if stamp(mp, sid, version):
                 print("storepack: stamped %s -> %s@%s" % (mp, sid, version))
+    saved = link_objects(args.dist)
+    print("storepack: hardlinked %.1f MiB of objects shared between slices" % (saved / 1048576.0))
     return 0
+
+
+def link_objects(dist):
+    """Hardlink identical content-addressed objects across every published slice under `dist`, so a set two maps draw is stored once."""
+    seen = {}
+    saved = 0
+    for root, _, names in os.walk(dist):
+        if os.sep + "objects" + os.sep not in root + os.sep:
+            continue
+        for n in names:
+            p = os.path.join(root, n)
+            first = seen.setdefault(n, p)
+            if first == p or os.path.samefile(first, p):
+                continue
+            size = os.path.getsize(p)
+            tmp = p + ".lnk"
+            os.link(first, tmp)
+            os.replace(tmp, p)
+            saved += size
+    return saved
 
 
 def slice_id(owner, name):
