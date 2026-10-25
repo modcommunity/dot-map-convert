@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import pbrmap, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
+from dotbsp import pbrmap, modeldims, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -455,10 +455,14 @@ def main(argv):
     pm.add_argument("--root", action="append", help="a directory holding <game>/world/<map>/ (repeatable; default ~/godot)")
     pm.add_argument("--library", help="the library's materials folder; default $DOT_ART_LIBRARY or ~/art-library/materials")
     pm.add_argument("--out", help="the tier directory to write; default tools/bsp/rules/pbr")
+    md = sub.add_parser("modeldims", help="count every placed model over the store and write its size (rules/models/model_dims.tsv, ranking.tsv)")
+    md.add_argument("--root", help="the store; default $DOTBSP_STORE or ~/mapsrc/store")
+    md.add_argument("--game-vpk", help="a game directory's <name>_dir.vpk: the size of a stock model no map packs is read from its header")
+    md.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "rules", "models"))
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd}[args.cmd](args)
+                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2
