@@ -463,6 +463,7 @@ def main(argv):
     md.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "rules", "models"))
     mm = sub.add_parser("modelmap", help="pick a free library model (or generate a plain one) for every ranked prop model (rules/models/picks.tsv)")
     mm.add_argument("--out", help="directory for picks.tsv; default rules/models")
+    mm.add_argument("--report", help="write the models that got a generated stand-in (reason, instances, model, size) to this file")
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,

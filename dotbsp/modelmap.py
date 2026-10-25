@@ -22,6 +22,8 @@ RULES = modeldims.RULES
 CATEGORIES = "categories.tsv"
 PICKS = "picks.tsv"
 ALT_STEP = 0.08         # a later alternative in a category's library regex costs this much distance
+SLAB = 0.1              # a target side under this many metres is not matched on
+LOOSE = 1.4             # the second pass: a library model of the right kind that is only roughly the shape
 REACH = 0.85            # largest shape distance (log units) a library model may have from the original
 BIAS = {"Poly Haven": -0.12, "Quaternius": -0.06, "Sketchfab": -0.1}
 OWN_AUTHOR = "TMC (generated for dot-map)"
@@ -61,7 +63,10 @@ def categories(path=None):
     return rows
 
 
-GENERIC = {"name": None, "lib": None, "dims": (0.5, 0.5, 0.5), "shape": "box", "colour": "909088"}
+# a model with no name to go by (`cyph_prop_13`): its measured shape alone picks a real-sized household prop
+GENERIC = {"name": None, "lib": [re.compile(r"^(?:ph_|sf_|q_|kenney_(?:furniture|survival|food|retro_urban|factory|mini_market))")],
+           "exclude": re.compile(r"grenade|gun|rifle|pistol|knife|sword|chandelier|bomb|mine|skull|body|corpse|ghost|banner|flag"),
+           "reach": 0.3, "scale": (0.7, 1.45), "dims": (0.5, 0.5, 0.5), "shape": "box", "colour": "909088"}
 
 
 SKIP_KITS = re.compile(r"kenney_(hexagon|tower-defense|marble|platformer|brick|coaster|minigolf|mini-skate|toy-car|cube-pets|blocky|mini-characters|mini-dungeon|mini-forest|mini-arena|prototype|blaster|holiday|road-pack|city-kit-roads|modular|space-kit|space-station|retro-fantasy|castle|fantasy)")
@@ -80,8 +85,11 @@ def distance(target, lib, turn_margin=0.15):
         t = [max(v, 0.005) for v in (target[0], target[1], target[2])]
         l = [max(v, 0.005) for v in (a, lib[1], b)]
         r = [math.log(t[i] / l[i]) for i in range(3)]
-        s = math.exp(sum(r) / 3.0)
-        d = max(abs(v - sum(r) / 3.0) for v in r) + 0.3 * abs(math.log(s))
+        # a door, a pane or a light strip is thin by a few centimetres: the library's thickness decides nothing
+        use = [i for i in range(3) if t[i] > SLAB] if sum(1 for v in t if v > SLAB) >= 2 else range(3)
+        mean = sum(r[i] for i in use) / len(use)
+        s = math.exp(mean)
+        d = max(abs(r[i] - mean) for i in use) + 0.3 * abs(math.log(s))
         cand = (d + (0.0 if turns == 0 else turn_margin), s, turns)
         if best is None or cand < best:
             best = cand
@@ -121,6 +129,12 @@ def _jitter(model):
 
 def pick(model, size, cat, lib):
     """(record, scale, turns, distance) of the best library model for `model`, or None."""
+    if "reach" in cat:
+        return _pick(model, size, cat, lib, cat["reach"])
+    return _pick(model, size, cat, lib, REACH) or _pick(model, size, cat, lib, LOOSE)
+
+
+def _pick(model, size, cat, lib, reach):
     best = None
     scored = []
     for m in lib:
@@ -132,13 +146,25 @@ def pick(model, size, cat, lib):
         rank = next((i for i, rx in enumerate(cat["lib"]) if rx.search(name)), None)
         if rank is not None:
             d, s, t = distance(size, m["dims"])
+            if "exclude" in cat and cat["exclude"].search(name):
+                continue
+            if "scale" in cat and not cat["scale"][0] <= s <= cat["scale"][1]:
+                continue
             scored.append((d + BIAS.get(m["source"], 0.0) + ALT_STEP * rank, s, t, m))
     scored.sort(key=lambda r: r[0])
-    if scored and scored[0][0] <= REACH:
+    if scored and scored[0][0] <= reach:
         near = [r for r in scored if r[0] <= scored[0][0] + 0.06][:6]
         d, s, t, m = near[int(_jitter(model) * len(near)) % len(near)]
         return m, s, t, d
     return best
+
+
+def category_of(key, cats):
+    """The first category whose name words match the model's file name (extension off). Not the folder: a substring
+    of `props/de_inferno` is a fern."""
+    stem = key.lower().rsplit("/", 1)[-1].rsplit(".", 1)[0]
+    cat = next((c for c in cats if c["name"].search(stem)), None)
+    return cat
 
 
 def cmd(args):
@@ -152,6 +178,7 @@ def cmd(args):
             if line and not line.startswith("#"):
                 c = line.split("\t")
                 rank.append((c[1], int(c[2])))
+    report = []
     rows, stat = [], {"library": 0, "own": 0, "skipped": 0, "none": 0}
     instances = {k: 0 for k in stat}
     for model, n in rank:
@@ -160,13 +187,14 @@ def cmd(args):
             stat["skipped"] += 1
             instances["skipped"] += n
             continue
-        cat = next((c for c in cats if c["name"].search(key.lower().rsplit("/", 1)[-1])), None)
+        cat = category_of(key, cats)
         d = dims.get(model)
         if cat is None and d:
             cat = GENERIC
         if cat is None:
             stat["none"] += 1
             instances["none"] += n
+            report.append(("none", n, model, ""))
             continue
         if d:
             lo, hi = d[0], d[1]
@@ -185,6 +213,7 @@ def cmd(args):
             kind = "own"
             sub = "generic" if cat is GENERIC else "plain" if cat["lib"] is None else "nofit"
             instances[sub] = instances.get(sub, 0) + n
+            report.append((sub, n, model, "x".join("%.2f" % v for v in size)))
             m = own_model(root, "cyl" if cat["shape"] == "cyl" else "box", size, cat["colour"])
             s, turns = 1.0, 0
             if cat["shape"] == "none":
@@ -201,6 +230,10 @@ def cmd(args):
         f.write("# model<TAB>library id<TAB>size (m, longest side)<TAB>quarter turns<TAB>centre x<TAB>centre z<TAB>base y (original, m)<TAB>source<TAB>url<TAB>author<TAB>licence<TAB>file. bsp.py modelmap\n")
         for r in rows:
             f.write("\t".join(r) + "\n")
+    if getattr(args, "report", None):
+        with open(args.report, "w", encoding="utf-8") as f:
+            for r in sorted(report, key=lambda r: -r[1]):
+                f.write("%s\t%d\t%s\t%s\n" % r)
     total = sum(n for _m, n in rank)
     print("picked %d models: %d library, %d generated; %d skipped (skybox, left out on purpose), %d with no category" % (
         len(rows), stat["library"], stat["own"], stat["skipped"], stat["none"]))

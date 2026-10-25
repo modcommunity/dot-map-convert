@@ -39,6 +39,21 @@ class ModelMap(unittest.TestCase):
         self.assertEqual(got[0]["id"], "ph_chair_01")
         self.assertIsNone(modelmap.pick("x", (0.5, 0.9, 0.5), {"lib": [modelmap.re.compile("sofa")]}, lib))
 
+    def test_thin_target_ignores_thickness(self):
+        d, _s, turns = modelmap.distance((0.91, 2.06, 0.04), (0.9, 2.0, 0.12))
+        self.assertEqual(turns, 1)
+        self.assertLess(d, 0.2)
+
+    def test_category_ignores_extension_and_folder(self):
+        cats = modelmap.categories()
+        self.assertIsNotNone(modelmap.category_of("props/x/kk_barrel.mdl", cats))
+        self.assertIsNone(modelmap.category_of("props/de_inferno/zzzz.mdl", cats))
+
+    def test_generic_shape_pick_skips_weapons(self):
+        lib = [rec("ph_stick_grenade", (0.08, 0.33, 0.08)), rec("ph_candle_holder", (0.08, 0.33, 0.08))]
+        got = modelmap.pick("m", (0.08, 0.33, 0.08), modelmap.GENERIC, lib)
+        self.assertEqual(got[0]["id"], "ph_candle_holder")
+
     def test_own_model_and_ship(self):
         with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as store:
             r = modelmap.own_model(root, "box", (0.5, 0.2, 0.3), "e8e8e0")
