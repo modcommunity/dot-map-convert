@@ -350,9 +350,19 @@ CHUNK = float(_os.environ.get("DOTBSP_CHUNK", "16"))
 CHUNK_Y = float(_os.environ.get("DOTBSP_CHUNK_Y", "6"))
 
 
+def crop_keep(crop):
+    """A `keep(point)` for a crop `x0,z0,x1,z1[,ymin,ymax]` (metres, Godot axes), or None for no crop."""
+    if crop is None:
+        return None
+    c = [float(v) for v in crop]
+    if len(c) not in (4, 6) or c[0] > c[2] or c[1] > c[3]:
+        raise ValueError("a crop is x0,z0,x1,z1[,ymin,ymax] with the low corner first, got %r" % (crop,))
+    return lambda p: c[0] <= p[0] <= c[2] and c[1] <= p[2] <= c[3] and (len(c) == 4 or c[4] <= p[1] <= c[5])
+
+
 def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classify_material,
           drawn_classes=DRAWN_BRUSH_ENTITIES, solid_classes=SOLID_BRUSH_ENTITIES, chunk=CHUNK,
-          visibility=True, lighting=True):
+          visibility=True, lighting=True, crop=None):
     """The drawn and solid world of a loaded `reader.Bsp` as a `Mesh`, in metres and Godot axes.
 
     `tmap` is a `texturemap.TextureMap` (the shared list by default). `y0` is subtracted from
@@ -361,7 +371,9 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     columns (x, z), and `CHUNK_Y` bands up, one surface per material per column, so a renderer culls what is out of
     view instead of drawing one map-sized surface per material (0 turns it off). `visibility` keeps
     the map's precomputed visibility and occluders (`vis.attach`). `lighting` imports the map's
-    baked lightmap (`lightmap.pack`) as a second UV set.
+    baked lightmap (`lightmap.pack`) as a second UV set. `crop` is `x0,z0,x1,z1[,ymin,ymax]` in the
+    output's metres: a face, hull or brush model whose centre is outside is left out of the mesh, the
+    lightmap atlas, the occluders and the visibility sets alike, and so is the 3D sky.
     """
     tmap = tmap or texturemap.load()
     out = Mesh()
@@ -369,10 +381,7 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     out.source = {"file": os.path.basename(bsp.path), "bytes": len(bsp.d),
                   "sha256": hashlib.sha256(bsp.d).hexdigest(), "bsp_version": bsp.version}
     owners = model_entities(bsp)
-    if lighting:
-        out.ambient = _lightmap.ambient(bsp, scale, y0)
-        out.atlas = _lightmap.pack(bsp, [f for f in bsp.faces if not bsp.face_material(f)[1] & reader.SKIP_MASK])
-
+    keep = crop_keep(crop)
     sky, k = _sky_setup(bsp, drawn_classes)
     if sky is not None:
         out.sky = {"camera": list(sky[0]), "scale": k, "camera_scale": sky[1],
@@ -395,6 +404,24 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
         if 0 < mi < len(bsp.models):
             models.append((mi, owners[mi]))
 
+    # Per face for the world, per model for a brush entity (a door must not be split by the edge).
+    dropped = set()
+    model_in = {}
+    if keep is not None:
+        for mi, ei in models:
+            off = tuple(reader.entity_vec(bsp.entities[ei])) if ei is not None else (0.0, 0.0, 0.0)
+            if mi > 0:
+                pts = [p for fp in (bsp.face_points(f) for f in bsp.model_faces(mi)) if fp for p in fp]
+                model_in[mi] = bool(pts) and keep(g([sum(p[i] for p in pts) / len(pts) for i in range(3)], off))
+                continue
+            for f in bsp.model_faces(0):
+                fp = bsp.face_points(f) if f[6] < 0 else [p for t in bsp.displacement_tris(f) for p in t]
+                if fp and (_sky_face(bsp, f, off, sky) or not keep(g([sum(p[i] for p in fp) / len(fp) for i in range(3)], off))):
+                    dropped.add(id(f))
+    if lighting:
+        out.ambient = _lightmap.ambient(bsp, scale, y0)
+        out.atlas = _lightmap.pack(bsp, [f for f in bsp.faces if not bsp.face_material(f)[1] & reader.SKIP_MASK and id(f) not in dropped])
+
     surfaces = {}
     for mi, ei in models:
         e = bsp.entities[ei] if ei is not None else {}
@@ -406,6 +433,9 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
         if drawn:
             for f in bsp.model_faces(mi):
                 name, flags = bsp.face_material(f)
+                if id(f) in dropped or (keep is not None and mi > 0 and not model_in[mi]):
+                    out.skipped["crop:face"] += 1
+                    continue
                 if flags & reader.SKIP_MASK:
                     out.skipped["face:" + reader.clean_material(name)] += 1
                     continue
@@ -440,6 +470,9 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
             if len(pts) < 4:
                 out.skipped["hull:degenerate"] += 1
                 continue
+            if keep is not None and not (model_in[mi] if mi > 0 else keep(g([sum(p[i] for p in pts) / len(pts) for i in range(3)], off))):
+                out.skipped["crop:hull"] += 1
+                continue
             if sky is not None and all(in_box((p[0] + off[0], p[1] + off[1], p[2] + off[2]), sky[2]) for p in pts):
                 out.skipped["hull:sky3d"] += 1      # the sky room is scenery, never stood in
                 continue
@@ -467,6 +500,48 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                          "source_textures.tsv): " + ", ".join("%s %d" % kv for kv in out.translucent_unmapped.most_common(12)))
     if visibility:
         _vis.attach(bsp, out, tmap, classify)
+    return out
+
+
+def triangulate(pts, normal):
+    """Triangles (index triples into `pts`) for a face's ring. A convex ring is a fan from its first
+    point, as ever; a concave one (a doorway cut in a wall face, an L-shaped floor) is ear-clipped,
+    because a fan across a concave ring covers what the face does not, and that drew a wedge over a house."""
+    n = len(pts)
+    ax = max(range(3), key=lambda i: abs(normal[i]))
+    u, v = [i for i in range(3) if i != ax]
+    flip = normal[ax] < 0
+    q = [(p[u], p[v]) for p in pts]
+    if flip:
+        q = [(y, x) for x, y in q]
+
+    def cross(a, b, c):
+        return (q[b][0] - q[a][0]) * (q[c][1] - q[a][1]) - (q[b][1] - q[a][1]) * (q[c][0] - q[a][0])
+
+    area2 = sum(q[i][0] * q[(i + 1) % n][1] - q[(i + 1) % n][0] * q[i][1] for i in range(n))
+    sign = 1.0 if area2 >= 0 else -1.0
+    if all(sign * cross(i, (i + 1) % n, (i + 2) % n) >= -1e-6 for i in range(n)):
+        return [(0, k, k + 1) for k in range(1, n - 1)]
+    rest = list(range(n))
+    out = []
+    guard = n * n
+    while len(rest) > 3 and guard > 0:
+        guard -= 1
+        m = len(rest)
+        for i in range(m):
+            a, b, c = rest[i - 1], rest[i], rest[(i + 1) % m]
+            if sign * cross(a, b, c) <= 1e-9:
+                continue
+            if any(sign * cross(a, b, d) >= 0 and sign * cross(b, c, d) >= 0 and sign * cross(c, a, d) >= 0
+                   for d in rest if d not in (a, b, c)):
+                continue
+            out.append((a, b, c))
+            del rest[i]
+            break
+        else:
+            break
+    if len(rest) >= 3:
+        out.extend((rest[0], rest[k], rest[k + 1]) for k in range(1, len(rest) - 1))
     return out
 
 
@@ -540,8 +615,8 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
         return
     n = gn(bsp.planes[f[0]][:3])
     ring = [s.vertex(g(p, off), n, uv(p), lm(p)) for p in pts]
-    for k in range(1, len(ring) - 1):
-        tri = (ring[0], ring[k], ring[k + 1])
+    for a, b, c in triangulate(pts, bsp.planes[f[0]][:3]):
+        tri = (ring[a], ring[b], ring[c])
         if len(set(tri)) == 3:
             s.index.extend(tri)
 

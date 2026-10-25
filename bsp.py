@@ -449,6 +449,7 @@ def main(argv):
     rg.add_argument("--name")
     rg.add_argument("--scale", default="visual")
     rg.add_argument("--y0", type=float, default=0.0)
+    rg.add_argument("--crop", metavar="x0,z0,x1,z1[,ymin,ymax]", help="output metres: leave out every face, hull, brush model, prop, entity, lightmap block and the 3D sky centred outside it, so a source map larger than the playable area is reduced to it")
     rg.add_argument("--no-pbr", action="store_true", help="leave out the PBR library tier (rules/pbr)")
     rg.add_argument("--no-models", action="store_true", help="draw props with the name and shape tables only, not the library picks (rules/models/picks.tsv)")
     rg.add_argument("--model-store", help="where the picked library models are copied once, by id (default: model-library beside the pack folder)")

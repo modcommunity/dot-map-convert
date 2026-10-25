@@ -48,12 +48,12 @@ def applied(rs):
         classes.treatment = orig
 
 
-def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None):
+def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None, crop=None):
     """Write the map at `out` (prefix); returns (manifest, coverage report, problems)."""
     with open(path, "rb") as f:
         bsp = reader.Bsp(path, data=f.read()).load()
     with applied(rs):
-        m = mesh.build(bsp, tmap=rs.textures_view(), scale=scale, y0=y0)
+        m = mesh.build(bsp, tmap=rs.textures_view(), scale=scale, y0=y0, crop=crop)
         report = classes.report(bsp)
         links = movers.links(bsp)
         ents = movers.generic(bsp)
@@ -74,6 +74,9 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
                  "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0),
                  "settings": mapcfg.defaults(store.commands(bsp.entities)),
                  "scripts": scripts.analyse(bsp.entities)}
+    keep = mesh.crop_keep(crop)
+    if keep is not None:
+        extra = _cropped(extra, keep)
     doc = mesh.write(m, out, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(out))
     from . import importer
@@ -83,6 +86,8 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
                      pbr_store=os.path.abspath(pbr_store or os.path.join(outdir, os.pardir, "pbr-library")),
                      model_store=os.path.abspath(model_store or os.path.join(outdir, os.pardir, "model-library")))
     doc["props"] = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0, shaped=shaped)
+    if keep is not None:
+        doc["props"] = [p for p in doc["props"] if keep(p["at"])]
     problems = licence.check(doc)
     # The starter per-map config: every map gets one, from the commands its entities send, commented out.
     mapcfg.write_suggestion(os.path.join(outdir, "dot_map", "map"), name.lower(), store.commands(bsp.entities))
@@ -99,6 +104,25 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     return doc, rep, problems
 
 
+def _point(rec):
+    """Where a converter record stands (metres), or None when it names no place."""
+    for k in ("at", "origin", "position"):
+        v = rec.get(k) if isinstance(rec, dict) else None
+        if isinstance(v, (list, tuple)) and len(v) == 3:
+            return v
+    if isinstance(rec, dict) and rec.get("mins") and rec.get("maxs"):
+        return [(a + b) / 2 for a, b in zip(rec["mins"], rec["maxs"])]
+    return None
+
+
+def _cropped(extra, keep):
+    """`extra`'s record lists with the ones standing outside the crop removed; records that name no place stay."""
+    out = dict(extra)
+    for k in ("movers", "movers_without_geometry", "spawns", "pickups"):
+        out[k] = [r for r in extra[k] if _point(r) is None or keep(_point(r))]
+    return out
+
+
 def addon_dirs(args):
     """The addon tiers: the PBR library tier first (unless --no-pbr or no library here), then the given ones."""
     out = list(args.addon_rules or ())
@@ -106,6 +130,10 @@ def addon_dirs(args):
             and os.path.isfile(os.path.join(pbrmap.library_root(), "manifest.tsv")):
         out.insert(0, pbrmap.OUT_DIR)
     return out
+
+
+def _crop(text):
+    return [float(v) for v in text.split(",")] if text else None
 
 
 def cmd(args):
@@ -135,7 +163,7 @@ def cmd(args):
         base = _json(cpath)
     try:
         doc, rep, problems = build(path, args.name or name, sha, credit, out, rs, scale=units.parse_scale(args.scale),
-                                   y0=args.y0, cat=coverage.catalogue(args.catalogue),
+                                   y0=args.y0, cat=coverage.catalogue(args.catalogue), crop=_crop(args.crop),
                                    pbr_store=getattr(args, "pbr_store", None), model_store=getattr(args, "model_store", None))
     except (ValueError, OSError) as e:
         print("regen: %s" % e, file=sys.stderr)

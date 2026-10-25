@@ -340,6 +340,20 @@ class RetainTests(unittest.TestCase):
         self.assertEqual((len(s.verts), len(s.alpha)), (4, 4))
         self.assertEqual(sorted(set(s.alpha)), [0.0, 0.5])
 
+    def test_crop_keep_is_a_box_and_none_keeps_all(self):
+        self.assertIsNone(mesh.crop_keep(None))
+        keep = mesh.crop_keep([0, 0, 10, 10])
+        self.assertTrue(keep((5, 100, 5)))
+        self.assertFalse(keep((11, 0, 5)))
+        with self.assertRaises(ValueError):
+            mesh.crop_keep([10, 10, 0, 0])
+
+    def test_triangulate_a_concave_face_covers_its_area(self):
+        pts = [(0, 0, 0), (4, 0, 0), (4, 1, 0), (1, 1, 0), (1, 4, 0), (0, 4, 0)]
+        tris = list(mesh.triangulate(pts, (0, 0, 1)))
+        area = sum(abs(cross(pts[a], pts[b], pts[c])[2]) / 2 for a, b, c in tris)
+        self.assertAlmostEqual(area, 7.0)
+
 
 if __name__ == "__main__":
     unittest.main()
