@@ -209,6 +209,18 @@ def cmd(args):
     return 0
 
 
+def missing_uris(path):
+    """External image or buffer files a .glb names that are not beside it."""
+    import struct
+    with open(path, "rb") as f:
+        head = f.read(20)
+        if len(head) < 20 or head[:4] != b"glTF":
+            return []
+        doc = json.loads(f.read(struct.unpack("<I", head[12:16])[0]))
+    uris = [x["uri"] for k in ("images", "buffers") for x in doc.get(k, []) if x.get("uri") and not x["uri"].startswith("data:")]
+    return [u for u in uris if not os.path.exists(os.path.join(os.path.dirname(path), u))]
+
+
 def ship(row, store, root=None):
     """Copies a picked library model into the shared model store, keeping its library-relative path (a pack's
     models share its texture folder), and returns that path. A glTF goes with everything beside it."""
@@ -224,6 +236,8 @@ def ship(row, store, root=None):
         return rel
     if not os.path.isfile(dst):
         shutil.copyfile(src, dst)
+    for uri in missing_uris(src):
+        print("warning: %s refers to %s, which the library lacks (it loads untextured)" % (rel, uri), file=sys.stderr)
     tex = os.path.join(os.path.dirname(src), "Textures")
     if os.path.isdir(tex):
         shutil.copytree(tex, os.path.join(os.path.dirname(dst), "Textures"), dirs_exist_ok=True)
