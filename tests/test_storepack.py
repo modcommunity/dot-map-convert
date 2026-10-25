@@ -72,6 +72,29 @@ class Slice(unittest.TestCase):
         self.assertNotEqual(va, storepack.version_of(a, fa))
         self.assertNotEqual(va, storepack.version_of(a, fa, vram=False))
 
+    def test_equal_size_regenerated_file_is_recopied(self):
+        dest = os.path.join(self.t, "s")
+        files = storepack.slice_for([DOC], self.pbr, self.mod, dest)
+        v1 = storepack.version_of(dest, files)
+        touch(os.path.join(self.pbr, "set_a", "1k", "albedo.webp"), b"Z")    # same size, new content
+        files = storepack.slice_for([DOC], self.pbr, self.mod, dest)
+        with open(os.path.join(dest, "pbr/set_a/1k/albedo.webp"), "rb") as f:
+            self.assertEqual(f.read(), b"Z")
+        self.assertNotEqual(storepack.version_of(dest, files), v1)
+
+    def test_stale_files_are_removed(self):
+        dest = os.path.join(self.t, "s")
+        storepack.slice_for([DOC], self.pbr, self.mod, dest)
+        touch(os.path.join(dest, "pbr/old/1k/albedo.webp"), b"old")
+        touch(os.path.join(dest, "pbr/old/1k/albedo.webp.import"), b"old")
+        touch(os.path.join(dest, "stray.txt"), b"s")
+        files = storepack.slice_for([DOC], self.pbr, self.mod, dest)
+        on_disk = sorted(os.path.relpath(os.path.join(d, f), dest).replace(os.sep, "/")
+                         for d, _, fs in os.walk(dest) for f in fs if not f.endswith(".import"))
+        self.assertEqual(on_disk, files)
+        self.assertFalse(os.path.exists(os.path.join(dest, "pbr/old")))
+        self.assertTrue(os.path.isfile(os.path.join(dest, "pbr/set_a/1k/albedo.webp.import")))
+
     def test_stamp_is_idempotent(self):
         mp = os.path.join(self.t, "manifest.json")
         with open(mp, "w") as f:

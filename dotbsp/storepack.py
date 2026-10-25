@@ -106,7 +106,7 @@ def slice_for(docs, pbr_store, model_store, dest, vram=True):
     def put(src, rel, normal=False, marker=True):
         out = os.path.join(dest, rel)
         os.makedirs(os.path.dirname(out), exist_ok=True)
-        if not os.path.isfile(out) or os.path.getsize(out) != os.path.getsize(src):
+        if not os.path.isfile(out) or _digest(out) != _digest(src):
             shutil.copyfile(src, out)
         files.append(rel)
         if marker and rel.lower().endswith(TEXTURE_EXT):
@@ -133,7 +133,26 @@ def slice_for(docs, pbr_store, model_store, dest, vram=True):
         json.dump({"works": list(merged.values())}, f, indent=1)
         f.write("\n")
     files.append("credits.json")
+    _prune(dest, files)
     return sorted(files)
+
+
+def _digest(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def _prune(dest, files):
+    """Deletes what a previous build left in `dest` that this one does not draw, so the folder is exactly
+    `files` (plus their `.import` markers) and the version hash covers everything that gets published."""
+    keep = set(files) | {f + ".import" for f in files}
+    for d, _, fs in os.walk(dest, topdown=False):
+        for f in fs:
+            rel = os.path.relpath(os.path.join(d, f), dest).replace(os.sep, "/")
+            if rel not in keep:
+                os.remove(os.path.join(d, f))
+        if d != dest and not os.listdir(d):
+            os.rmdir(d)
 
 
 def version_of(dest, files, vram=True):
