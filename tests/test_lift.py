@@ -242,6 +242,16 @@ class Lights(unittest.TestCase):
         self.assertEqual(len(spaced), 2)                        # the two 10-unit-apart lamps are 0.19 m apart
         self.assertEqual(len(lights.thin(lamps, max_lights=10)), 3)
 
+    def test_spread_order_keeps_every_lamp_and_every_prefix_spread(self):
+        # two clusters of 20 lamps 100 m apart: the first two of the order are one from each
+        lamps = [{"at": [float(i) * 0.1, 3.0, 0.0], "range": 5.0, "energy": 1.0} for i in range(20)] + \
+                [{"at": [100.0 + i * 0.1, 3.0, 0.0], "range": 5.0, "energy": 1.0} for i in range(20)]
+        out = lights.spread_order(lamps)
+        self.assertEqual(sorted(l["at"][0] for l in out), sorted(l["at"][0] for l in lamps))
+        self.assertEqual(sorted(l["at"][0] > 50 for l in out[:2]), [False, True])
+        self.assertEqual(out, lights.spread_order(lamps))
+        self.assertEqual(lights.spread_order(lamps[:1]), lamps[:1])
+
     def test_auto_lights(self):
         cells = {(ix, iz): 0.0 for ix in range(0, 26) for iz in range(0, 26)}     # 13 m square of 0.5 m cells
         out = lights.auto(cells, spacing=6.0, height=2.3, maximum=100)

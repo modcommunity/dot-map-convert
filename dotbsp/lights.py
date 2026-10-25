@@ -11,6 +11,8 @@ is an energy and a range in a renderer that has far fewer lights, and a map with
 * `thin(lights, max_lights, min_spacing)`: the same lights every run, brightest kept first,
   none within `min_spacing` metres of one already kept, then cut to `max_lights`
   (the `--max-lights` murder-mystery-maps wrote);
+* `spread_order(lamps)`: all of them, reordered so every prefix covers the whole map (a game
+  that lights or sends the first N keeps its coverage; `thin` drops lamps, this drops none);
 * `auto(cells, ...)`: for a map that has no lamps of its own (it was lit by baked light): one
   every `spacing` metres over the ground cells given, `height` above the floor.
 
@@ -99,6 +101,29 @@ def thin_by_gap(points, max_lights, step=0.5):
             if all((a[0] - at(k)[0]) ** 2 + (a[1] - at(k)[1]) ** 2 + (a[2] - at(k)[2]) ** 2 >= gap * gap for k in kept):
                 kept.append(l)
     return kept, gap
+
+
+def spread_order(lamps):
+    """Every lamp, reordered so that any prefix is spread over the map: the brightest first, then
+    each next one the lamp farthest from all taken (farthest-point order, ties by document order).
+    A game that can send or light only the first N of a map's lamps takes `lamps[:N]` and still
+    covers the whole map; nothing is dropped, which `thin` does. Deterministic."""
+    n = len(lamps)
+    if n < 2:
+        return list(lamps)
+    first = min(range(n), key=lambda i: (-lamps[i]["energy"], -lamps[i]["range"], i))
+    order = [first]
+    near = [math.dist(lamps[i]["at"], lamps[first]["at"]) for i in range(n)]
+    near[first] = -1.0
+    while len(order) < n:
+        nxt = max(range(n), key=lambda i: (near[i], -i))
+        order.append(nxt)
+        near[nxt] = -1.0
+        a = lamps[nxt]["at"]
+        for i in range(n):
+            if near[i] >= 0.0:
+                near[i] = min(near[i], math.dist(a, lamps[i]["at"]))
+    return [lamps[i] for i in order]
 
 
 def strengthen(energy, gap, cap=1.6, per_metre=1 / 8.0):
