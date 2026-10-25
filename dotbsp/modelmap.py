@@ -69,7 +69,7 @@ GENERIC = {"name": None, "lib": [re.compile(r"^(?:ph_|sf_|q_|kenney_(?:furniture
            "reach": 0.3, "scale": (0.7, 1.45), "dims": (0.5, 0.5, 0.5), "shape": "box", "colour": "909088"}
 
 
-SKIP_KITS = re.compile(r"kenney_(hexagon|tower-defense|marble|platformer|brick|coaster|minigolf|mini-skate|toy-car|cube-pets|blocky|mini-characters|mini-dungeon|mini-forest|mini-arena|prototype|blaster|holiday|road-pack|city-kit-roads|modular|space-kit|space-station|retro-fantasy|castle|fantasy)")
+SKIP_KITS = re.compile(r"kenney_(hexagon|tower_defense|marble|platformer|brick|coaster|minigolf|mini_skate|toy_car|cube_pets|blocky|mini_characters|mini_dungeon|mini_forest|mini_arena|prototype|blaster|holiday|road_pack|city_kit_roads|modular|space_kit|space_station|retro_fantasy|castle|fantasy|train|racing|watercraft)")
 
 
 def _snake(ident):

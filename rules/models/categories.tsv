@@ -21,6 +21,10 @@ fridge|refrigerator|freezer|display_cooler|water_cooler	refrigerator|fridge|wate
 stove|oven|microwave|washer|washing|dryer|dishwasher|coffeemachine|coffeemaker|toaster	microwave|stove|washing_machine|washer|oven|dryer	0.75	0.9	0.65	box	d8d8d8
 sink|toilet|bathtub|urinal|shower|bidet|tub	toilet|sink|bathtub|shower	0.6	0.5	0.5	box	e8e8e8
 tv_?[a-z]*|television|monitor|screen|projector|eeepc|computer_?case|computer$|computer0|harddrive|servers	television|tv_|monitor|computer|laptop|crt	0.6	0.45	0.2	box	202020
+phone|telephone|payphone|cellphone|iphone|intercom	telephone|phone|cell_phone|intercom|radio	0.17	0.05	0.07	box	303030
+camera|cctv|webcam	camera|cctv|webcam	0.2	0.15	0.2	box	303030
+mouse|projector_remote|remote	mouse|remote|controller	0.06	0.03	0.1	box	303030
+console|controlpanel|control_panel|consolepanel|intmonitor|interface\d|computer_?case	console|control|computer|terminal|machine|monitor|radio|crt|tv	0.8	0.9	0.5	box	505860
 keyboard|mouse|laptop|radio|phone|clock|camera|microphone|speaker|boombox|cashregister|cash_register|atm|payphone|firetrap|button|lightswitch|intercom|recorder	keyboard|laptop|radio|boombox|phone|clock|cash_register|camera|atm	0.3	0.2	0.3	box	303030
 plant|potted|fern|bush|shrub|spirea|cactus|bramble|vine|flower|bonsai|cattail|reed|hedge|topiary|foliage|shroom|bamboo|mall_	potted_plant|fern|shrub|bush|cactus|plant|flower	0.5	0.8	0.5	cyl	3a6a30
 tree|derevo|ot_tree|ot_giant|ot_tropic|trees|pine|poplar|palm|island_tree|conifer|baum|oak	tree|pine|fir|palm|jacaranda	3.0	8.0	3.0	cyl	3a5a28
@@ -35,7 +39,8 @@ board|plank|lumber|wood_pile|log$|logs	plank|board|log|wood	1.5	0.05	0.2	box	8a6
 bottle|jug|glassjug|popcan|cola|soda|beer|wine|ketchup|mustard|relish|oil_can|dish_soap|spray|paint_?can|bucket|metalbucket|plasticbucket|can0|metalcan	soda_can|can|bottle|jug|paint|bucket	0.08	0.2	0.08	cyl	4a7a50
 mug|cup|coffee_mug|teapot|tea_pot|pot-|pot$|pot0|metalpot|pottery|pan$|vase|jar|urn|beaker	mug|cup|teapot|pot|vase|jar|pan	0.1	0.12	0.1	cyl	8a6a50
 newspaper|paper|binder|book|clipboard|notepad|postcard|money|cigs|file_box_p	book|paper|binder|notepad|clipboard	0.2	0.04	0.28	box	d8d0b8
-shoe|boot|hat|doll|toy|duck|football|ball|watermelon|orange|apple|banan|fruit|melon|cabbage|pizza|sosis|patty|burger|cheese|bread|pie|potato|pumpkin|coconut|krusty|kids_meal|sundae|food	shoe|boot|toy|ball|melon|apple|banana|cabbage|pizza|burger|cheese|pumpkin	0.2	0.15	0.2	box	b8884a
+watermelon|orange|apple|banan|fruit|melon|cabbage|pizza|sosis|patty|burger|cheese|bread|pie|potato|pumpkin|coconut|krusty|kids_meal|sundae|food|hotdog	food_kit|crop|apple|banana|melon|cabbage|pizza|burger|cheese|bread|pie|pumpkin|potato|cake|sausage	0.2	0.1	0.2	box	b8884a
+shoe|boot|hat|doll|toy|duck|football|ball	shoe|boot|toy|ball|duck	0.2	0.15	0.2	box	b8884a
 trash|garbage|litter|dumpster|trashbin|trashcan|trash_can|bin$|bin0	dumpster|trash_can|trashcan|trashbag|garbage	0.5	0.8	0.5	cyl	4a5a4a
 bicycle|bike|wheebarrow|wheelbarrow|pushcart|cart|trolley|laundry_cart	bicycle|wheelbarrow|cart|trolley	1.5	1.0	0.6	box	606870
 car_|truck|vehicle|bus$|van$|apc$|taxi|jeep|forklift|wagon|tractor|helicopter|mh-53|f18	sedan|truck|car|van|bus|tractor|forklift	4.0	1.6	1.8	box	606870
