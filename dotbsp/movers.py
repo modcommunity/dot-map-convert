@@ -458,7 +458,7 @@ def generic(bsp, owners=None):
 
 
 def spawns(bsp, scale=_units.VISUAL, y0=0.0):
-    """Every player spawn the source places: {classname, team, targetname, at, yaw}. The game picks
+    """Every player spawn the source places: {classname, team, targetname, at, yaw, disabled (only when StartDisabled)}. The game picks
     which team a class is for; `team` is the reader's default reading of the class name."""
     out = []
     for e in bsp.entities:
@@ -469,9 +469,12 @@ def spawns(bsp, scale=_units.VISUAL, y0=0.0):
         if team is None:
             continue
         p = reader.entity_vec(e)
-        out.append({"classname": c, "team": team, "targetname": e.get("targetname", ""),
-                    "at": [round(p[0] * scale, 4), round(p[2] * scale - y0, 4), round(-p[1] * scale, 4)],
-                    "yaw": round(reader.yaw_to_godot(reader.entity_yaw(e)), 3)})
+        rec = {"classname": c, "team": team, "targetname": e.get("targetname", ""),
+               "at": [round(p[0] * scale, 4), round(p[2] * scale - y0, 4), round(-p[1] * scale, 4)],
+               "yaw": round(reader.yaw_to_godot(reader.entity_yaw(e)), 3)}
+        if str(e.get("StartDisabled", "0")).strip() == "1":
+            rec["disabled"] = True
+        out.append(rec)
     return out
 
 

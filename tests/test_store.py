@@ -135,9 +135,11 @@ class RoundTrip(unittest.TestCase):
         bsp = reader.Bsp("t", data=synth.build(entities=[
             {"classname": "worldspawn"},
             {"classname": "info_player_terrorist", "origin": "100 200 300", "angles": "0 90 0"},
-            {"classname": "info_player_custom", "origin": "0 0 0"},
+            {"classname": "info_player_custom", "origin": "0 0 0", "targetname": "late", "StartDisabled": "1"},
             {"classname": "info_target", "origin": "1 1 1"}])).load()
         sp = movers.spawns(bsp)
+        self.assertEqual([s.get("disabled", False) for s in sp], [False, True])
+        self.assertEqual(sp[1]["targetname"], "late")
         self.assertEqual([(s["classname"], s["team"]) for s in sp],
                          [("info_player_terrorist", "red"), ("info_player_custom", "any")])
         self.assertEqual(len(sp[0]["at"]), 3)
