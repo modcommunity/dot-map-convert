@@ -85,7 +85,7 @@ class RegenTests(unittest.TestCase):
 
     def run_regen(self, **kw):
         a = dict(entry="t/fix", out=self.out, root=self.root, addon_rules=None, game_rules=None, map_rules=None,
-                 ratchet=False, baseline=None, coverage=None, catalogue=None, name=None, scale="visual", y0=0.0)
+                 ratchet=False, baseline=None, coverage=None, catalogue=None, name=None, scale="visual", y0=0.0, crop=None)
         a.update(kw)
         import argparse
         return regen.cmd(argparse.Namespace(**a))

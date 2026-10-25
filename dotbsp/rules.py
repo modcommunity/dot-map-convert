@@ -34,6 +34,17 @@ FALLBACK_CLASS = ("data", "no rule names this class: kept, placed and reported (
 _FREE_COLS = ("kind", "source", "url", "author", "licence")
 
 
+_CATS = []
+
+
+def _named_category(name):
+    """True when `modelmap`'s categories name the model (a row of its own, not the shape-only fallback), so its pick is a real kind of thing."""
+    from . import modelmap
+    if not _CATS:
+        _CATS.append(modelmap.categories())
+    return modelmap.category_of(name, _CATS[0]) is not None
+
+
 class Rows:
     """A regex table in file order; `get(name)` is the first matching row or None."""
 
@@ -224,7 +235,8 @@ class RuleSet:
             if row is not None:
                 self.used[kind][name] = t.name
                 return row
-        self.used[kind].setdefault(name, "skybox" if kind == "models" and standins.is_skybox(name) else "detail" if kind == "models" and standins.is_detail(name) else None)
+        self.used[kind].setdefault(name, "skybox" if kind == "models" and standins.is_skybox(name) else "detail" if kind == "models" and standins.is_detail(name)
+                                   else "category" if kind == "models" and _named_category(name) else None)
         return None
 
     def klass(self, name):

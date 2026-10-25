@@ -30,7 +30,7 @@ DETAIL = re.compile(
     r"(^|/)(effects|extras|humans|characters|zombie|combine_turrets|cranes)/|vol_light|headcrab|ichthyosaur|(^|/)(stalker|gman|buggy)(\.mdl)?$"
     r"|props_buildings/|destroyed_cityblock|project_building|trainstation/(train00|traintrack|trackmarkers)"
     r"|vent_|(^|[/_])vent\d|wall_vent|grill|wire|cable|conduit|conducter|conduct|spool|button|knob|doorhandle|(^|[/_])handle|hinge|lever|keypad|tpswitch|tpplug|prison_bracket|sprinkler"
-    r"|offpainting|offinsp|offcert|offcork|gm_painting|(^|/)frame\d|billboard|noparking|nostopssign|clouds|meter(\.mdl)?$"
+    r"|wormhole|offpainting|offinsp|offcert|offcork|gm_painting|(^|/)frame\d|billboard|noparking|nostopssign|clouds|meter(\.mdl)?$"
     r"|icicle|stalactite|moss_|vine|fan_ceiling|roof_dish|antenna|gutter|cleat|dock\d*_pole|pulley|dock_broken|canal_cap|truss"
     r"|(^|/)(player|knight\d|stegosaurus|deinonychus|parrot|tyrant|combine_soldier|rodwy|madebycn/(stryge|artemis)|esther/)|jellyfish|rytirnormal|securityguard|kuctuk"
     r"|wolfhead|(wind|sun)crest|armour|(^|/)(gold|wood(en)?)?shield|herb(\.mdl)?$|(^|/)(modisc|crank|herbicide|g_10|bone_\d+)|g-logo|zombie|statue"
