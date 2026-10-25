@@ -315,5 +315,19 @@ class Classes(unittest.TestCase):
         self.assertEqual(missing, [], "regenerate docs/entity-classes.md (bsp.py classes --markdown)")
 
 
+class RetainTests(unittest.TestCase):
+    def test_a_cropped_lightmapped_surface_keeps_one_uv2_per_vertex(self):
+        import struct
+        s = mesh.Surface(0, 0, "worldspawn", "", "m")
+        for q in range(2):
+            o = 10.0 * q
+            ids = [s.vertex((o + x, 0.0, z), (0, 1, 0), (x, z), (0.1 * q + x * 0.01, z * 0.01))
+                   for x, z in ((0, 0), (1, 0), (1, 1), (0, 1))]
+            s.index += [ids[0], ids[1], ids[2], ids[0], ids[2], ids[3]]
+        s.retain(lambda c: c[0] < 5.0)
+        self.assertEqual((len(s.verts), len(s.uv2), len(s.index)), (4, 4, 6))
+        struct.pack("<%df" % (2 * len(s.verts)), *[c for uv in s.uv2 for c in uv])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -249,6 +249,28 @@ class Surface:
             self.uv2.append(uv2)
         return i
 
+    def retain(self, keep):
+        """Keeps the triangles whose centroid (metres) `keep` accepts, dropping vertices no kept
+        triangle uses; uv2 and the first-seen vertex order follow so a lightmapped surface stays packable."""
+        kept, remap = [], {}
+        for t in range(0, len(self.index), 3):
+            tri = self.index[t:t + 3]
+            if not keep([sum(self.verts[i][0][k] for i in tri) / 3.0 for k in range(3)]):
+                continue
+            for i in tri:
+                if i not in remap:
+                    remap[i] = len(remap)
+                kept.append(remap[i])
+        verts = [None] * len(remap)
+        uv2 = [None] * len(remap)
+        for old, new in remap.items():
+            verts[new] = self.verts[old]
+            uv2[new] = self.uv2[old] if old < len(self.uv2) else None
+        self.verts, self.index = verts, kept
+        self.uv2 = uv2 if any(u is not None for u in uv2) else []
+        self._dedupe = {}
+        return self
+
     def area(self):
         a = 0.0
         for t in range(0, len(self.index), 3):
