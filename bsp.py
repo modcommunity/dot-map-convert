@@ -474,6 +474,7 @@ def main(argv):
     sp.add_argument("--cloud", default=os.path.expanduser("~/godot/dot-cloud"), help="the dot-cloud checkout")
     sp.add_argument("--godot", help="the engine binary")
     sp.add_argument("--combined", action="store_true", help="one slice for all the packs instead of one each")
+    sp.add_argument("--shared", type=int, default=8, help="per map, how many of its biggest groups of items drawn by the same maps become shared slices (0: one self-contained slice per map)")
     sp.add_argument("--lossless", action="store_true", help="import textures lossless instead of VRAM-compressed")
     sp.add_argument("--dry-run", action="store_true", help="build the slice folders and stop")
     args = ap.parse_args(argv[1:])
