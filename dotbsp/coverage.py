@@ -67,6 +67,11 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
     used = rs.used
     lic = (doc.get("licence") or {}).get("textures", [])
     flat = sorted({s for t in lic if t.get("how") == "flat" for s in t.get("sources", [])})
+    real = collections.Counter()
+    for t in lic:
+        if t["kind"] == "generated" and t["generic"] == "flat":
+            continue
+        real[rs.free_tier(t["generic"]) or "nearest"] += len(t.get("sources", []))
     nearest = sorted({s for t in lic if t.get("how") not in ("table", "flat") for s in t.get("sources", [])})
     classes = collections.Counter(e.get("classname", "") for e in bsp.entities)
     if bsp.static_props():
@@ -98,8 +103,8 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
     }
     return {
         "format": FORMAT, "version": VERSION, "map": name, "sha256": sha256,
-        "textures": {"looked_up": len(used["textures"]), "by_tier": _tiers(used["textures"]),
-                     "free_by_tier": _tiers({t["generic"]: rs.free_tier(t["generic"]) for t in lic}),
+        "textures": {"looked_up": len(used["textures"]), "drawn": sum(len(t.get("sources", [])) for t in lic), "by_tier": _tiers(used["textures"]),
+                     "free_by_tier": dict(sorted(real.items())),
                      "nearest_photo": nearest},
         "models": {"looked_up": len(used["models"]), "by_tier": _tiers(used["models"])},
         "sounds": {"looked_up": len(used["sounds"]), "by_tier": _tiers(used["sounds"])},

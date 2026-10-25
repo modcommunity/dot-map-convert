@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
+from dotbsp import pbrmap, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -449,10 +449,15 @@ def main(argv):
     rg.add_argument("--name")
     rg.add_argument("--scale", default="visual")
     rg.add_argument("--y0", type=float, default=0.0)
+    rg.add_argument("--no-pbr", action="store_true", help="leave out the PBR library tier (rules/pbr)")
+    pm = sub.add_parser("pbrmap", help="pick a PBR library set for every texture name the converted maps use; writes rules/pbr")
+    pm.add_argument("--root", action="append", help="a directory holding <game>/world/<map>/ (repeatable; default ~/godot)")
+    pm.add_argument("--library", help="the library's materials folder; default $DOT_ART_LIBRARY or ~/art-library/materials")
+    pm.add_argument("--out", help="the tier directory to write; default tools/bsp/rules/pbr")
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd}[args.cmd](args)
+                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2

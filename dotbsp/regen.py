@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-from . import classes, coverage, environment, licence, mapcfg, mesh, movers, reader, rules, scripts, standins, store, units
+from . import classes, coverage, environment, licence, mapcfg, mesh, movers, pbrmap, reader, rules, scripts, standins, store, units
 
 
 def _json(path):
@@ -94,10 +94,20 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     return doc, rep, problems
 
 
+def addon_dirs(args):
+    """The addon tiers: the PBR library tier first (unless --no-pbr or no library here), then the given ones."""
+    out = list(args.addon_rules or ())
+    if not getattr(args, "no_pbr", False) and os.path.isfile(os.path.join(pbrmap.OUT_DIR, "textures.tsv")) \
+            and os.path.isfile(os.path.join(pbrmap.library_root(), "manifest.tsv")):
+        out.insert(0, pbrmap.OUT_DIR)
+    return out
+
+
 def cmd(args):
     root = args.root or store.default_root()
+    pbrmap.ENABLED = not getattr(args, "no_pbr", False)
     try:
-        rs = rules.RuleSet.build(addon=args.addon_rules or (), game=args.game_rules, map_rules=args.map_rules)
+        rs = rules.RuleSet.build(addon=addon_dirs(args), game=args.game_rules, map_rules=args.map_rules)
         path, credit, name, sha = resolve(args.entry, root)
     except (ValueError, OSError) as e:
         print("regen: %s" % e, file=sys.stderr)

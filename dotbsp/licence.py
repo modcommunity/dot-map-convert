@@ -13,6 +13,7 @@ import collections
 import os
 
 from . import nearest as _nearest
+from . import pbrmap
 from . import props as _props
 from . import standins
 from . import textures
@@ -80,10 +81,17 @@ def replacement(generic, colour, table, material=None):
             gid = "nearest_" + kind
         else:
             row, gid, how = table["flat"], "flat", "flat"
+    if not gid.startswith(pbrmap.GENERIC) and (row["kind"] != "generated" or gid == "flat"):
+        e = pbrmap.choose(material, colour, row["kind"] if row["kind"] != "generated" else None)
+        if e:
+            gid, how = pbrmap.GENERIC + e["id"], "library"
+            row = {"kind": "pbr", "source": e["source"], "url": e["url"], "author": e["author"], "licence": e["licence"]}
     r = {"generic": gid, "colour": _snap(colour), "how": how}
     r.update(row)
     if r["kind"] == "generated":
         r["file"] = "textures/gen_%s_%s.png" % (r["generic"], "".join("%02x" % round(c * 255) for c in r["colour"]))
+    elif r["kind"] == "pbr":
+        r["file"] = "pbr/%s" % r["generic"][len(pbrmap.GENERIC):]
     else:
         r["file"] = "surfaces/%s" % r["kind"]
     return r
@@ -106,6 +114,8 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
             p = os.path.join(outdir, r["file"])
             if not os.path.exists(p):
                 textures.write(p, r["generic"], r["colour"])
+        elif r["kind"] == "pbr" and outdir:
+            pbrmap.ship(r["generic"], outdir)
     free = []
     for key, u in used.items():
         u["sources"] = sorted(u["sources"])

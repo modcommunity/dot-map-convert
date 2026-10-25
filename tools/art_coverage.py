@@ -21,7 +21,7 @@ KINDS = ("textures", "models")
 
 
 def share(kind, entry):
-    n = entry.get("looked_up", 0)
+    n = entry.get("drawn", entry.get("looked_up", 0))
     if kind == "textures":
         generic = n - sum(entry.get("free_by_tier", {}).values())
     else:
