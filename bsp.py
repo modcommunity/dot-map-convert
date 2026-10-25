@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import pbrmap, modeldims, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
+from dotbsp import pbrmap, modeldims, modelmap, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
 
 
 def _credit(args):
@@ -450,6 +450,8 @@ def main(argv):
     rg.add_argument("--scale", default="visual")
     rg.add_argument("--y0", type=float, default=0.0)
     rg.add_argument("--no-pbr", action="store_true", help="leave out the PBR library tier (rules/pbr)")
+    rg.add_argument("--no-models", action="store_true", help="draw props with the name and shape tables only, not the library picks (rules/models/picks.tsv)")
+    rg.add_argument("--model-store", help="where the picked library models are copied once, by id (default: model-library beside the pack folder)")
     rg.add_argument("--pbr-store", help="where the shared PBR sets are written once, by id and tier (default: pbr-library beside the pack folder)")
     pm = sub.add_parser("pbrmap", help="pick a PBR library set for every texture name the converted maps use; writes rules/pbr")
     pm.add_argument("--root", action="append", help="a directory holding <game>/world/<map>/ (repeatable; default ~/godot)")
@@ -459,10 +461,12 @@ def main(argv):
     md.add_argument("--root", help="the store; default $DOTBSP_STORE or ~/mapsrc/store")
     md.add_argument("--game-vpk", help="a game directory's <name>_dir.vpk: the size of a stock model no map packs is read from its header")
     md.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "rules", "models"))
+    mm = sub.add_parser("modelmap", help="pick a free library model (or generate a plain one) for every ranked prop model (rules/models/picks.tsv)")
+    mm.add_argument("--out", help="directory for picks.tsv; default rules/models")
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd}[args.cmd](args)
+                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2

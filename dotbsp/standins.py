@@ -143,7 +143,27 @@ class ShapeCatalogue:
         return (best[1], best[2]) if best and best[0] <= SHAPE_LIMIT else None
 
 
-def shape_matches(bsp, game_table=None, table=None, packed=None, catalogue=None):
+PICKS_ON = False     # regen turns the library picks on; other callers keep the name and shape tables only
+PICKS = os.path.join(os.path.dirname(HERE), "rules", "models", "picks.tsv")
+
+
+def picks(path=None):
+    """{model path: pick} from `bsp.py modelmap`: library id, longest side in metres, quarter turns, the original's centre and base."""
+    path = path or PICKS
+    out = {}
+    if not os.path.isfile(path):
+        return out
+    with open(path, encoding="utf-8") as f:
+        for line in f.read().splitlines():
+            if line and not line.startswith("#"):
+                c = line.split("\t")
+                out[c[0]] = {"stand_in": "lib/" + c[1], "size": float(c[2]), "turns": int(c[3]), "centre": [float(c[4]), 0.0, float(c[5])],
+                             "base": float(c[6]), "row": {"stand_in": "lib/" + c[1], "source": c[7], "url": c[8], "author": c[9],
+                                                         "licence": c[10], "file": c[11]}}
+    return out
+
+
+def shape_matches(bsp, game_table=None, table=None, packed=None, catalogue=None, library=None):
     """{model path: {stand_in, turns, size, centre, row}} for every placed model neither the game's table nor the
     free name table knows and the map packs, matched by measured shape. The model itself is never copied."""
     from . import models as _m
@@ -151,8 +171,12 @@ def shape_matches(bsp, game_table=None, table=None, packed=None, catalogue=None)
     packed = packed if packed is not None else _m.measure(bsp)
     catalogue = catalogue or ShapeCatalogue()
     out = {}
+    library = (picks() if PICKS_ON else {}) if library is None else library
     for m in _m.placed(bsp):
         rec = packed.get(m)
+        if m in library and not is_skybox(m) and not is_detail(m) and (game_table is None or game_table.get(m) is None):
+            out[m] = library[m]
+            continue
         if rec is None or is_skybox(m) or is_detail(m) or (game_table is not None and game_table.get(m) is not None):
             continue
         if table.get(m.replace("models/", "", 1)) is not None:
@@ -230,7 +254,9 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
         out.append(rec)
     shaped = shape_matches(bsp, game_table, table) if shaped is None else shaped
     spots = _spots(doc)
-    boxes = _support_boxes(spots, packed, game_table, scale, y0)
+    libm = {m for m, s in shaped.items() if s["stand_in"].startswith("lib/")}
+    out = [r for r in out if _props.norm_model(r["model"]) not in libm]
+    boxes = _support_boxes(spots, packed, game_table, scale, y0, libm)
     if boxes:
         gone = {(b["model"], tuple(b["origin"])) for b in boxes}
         out = [r for r in out if (r["model"], tuple(r["at"])) not in gone]
@@ -290,7 +316,7 @@ BOX_REACH = 0.15         # how far past the edge a thing's origin may be and sti
 BOX_TOP = 0.12           # how far from the top a thing's origin may be and still rest on it
 
 
-def _support_boxes(spots, packed, game_table, scale, y0):
+def _support_boxes(spots, packed, game_table, scale, y0, skip=frozenset()):
     """[{box, model, at, yaw, scale, origin, src}]: a size-correct neutral block for each placed packed model that
     something else rests on or inside (its origin lies over the model's footprint, at the model's top) and the shape table could not stand in for with the right size. Without it a stand-in table or shelf
     is smaller than the real one and the bottles on it hang in the air. The model itself is never copied."""
@@ -299,7 +325,7 @@ def _support_boxes(spots, packed, game_table, scale, y0):
     for model, o, ang, sc in spots:
         name = _props.norm_model(model)
         rec = packed.get(name)
-        if rec is None or is_skybox(name) or BOX_NOT.search(name) or (game_table is not None and game_table.get(name) is not None):
+        if rec is None or name in skip or is_skybox(name) or BOX_NOT.search(name) or (game_table is not None and game_table.get(name) is not None):
             continue
         k = _props._num(sc, 1.0)
         sx, sy, sz = (v * k for v in rec["size"])

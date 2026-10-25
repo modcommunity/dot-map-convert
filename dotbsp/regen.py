@@ -48,7 +48,7 @@ def applied(rs):
         classes.treatment = orig
 
 
-def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None):
+def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None):
     """Write the map at `out` (prefix); returns (manifest, coverage report, problems)."""
     with open(path, "rb") as f:
         bsp = reader.Bsp(path, data=f.read()).load()
@@ -80,7 +80,8 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     shaped = standins.shape_matches(bsp, None, table=rs.models_view())
     licence.annotate(doc, outdir, table=rs.free_table(), models=importer.placed_models(bsp),
                      free_models=rs.models_view(), free_sounds=rs.sounds_view(), shaped=shaped,
-                     pbr_store=os.path.abspath(pbr_store or os.path.join(outdir, os.pardir, "pbr-library")))
+                     pbr_store=os.path.abspath(pbr_store or os.path.join(outdir, os.pardir, "pbr-library")),
+                     model_store=os.path.abspath(model_store or os.path.join(outdir, os.pardir, "model-library")))
     doc["props"] = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0, shaped=shaped)
     problems = licence.check(doc)
     # The starter per-map config: every map gets one, from the commands its entities send, commented out.
@@ -107,6 +108,7 @@ def addon_dirs(args):
 def cmd(args):
     root = args.root or store.default_root()
     pbrmap.ENABLED = not getattr(args, "no_pbr", False)
+    standins.PICKS_ON = not getattr(args, "no_models", False) and os.path.isfile(standins.PICKS)
     try:
         rs = rules.RuleSet.build(addon=addon_dirs(args), game=args.game_rules, map_rules=args.map_rules)
         path, credit, name, sha = resolve(args.entry, root)
@@ -131,7 +133,7 @@ def cmd(args):
     try:
         doc, rep, problems = build(path, args.name or name, sha, credit, out, rs, scale=units.parse_scale(args.scale),
                                    y0=args.y0, cat=coverage.catalogue(args.catalogue),
-                                   pbr_store=getattr(args, "pbr_store", None))
+                                   pbr_store=getattr(args, "pbr_store", None), model_store=getattr(args, "model_store", None))
     except (ValueError, OSError) as e:
         print("regen: %s" % e, file=sys.stderr)
         return 1

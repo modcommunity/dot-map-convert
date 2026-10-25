@@ -12,6 +12,7 @@ listed by `environment.sounds` and carry an empty `stand_in` until a free file i
 import collections
 import os
 
+from . import modelmap
 from . import nearest as _nearest
 from . import pbrmap
 from . import props as _props
@@ -20,7 +21,7 @@ from . import textures
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FREE_PATH = os.path.join(HERE, "free_textures.tsv")
-ALLOWED = frozenset(("CC0-1.0", "MIT", "Public Domain"))
+ALLOWED = frozenset(("CC0-1.0", "MIT", "Public Domain", "CC-BY-4.0"))
 
 
 def load(path=FREE_PATH):
@@ -107,7 +108,7 @@ def _blend_records(s):
     return out
 
 
-def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_models=None, free_sounds=None, shaped=None, pbr_store=None):
+def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_models=None, free_sounds=None, shaped=None, pbr_store=None, model_store=None):
     """Add `free` to every surface of the manifest `doc` and a `licence` block; write the generated
     images under `outdir` when given. `models` is the placed model paths (static props and
     prop entities); `prop_table` a `PropTable` of the game's stand-ins. Returns the block."""
@@ -148,7 +149,11 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
     for m, n in sorted(counts.items()):
         mine = tbl.get(m)
         row = None if mine or standins.is_detail(m) else free_models.get(m.replace("models/", "", 1))
-        hit = (shaped or {}).get(m) if not (mine or row) else None
+        hit = (shaped or {}).get(m)
+        if hit and hit["stand_in"].startswith("lib/"):
+            mine = None
+        elif mine or row:
+            hit = None
         if hit and hit["row"]:
             row = dict(hit["row"], stand_in=hit["stand_in"])
         mods.append({"model": m, "count": n, "stand_in": mine or (row["stand_in"] if row else "skybox" if standins.is_skybox(m) else "detail" if standins.is_detail(m) and not (hit and hit.get("box")) else "measured_box" if hit and hit.get("box") else "placeholder_box")})
@@ -166,6 +171,11 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
     block = {"textures": free, "models": mods, "skipped_skybox_models": skipped, "model_stand_ins": sorted(used_models.values(), key=lambda r: r["stand_in"]),
              "sounds": sorted(used_sounds.values(), key=lambda r: r["stand_in"]),
              "note": "No source texture, model or sound is shipped; each source name is only the name a replacement stands for."}
+    libs = [r for r in block["model_stand_ins"] if r["stand_in"].startswith("lib/")]
+    if libs and model_store:
+        for r in libs:
+            r["store_file"] = modelmap.ship(r, model_store)
+        block["model_store"] = os.path.relpath(model_store, outdir).replace(os.sep, "/") if outdir else model_store
     if store and any(t["kind"] == "pbr" for t in free):
         block["pbr_store"] = os.path.relpath(store, outdir).replace(os.sep, "/") if outdir else store
     doc["licence"] = block

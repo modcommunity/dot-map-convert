@@ -14,7 +14,7 @@ import os
 import struct
 import sys
 
-from . import models as _models, reader, regen, store, units
+from . import models as _models, reader, store, units
 
 DIMS = "model_dims.tsv"
 RANKING = "ranking.tsv"
