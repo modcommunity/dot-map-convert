@@ -13,6 +13,7 @@ TOOLS/*	flat
 DEV/*	flat	0.8,0.8,0.82
 EFFECTS/*	flat
 DECALS/*	invisible
+*/DECALS/*	invisible
 TEST_SPEAKERS/*	flat
 
 # --- floors: wood

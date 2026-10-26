@@ -88,6 +88,12 @@ class TextureMapTests(unittest.TestCase):
             self.assertIn("dot_map_bsp_mesh.gd", free[name]["url"], name)
             self.assertNotIn("textures.py", free[name]["url"], name)
 
+    def test_a_decal_inside_a_folder_is_not_drawn_as_a_wall(self):
+        # '*WARS/*' (five literal characters) used to outrank '*DECAL*' by line order, so a decal drew as a cut-out card
+        tm = texturemap.load()
+        self.assertEqual(tm.lookup("STARWARS/DECALS/MP_IMPERIAL_SYMBOL")[0], "invisible")
+        self.assertEqual(tm.lookup("RNDECALS/X")[0], "flat")
+
     def test_carpet_and_snow_names_reach_a_photo_set(self):
         t, free = texturemap.load(), licence.load()
         want = {
