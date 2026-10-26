@@ -1,3 +1,8 @@
 # Surface-property overrides: texture name glob (upper-case match) or generic id, then `kind`.
 # kind is a see-through look (opaque, glass, glass_frosted, fence, grate, bars, ladder, foliage_card, shield, glow) or `opaque` to keep a surface solid; blank rows fall to what the material record implies.
 # Key	kind
+HALFLIFE/{LADDER*	ladder
+*/{*	foliage_card
+*STASISSHIELD*	shield
+*BLADEBLUR*	glass_frosted
+EFFECTS/EXIT*	glow

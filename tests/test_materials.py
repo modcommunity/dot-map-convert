@@ -105,5 +105,13 @@ class Rows(unittest.TestCase):
             rs.material("bad", None)
 
 
+class DefaultRows(unittest.TestCase):
+    def test_shipped_defaults_name_the_cutouts_no_record_describes(self):
+        rs = rules.RuleSet.build()
+        for name, kind in (("halflife/{ladder2", "ladder"), ("de_piranesi/{pi_window", "foliage_card"),
+                           ("models/props_combine/stasisshield_sheet_dx7", "shield"), ("effects/exit1", "glow")):
+            self.assertEqual((rs.material(name, "") or {}).get("kind"), kind, name)
+
+
 if __name__ == "__main__":
     unittest.main()
