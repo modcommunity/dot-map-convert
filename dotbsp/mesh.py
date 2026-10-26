@@ -53,6 +53,7 @@ import json
 import math
 import os
 import random
+import re
 import struct
 
 from . import docboxes, lightmap as _lightmap, reader, texturemap
@@ -323,8 +324,12 @@ def _tri_area(a, b, c):
     return 0.5 * math.sqrt(x * x + y * y + z * z)
 
 
+_LIQUID = re.compile(r"WATER|SLIME|SLUDGE|(?<![A-Z])LAVA(?!TOR)")
+
+
 def _is_water(name, generic):
-    return generic == "water" or "WATER" in name.upper()
+    """A liquid surface (water, slime or lava): the runtime draws it with its liquid shader by name."""
+    return generic == "water" or bool(_LIQUID.search(name.upper()))
 
 
 SURF_TRANS = 0x10

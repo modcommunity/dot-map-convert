@@ -31,6 +31,16 @@ def cross(a, b, c):
     return (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
 
 
+class Liquids(unittest.TestCase):
+    def test_liquid_names(self):
+        # Slime and lava are drawn with the liquid shader too; a lavatory and magma rock are not liquid.
+        for name in ("de_nuke/nukwater_movingplane", "maps/lava01", "nature/toxicslime002a", "sludge_floor"):
+            self.assertTrue(mesh._is_water(name, ""), name)
+        for name in ("tile/lavatory_floor", "concrete/concrete01", "nature/magma_rock"):
+            self.assertFalse(mesh._is_water(name, ""), name)
+        self.assertTrue(mesh._is_water("dev/anything", "water"))
+
+
 class Build(unittest.TestCase):
     def test_box_is_twelve_triangles_wound_as_stored(self):
         m = mesh.build(load())
