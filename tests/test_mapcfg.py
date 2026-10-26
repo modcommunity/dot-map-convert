@@ -63,7 +63,7 @@ class Automatic(unittest.TestCase):
         out = os.path.join(tempfile.mkdtemp(), "m")
         args = argparse.Namespace(entry="t/surf_fix", out=out, root=root, addon_rules=None, game_rules=None,
                                   map_rules=None, ratchet=False, baseline=None, coverage=None, catalogue=None,
-                                  name="surf_fix", scale="visual", y0=0.0)
+                                  name="surf_fix", scale="visual", y0=0.0, crop=None)
         self.assertIn(regen.cmd(args), (0, 4))
         with open(os.path.join(os.path.dirname(out), "dot_map", "map", "surf_fix.yml")) as f:
             self.assertIn("# sv_airaccelerate: 150", f.read())

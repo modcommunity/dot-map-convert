@@ -73,7 +73,7 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
                  "links": links, "entities": ents, "breakables": mesh.breakables(bsp, m),
                  "environment": environment.environment(bsp, scale, y0), "sounds": environment.sounds(bsp, scale, y0),
                  "settings": mapcfg.defaults(store.commands(bsp.entities)),
-                 "scripts": scripts.analyse(bsp.entities)}
+                 "scripts": scripts.analyse(bsp.entities), "roles": rs.roles_for(bsp.entities)}
     keep = mesh.crop_keep(crop)
     if keep is not None:
         extra = _cropped(extra, keep)

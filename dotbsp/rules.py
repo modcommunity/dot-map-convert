@@ -10,7 +10,7 @@ Each tier is a directory of tables, a JSON file with the same tables, or both:
 | `sounds` | `sounds.tsv` | regex on the sound name | stand-in id (empty = silent on purpose) |
 | `classes` | `classes.tsv` | class name, or `prefix*` | treatment, meaning, component |
 | `materials` | `materials.tsv` | texture name glob or generic id | `kind`: a see-through look (`materials.KINDS`) or `opaque`, overriding what the material's own record implies |
-| `roles` | `roles.tsv` | key | read and kept; nothing consumes it yet |
+| `roles` | `roles.tsv` | `class` or `class[key=regex]` (class may end in `*`) | `role`: what the game calls the entity; `regen` writes the matches to the manifest's `roles` |
 
 The highest tier with any matching row answers, and inside a tier the most specific row; so a map's
 row beats a game's, a game's beats an addon's, and a tier never needs to repeat the one below it.
@@ -34,6 +34,7 @@ TABLES = ("textures", "free", "models", "sounds", "classes", "materials", "roles
 FILES = {"textures": "textures.tsv", "free": "free_textures.tsv", "models": "models.tsv",
          "sounds": "sounds.tsv", "classes": "classes.tsv", "materials": "materials.tsv", "roles": "roles.tsv"}
 FALLBACK_CLASS = ("data", "no rule names this class: kept, placed and reported (DotMapEntity)", "fallback")
+_ROLE_KEY = re.compile(r"^([^\[\]]+)(?:\[([^=\]]+)=(.*)\])?$")
 _FREE_COLS = ("kind", "source", "url", "author", "licence")
 
 
@@ -264,6 +265,24 @@ class RuleSet:
             if r:
                 return (r[3] if len(r) > 3 and r[3] else "DotMapEntity") if t.name != "default" else _classes.component(name)
         return _classes.component(name)
+
+    def roles_for(self, entities):
+        """[{entity, classname, targetname, role}] for every source entity a `roles.tsv` row matches; the highest tier's row wins, then the one with a key test."""
+        rows = []
+        for rank, t in enumerate(self.tiers):
+            for k, cells in t.roles.items():
+                m = _ROLE_KEY.match(k)
+                if m and cells and cells[0]:
+                    rows.append((rank, m.group(2) is not None, m.group(1), m.group(2), re.compile(m.group(3) or ""), cells[0]))
+        rows.sort(key=lambda r: (r[0], r[1]), reverse=True)
+        out = []
+        for i, e in enumerate(entities):
+            cls = e.get("classname", "")
+            for _rank, _kt, pat, key, rx, role in rows:
+                if (cls == pat or (pat.endswith("*") and cls.startswith(pat[:-1]))) and (key is None or rx.search(str(e.get(key, "")))):
+                    out.append({"entity": i, "classname": cls, "targetname": e.get("targetname", ""), "role": role})
+                    break
+        return out
 
     def treatment(self, name):
         """`classes.treatment` with the tiers and the fallback: the signature the converter calls."""

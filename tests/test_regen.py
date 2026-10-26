@@ -76,6 +76,19 @@ class TierTests(unittest.TestCase):
         self.assertIsNone(rules.RuleSet.build().models_view().get("zz/unlisted_thing.mdl"))
 
 
+class RoleTests(unittest.TestCase):
+    def test_roles_match_class_and_key_and_a_higher_tier_wins(self):
+        ents = [{"classname": "info_player_teamspawn", "TeamNum": "2", "targetname": "a"},
+                {"classname": "info_player_teamspawn", "TeamNum": "3"},
+                {"classname": "trigger_multiple", "targetname": "finish_zone"}]
+        game = tmp_tier({"roles.tsv": "info_player_teamspawn\tspawn\ninfo_player_teamspawn[TeamNum=2]\tspawn_red\ntrigger_*[targetname=^finish]\tfinish\n"})
+        mapt = tmp_tier({"roles.tsv": "trigger_multiple\tgoal\n"})
+        rs = rules.RuleSet.build(game=game, map_rules=mapt)
+        got = [(r["entity"], r["role"]) for r in rs.roles_for(ents)]
+        self.assertEqual(got, [(0, "spawn_red"), (1, "spawn"), (2, "goal")])
+        self.assertEqual(rules.RuleSet.build().roles_for(ents), [])
+
+
 class RegenTests(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp()
