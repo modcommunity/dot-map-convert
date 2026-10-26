@@ -70,6 +70,17 @@ detect_3d/compress_to=0
 """
 
 
+IMPORT_MODEL = """[remap]
+
+importer="scene"
+type="PackedScene"
+
+[params]
+
+gltf/embedded_image_handling=3
+"""
+
+
 def needs(doc):
     """(pbr, models) a manifest draws: pbr is {(set id, tier)}, models {store_file: row}."""
     block = doc.get("licence", {})
@@ -120,6 +131,10 @@ def slice_for(docs, pbr_store, model_store, dest, vram=True, only=None, credits=
         files.append(rel)
         if marker and rel.lower().endswith(TEXTURE_EXT):
             write_import(out, vram, normal)
+        elif rel.lower().endswith((".glb", ".gltf")):
+            # Embedded: the default extracts images next to the scene, _prune then deletes them and the model fails to load.
+            with open(out + ".import", "w") as f:
+                f.write(IMPORT_MODEL)
 
     for sid, tier in sorted(pbr):
         for name in MAPS:
@@ -172,6 +187,8 @@ def version_of(dest, files, vram=True, deps=()):
     h = hashlib.sha256(b"vram" if vram else b"lossless")
     for d in deps:
         h.update(("dep %s@%s\n" % (d["id"], d["version"])).encode())
+    if any(r.lower().endswith((".glb", ".gltf")) for r in files):
+        h.update(b"glb-embed3")
     for rel in files:
         if rel.endswith(".import"):
             continue

@@ -37,6 +37,12 @@ class Credits(unittest.TestCase):
 
 
 class Slice(unittest.TestCase):
+    def test_glb_marker_embeds_images(self):
+        dest = os.path.join(self.t, "gm")
+        storepack.slice_for([DOC], self.pbr, self.mod, dest)
+        with open(os.path.join(dest, "models/poly/m/m.glb.import")) as f:
+            self.assertIn("embedded_image_handling=3", f.read())
+
     def setUp(self):
         self.t = tempfile.mkdtemp()
         self.pbr = os.path.join(self.t, "pbr-library")
