@@ -13,7 +13,10 @@ import urllib.request
 
 
 def _payload(raw):
-    p = json.loads(raw)["payload"]
+    doc = json.loads(raw)
+    if "payload" not in doc:    # an unsigned dist/ manifest, written before dot-cloud publish signs it
+        return doc
+    p = doc["payload"]
     return json.loads(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4)))
 
 
