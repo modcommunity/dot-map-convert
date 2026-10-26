@@ -380,17 +380,37 @@ def _shaped_placements(spots, shaped, scale, y0, boxed=frozenset(), packed=None)
         rec = {"stand_in": s["stand_in"], "model": _props.norm_model(model), "shape": True,
                "at": [round(gx, 4), round(o[2] * scale - y0 + s["base"] * k, 4), round(gz, 4)],
                "yaw": round(ang[1] + 90.0 * s["turns"], 2), "scale": round(k, 3), "size": s["size"]}
+        measured = (packed or {}).get(_props.norm_model(model))
         if sol:
             rec["solid"] = sol
-            _collide(rec, (packed or {}).get(_props.norm_model(model)), o, ang[1], sc, scale, y0)
+            _collide(rec, measured, o, ang[1], sc, scale, y0)
+        if "collide" not in rec:
+            _collide(rec, measured or _listed_measure(_props.norm_model(model)), o, ang[1], sc, scale, y0, key="bounds")
         out.append(rec)
     return out
 
 
-def _collide(rec, measured, o, yaw, modelscale, scale, y0):
+_LISTED = None
+
+
+def _listed_measure(model):
+    """A model's measure from `rules/models/model_dims.tsv` (stock models are not packed), or None."""
+    global _LISTED
+    if _LISTED is None:
+        from . import modeldims
+        _LISTED = modeldims.load()
+    row = _LISTED.get(model)
+    if row is None:
+        return None
+    lo, hi = row[0], row[1]
+    return {"size": [b - a for a, b in zip(lo, hi)], "centre": [(a + b) / 2.0 for a, b in zip(lo, hi)]}
+
+
+def _collide(rec, measured, o, yaw, modelscale, scale, y0, key="collide"):
     """Sets `collide` {box, at, yaw} on a solid prop record from the original model's measured bounds (metres, Godot
     axes, world position), so the body is the size of what the map had and not of the stand-in drawn for it. Without a
-    measure (a stock model is not packed) the game boxes the drawn stand-in, which is sized to the original's longest side."""
+    measure (a stock model is not packed) the game boxes the drawn stand-in, which is sized to the original's longest side.
+    `key` "bounds" is the same box for drawing only: the low-detail box a client draws when the library model is missing."""
     if not measured:
         return
     k = _props._num(modelscale, 1.0)
@@ -398,7 +418,7 @@ def _collide(rec, measured, o, yaw, modelscale, scale, y0):
     ca, sa = math.cos(a), math.sin(a)
     cx, cy, cz = (v * k for v in measured["centre"])
     sx, sy, sz = (v * k for v in measured["size"])
-    rec["collide"] = {"box": [round(sx, 3), round(sy, 3), round(sz, 3)],
+    rec[key] = {"box": [round(sx, 3), round(sy, 3), round(sz, 3)],
                       "at": [round(o[0] * scale + cx * ca + cz * sa, 4), round(o[2] * scale - y0 + cy, 4), round(-o[1] * scale - cx * sa + cz * ca, 4)],
                       "yaw": round(yaw, 2)}
 

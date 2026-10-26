@@ -126,6 +126,21 @@ class Defects(unittest.TestCase):
         self.assertEqual(cat.match([1.0, 0.5, 0.5]), ("crate_large", 0))
         self.assertEqual(cat.match([0.5, 0.5, 1.0]), ("crate_large", 1))
 
+    def test_a_library_placement_carries_its_measured_box(self):
+        from dotbsp import standins
+        k = 1 / 0.01905
+        packed = {"models/x/shelf.mdl": {"size": [1.0, 1.5, 0.4], "centre": [0.0, 0.75, 0.0], "min": [-0.5, 0.0, -0.2]}}
+        pick = {"stand_in": "lib/ph_shelf", "turns": 0, "size": 1.5, "centre": [0.0, 0.0, 0.0], "base": 0.0, "row": None}
+        shaped = {"models/x/shelf.mdl": pick, "models/x/stock.mdl": dict(pick)}
+        spots = [("models/x/shelf.mdl", [k, 0, 0], [0, 90, 0], None, 6), ("models/x/shelf.mdl", [2 * k, 0, 0], [0, 0, 0], None, 0),
+                 ("models/x/stock.mdl", [3 * k, 0, 0], [0, 0, 0], None, 0)]
+        solid, loose, stock = standins._shaped_placements(spots, shaped, 0.01905, 0.0, packed=packed)
+        self.assertEqual(solid["collide"]["box"], [1.0, 1.5, 0.4])
+        self.assertNotIn("bounds", solid)                            # collide is already the box a client draws
+        self.assertEqual(loose["bounds"]["box"], [1.0, 1.5, 0.4])     # drawn when the model is missing, never collided
+        self.assertNotIn("collide", loose)
+        self.assertNotIn("bounds", stock)                            # no measure anywhere: nothing to draw
+
     def test_a_thing_resting_on_a_packed_model_gets_a_block_of_its_size(self):
         from dotbsp import standins
         k = 1 / 0.01905
