@@ -52,6 +52,14 @@ class PbrMap(unittest.TestCase):
         self.assertEqual(pbrmap.pick(lib, "brick", (0.9, 0.9, 0.9))["id"], "Bricks2")
         self.assertEqual(pbrmap.pick(lib, "brick", (0.4, 0.4, 0.4))["id"], "Bricks1")
 
+    def test_flat_black_dev_tile_gets_no_photo(self):
+        pbrmap._cache[("auto", pbrmap.library_root())] = pbrmap.load_library(self.lib)
+        self.addCleanup(pbrmap._cache.clear)
+        self.addCleanup(setattr, pbrmap, "ENABLED", pbrmap.ENABLED)
+        pbrmap.ENABLED = True
+        self.assertIsNone(pbrmap.choose("ryan_dev/black", (0.04, 0.04, 0.04)))
+        self.assertIsNotNone(pbrmap.choose("brick/x", (0.04, 0.04, 0.04)))
+
     def test_ship_copies_the_maps_and_replacement_names_the_file(self):
         out = os.path.join(self.lib, "out")
         pbrmap._cache.clear()

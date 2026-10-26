@@ -19,6 +19,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(os.path.dirname(HERE), "rules", "pbr")
 GENERIC = "pbr_"
+FLAT_BLACK = 0.1
 SEE_THROUGH = frozenset(("glass", "glass_frosted", "water", "bars", "grate", "fence", "shield", "foliage_card", "ladder", "invisible"))
 
 # Library ids and tags that make no wall: food, signs, smudges, toys.
@@ -336,11 +337,14 @@ def library():
 
 
 def choose(material, colour, kind_hint=None):
-    """The library entry for a source texture, or None without a library."""
+    """The library entry for a source texture, or None without a library or for a flat black one."""
     lib = library()
     if lib is None:
         return None
     cat = category(material, kind_hint)
+    # A flat black dev tile has no material to find: the nearest dark set is a speckled photo.
+    if cat is None and colour and max(colour) <= FLAT_BLACK:
+        return None
     return pick(lib, cat, colour, _keyword(material, cat))
 
 
