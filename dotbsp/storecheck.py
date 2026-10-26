@@ -92,8 +92,13 @@ def check(doc, pack_dir, dist=None, origin=None, cache=None):
 def cmd(args):
     cache, failed = {}, 0
     for p in args.manifests:
-        with open(p) as f:
-            doc = json.load(f)
+        try:
+            with open(p) as f:
+                doc = json.load(f)
+        except OSError as e:    # a world mid-regeneration has no manifest yet
+            print("%s: 1 problems\n  manifest unreadable: %s" % (p, e.strerror))
+            failed += 1
+            continue
         bad = check(doc, os.path.dirname(os.path.abspath(p)), args.dist, args.origin, cache)
         print("%s: %s" % (doc.get("name", p), "ok" if not bad else "%d problems" % len(bad)))
         for b in bad:
