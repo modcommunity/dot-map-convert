@@ -9,7 +9,8 @@ Each tier is a directory of tables, a JSON file with the same tables, or both:
 | `models` | `models.tsv` | regex on the model path | stand-in id and its credit (`standins` format) |
 | `sounds` | `sounds.tsv` | regex on the sound name | stand-in id (empty = silent on purpose) |
 | `classes` | `classes.tsv` | class name, or `prefix*` | treatment, meaning, component |
-| `materials`, `roles` | `materials.tsv`, `roles.tsv` | key | read and kept; nothing consumes them yet |
+| `materials` | `materials.tsv` | texture name glob or generic id | `kind`: a see-through look (`materials.KINDS`) or `opaque`, overriding what the material's own record implies |
+| `roles` | `roles.tsv` | key | read and kept; nothing consumes it yet |
 
 The highest tier with any matching row answers, and inside a tier the most specific row; so a map's
 row beats a game's, a game's beats an addon's, and a tier never needs to repeat the one below it.
@@ -17,11 +18,13 @@ Nothing is dropped: what no tier names is answered `None` here and handled by a 
 `regen.py`, and every lookup is recorded so the coverage report can say which tier answered.
 """
 
+import fnmatch
 import json
 import os
 import re
 
 from . import classes as _classes
+from . import materials as _materials
 from . import standins, texturemap
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -193,7 +196,7 @@ class RuleSet:
 
     def __init__(self, tiers=None):
         self.tiers = tiers or [default_tier()]
-        self.used = {"textures": {}, "models": {}, "sounds": {}, "classes": {}}
+        self.used = {"textures": {}, "models": {}, "sounds": {}, "classes": {}, "materials": {}}
 
     @classmethod
     def build(cls, addon=(), game=None, map_rules=None):
@@ -269,6 +272,28 @@ class RuleSet:
     def textures_view(self):
         return _TexView(self)
 
+    def material(self, name, generic):
+        """The highest tier's `materials.tsv` row for the texture (a glob on its name, else its generic id) as {kind}, or None."""
+        n = str(name or "").upper()
+        for t in self._high_first():
+            best = None
+            for key, cells in t.materials.items():
+                k = key.upper()
+                hit = fnmatch.fnmatchcase(n, k) or (generic is not None and key == generic)
+                if hit and (best is None or len(key) > best[0]):
+                    best = (len(key), cells)
+            if best is not None:
+                self.used["materials"][name] = t.name
+                cells = best[1] if isinstance(best[1], (list, tuple)) else [best[1].get("kind", "")] if isinstance(best[1], dict) else []
+                kind = cells[0] if cells else ""
+                if kind and kind not in _materials.KINDS:
+                    raise ValueError("materials row %s: kind %r is not one of %s" % (name, kind, ", ".join(_materials.KINDS)))
+                return {"kind": kind}
+        return None
+
+    def materials_view(self):
+        return _MatView(self)
+
     def models_view(self):
         return _RegexView(self, "models")
 
@@ -285,6 +310,16 @@ class _TexView:
     def lookup(self, name):
         hit = self.rs.texture(name)
         return (hit[0], hit[1]) if hit else None
+
+
+class _MatView:
+    """What `mesh.build` takes as `materials`."""
+
+    def __init__(self, rs):
+        self.rs = rs
+
+    def get(self, name, generic=None):
+        return self.rs.material(name, generic)
 
 
 class _RegexView:

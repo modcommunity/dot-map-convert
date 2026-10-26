@@ -153,11 +153,10 @@ class Glass(unittest.TestCase):
         self.assertEqual(kinds["glasswindow001b"], "glass")
         self.assertIsNone(kinds["concretefloor001"])
 
-    def test_translucent_texture_with_no_row_is_reported_not_guessed(self):
+    def test_translucent_texture_with_no_row_or_record_takes_the_look_its_name_asks_for(self):
         fence = [s for s in self.m.surfaces if s.material.endswith("fencexyz")]
-        self.assertTrue(fence and all(s.glass is None for s in fence))
-        self.assertEqual(sum(self.m.translucent_unmapped.values()), 6)
-        self.assertTrue(any("fencexyz".upper() in n.upper() for n in self.m.notes))
+        self.assertTrue(fence and all(s.glass == "fence" and s.props["why"] == "name" for s in fence))
+        self.assertEqual(sum(self.m.translucent_unmapped.values()), 0)
 
     def test_breakable_pane_is_listed_with_its_health_and_glass_kind(self):
         rows = mesh.breakables(self.b, self.m)

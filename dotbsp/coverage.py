@@ -14,7 +14,7 @@ from . import classes as _classes, defs, movers
 FORMAT = "dot-bsp-coverage"
 VERSION = 1
 LISTS = ("textures_unmapped", "textures_flat", "models_unmapped", "sounds_unmapped",
-         "classes_unmapped", "keys_unmapped", "links_unresolved")
+         "classes_unmapped", "keys_unmapped", "links_unresolved", "surfaces_opaque")
 # Keys every entity may carry and the catalogue need not repeat.
 COMMON_KEYS = frozenset(("classname", "origin", "angles", "targetname", "parentname", "hammerid", "id", "model"))
 
@@ -100,6 +100,10 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
         "classes_unmapped": sorted(c for c in classes if used["classes"].get(c) is None),
         "keys_unmapped": sorted("%s.%s" % (c, k) for c, ks in keys.items() for k in ks),
         "links_unresolved": unresolved,
+        # a translucent, cut-out or additive material drawn as a solid slab: add a materials.tsv row or fix the derivation
+        "surfaces_opaque": sorted({s["material"] for s in doc.get("surfaces", [])
+                                   if {"translucent", "alpha_test", "additive"} & set(s.get("material_flags", ()))
+                                   and not s.get("glass") and not s.get("water")}),
     }
     return {
         "format": FORMAT, "version": VERSION, "map": name, "sha256": sha256,

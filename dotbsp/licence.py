@@ -117,7 +117,9 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
     for s in doc["surfaces"]:
         recs = _blend_records(s) if s.get("alpha_offset") else []
         if not recs:
-            recs = [replacement(s.get("generic"), s.get("colour"), table, s.get("material"))]
+            # a surface the converter made see-through from its material record draws the look, not its texture's photo
+            g = s.get("glass") if s.get("glass") in table else s.get("generic")
+            recs = [replacement(g, s.get("colour"), table, s.get("material"))]
         s["free"] = _key(recs[0])
         if len(recs) > 1:
             s["free2"] = _key(recs[1])

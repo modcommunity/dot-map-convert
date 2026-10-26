@@ -43,3 +43,4 @@ bars	generated	dot-map cutout_texture	drawn in code by addons/dot_map/bsp/dot_ma
 ladder	generated	dot-map cutout_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (cutout_texture)	TMC (generated)	CC0-1.0
 shield	generated	dot-map cutout_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (cutout_texture)	TMC (generated)	CC0-1.0
 invisible	generated	dot-map cutout_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (cutout_texture)	TMC (generated)	CC0-1.0
+glow	generated	dot-map cutout_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (cutout_texture)	TMC (generated)	CC0-1.0

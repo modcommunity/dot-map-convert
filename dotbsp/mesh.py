@@ -56,7 +56,7 @@ import random
 import re
 import struct
 
-from . import docboxes, lightmap as _lightmap, reader, texturemap
+from . import docboxes, lightmap as _lightmap, materials as _materials, reader, texturemap
 from . import vis as _vis
 from . import units as _units
 
@@ -228,7 +228,7 @@ def _sky_face(bsp, f, off, sky):
 class Surface:
     __slots__ = ("model", "entity", "classname", "targetname", "material", "generic", "tint",
                  "colour", "texels", "water", "glass", "displacement", "collide", "sky3d", "chunk", "verts",
-                 "index", "_dedupe", "clusters", "page", "emissive", "uv2", "alpha")
+                 "index", "_dedupe", "clusters", "page", "emissive", "uv2", "alpha", "props", "two_sided")
 
     def __init__(self, model, entity, classname, targetname, material):
         self.model, self.entity, self.classname, self.targetname = model, entity, classname, targetname
@@ -238,6 +238,7 @@ class Surface:
         self.glass = None
         self.chunk = self.clusters = None
         self.page, self.emissive = None, False
+        self.props, self.two_sided = None, False
         self.verts, self.index, self._dedupe, self.uv2, self.alpha = [], [], {}, [], []
 
     def vertex(self, p, n, uv, uv2=None, alpha=None):
@@ -367,7 +368,7 @@ def crop_keep(crop):
 
 def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classify_material,
           drawn_classes=DRAWN_BRUSH_ENTITIES, solid_classes=SOLID_BRUSH_ENTITIES, chunk=CHUNK,
-          visibility=True, lighting=True, crop=None):
+          visibility=True, lighting=True, crop=None, materials=None):
     """The drawn and solid world of a loaded `reader.Bsp` as a `Mesh`, in metres and Godot axes.
 
     `tmap` is a `texturemap.TextureMap` (the shared list by default). `y0` is subtracted from
@@ -378,10 +379,13 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     the map's precomputed visibility and occluders (`vis.attach`). `lighting` imports the map's
     baked lightmap (`lightmap.pack`) as a second UV set. `crop` is `x0,z0,x1,z1[,ymin,ymax]` in the
     output's metres: a face, hull or brush model whose centre is outside is left out of the mesh, the
-    lightmap atlas, the occluders and the visibility sets alike, and so is the 3D sky.
+    lightmap atlas, the occluders and the visibility sets alike, and so is the 3D sky. `materials` is a
+    `materials.tsv` view (`get(name, generic)`); each surface's properties come from its packed
+    material record (`materials.Resolver`).
     """
     tmap = tmap or texturemap.load()
     out = Mesh()
+    res = _materials.Resolver(bsp.read_pak(out.notes, only=(".vmt", ".vtf")), materials)
     out.scale, out.y0 = scale, y0
     out.source = {"file": os.path.basename(bsp.path), "bytes": len(bsp.d),
                   "sha256": hashlib.sha256(bsp.d).hexdigest(), "bsp_version": bsp.version}
@@ -461,7 +465,7 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                             cell.append(int(math.floor(c[1] / CHUNK_Y)))
                 _add_face(bsp, f, name, mi, ei, cls, e.get("targetname", ""), off, surfaces, tmap,
                           classify, g_sky if in_sky else g, gn, in_sky, cell,
-                          out.translucent_unmapped if flags & SURF_TRANS else None, out.atlas)
+                          out.translucent_unmapped if flags & SURF_TRANS else None, out.atlas, res, flags)
         solid = mi == 0 or cls in solid_classes
         if not solid:
             continue
@@ -550,8 +554,24 @@ def triangulate(pts, normal):
     return out
 
 
+def _surface_props(s, res, name, flags):
+    """The surface's material properties; a translucent, cut-out or additive one no table made see-through
+    takes the generated look its record implies, so it is never an opaque slab."""
+    props = res.properties(name, flags)
+    if not (props["translucent"] or props["alpha_test"] or props["additive"] or props["two_sided"]):
+        return
+    s.props = props
+    if s.glass is None:
+        kind, why = res.kind(name, s.generic, props)
+        if kind:
+            s.glass = kind
+            s.tint = _materials.tint(props) or s.tint
+        s.props = dict(props, why=why)
+    s.two_sided = props["two_sided"] and not s.glass
+
+
 def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classify, g, gn, sky3d=False,
-              chunk=None, trans=None, atlas=None):
+              chunk=None, trans=None, atlas=None, res=None, flags=0):
     disp = f[6] >= 0
     ti = bsp.texinfo[f[5]]
     page = None
@@ -567,6 +587,8 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
             s.generic, s.tint = hit[0], (list(hit[1]) if hit[1] else None)
         s.water = _is_water(name, s.generic)
         s.glass = None if s.water else glass_kind(s.generic, cls)
+        if res is not None and not s.water and not sky3d and not (hit is not None and hit[0] in ("flat", "invisible")):
+            _surface_props(s, res, name, flags)
         s.displacement = disp
         s.collide = disp and not sky3d
         s.sky3d = sky3d
@@ -687,6 +709,10 @@ def write(mesh, prefix, credit=None, name=None, extra=None):
                 rec[k] = True
         if s.glass:
             rec["glass"] = s.glass
+        if s.two_sided:
+            rec["two_sided"] = True
+        if s.props:
+            rec["material_flags"] = sorted(k for k in ("translucent", "alpha_test", "additive", "two_sided", "selfillum") if s.props.get(k))
         if s.clusters is not None:
             rec["clusters"] = s.clusters
         surfaces.append(rec)

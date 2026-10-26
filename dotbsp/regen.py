@@ -53,7 +53,7 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     with open(path, "rb") as f:
         bsp = reader.Bsp(path, data=f.read()).load()
     with applied(rs):
-        m = mesh.build(bsp, tmap=rs.textures_view(), scale=scale, y0=y0, crop=crop)
+        m = mesh.build(bsp, tmap=rs.textures_view(), scale=scale, y0=y0, crop=crop, materials=rs.materials_view())
         report = classes.report(bsp)
         links = movers.links(bsp)
         ents = movers.generic(bsp)
