@@ -318,6 +318,17 @@ class Mesh:
                 "models": len({s.model for s in self.surfaces} | {h["model"] for h in self.hulls})}
 
 
+def repeat_metres(surface):
+    """Metres one repeat of the surface's texture spans: the root of drawn area over texture-space area.
+    Zero when the surface has no texture area (flat uv)."""
+    world = uv = 0.0
+    for t in range(0, len(surface.index), 3):
+        v = [surface.verts[i] for i in surface.index[t:t + 3]]
+        world += _tri_area(v[0][0], v[1][0], v[2][0])
+        uv += abs((v[1][2][0] - v[0][2][0]) * (v[2][2][1] - v[0][2][1]) - (v[2][2][0] - v[0][2][0]) * (v[1][2][1] - v[0][2][1])) * 0.5
+    return math.sqrt(world / uv) if uv > 1e-9 and world > 0 else 0.0
+
+
 def _tri_area(a, b, c):
     u = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
     v = (c[0] - a[0], c[1] - a[1], c[2] - a[2])

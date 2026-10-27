@@ -186,7 +186,7 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
     return block
 
 
-SMALL_PX = 64
+SMALL_PX = 128
 
 
 def small_albedos(block, outdir, store, px=SMALL_PX):

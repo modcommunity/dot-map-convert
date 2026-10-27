@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import licence, pbrmap, modeldims, modelmap, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap  # noqa: E402
+from dotbsp import licence, pbrmap, modeldims, modelmap, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality  # noqa: E402
 
 
 def _credit(args):
@@ -391,6 +391,13 @@ def main(argv):
     me.add_argument("--y0", type=float, default=0.0, help="metres subtracted from every height")
     me.add_argument("--coverage", action="store_true", help="sample the source against the output (slow on big maps)")
     me.add_argument("--allow-unknown", action="store_true", help="do not fail on an undecided entity class")
+    tq = sub.add_parser("texquality", help="pixels per metre of every replaced texture set of a converted map, worst first (dotbsp/texquality.py)")
+    tq.add_argument("mesh", help="a dot-bsp-mesh prefix")
+    tq.add_argument("--json")
+    tq.add_argument("--top", type=int, default=15)
+    tq.add_argument("--target", type=float, default=256.0)
+    tq.add_argument("--store", help="a PBR store (<id>/<tier>/albedo.webp): real slice widths; a set missing from it counts as the 64 px fallback")
+    tq.add_argument("--fail-below", action="store_true", help="exit 1 when any set is under the target")
     au = sub.add_parser("audit", help="every brush and floor of the source against a converted output (dotbsp/audit.py)")
     au.add_argument("bsp")
     au.add_argument("--member")
@@ -485,11 +492,11 @@ def main(argv):
     sa = sub.add_parser("smallalbedo", help="add a small albedo per PBR set to converted packs, drawn when the store slices are missing (dotbsp/licence.py)")
     sa.add_argument("manifests", nargs="+", help="a pack's manifest json")
     sa.add_argument("--pbr-store", help="the PBR store; default the manifest's licence.pbr_store")
-    sa.add_argument("--px", type=int, default=64, help="side in pixels (default 64)")
+    sa.add_argument("--px", type=int, default=128, help="side in pixels (default 128)")
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "storepack": storepack.run_cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small}[args.cmd](args)
+                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "storepack": storepack.run_cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2
