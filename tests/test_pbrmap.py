@@ -93,6 +93,11 @@ class RoadNames(unittest.TestCase):
         for name in ("cs_assault/pavement001", "x/pavement_a", "x/sidewalk02", "x/road_dirty", "x/street_b", "x/asphalt01", "x/pavement_wood"):
             self.assertIn(pbrmap.category(name), ("concrete", "asphalt"), name)
 
+    def test_the_shipped_table_maps_pavement001_to_concrete_pavement(self):
+        with open(os.path.join(os.path.dirname(HERE), "rules", "pbr", "textures.tsv"), encoding="utf-8") as f:
+            rows = dict(l.split("\t")[:2] for l in f if not l.startswith("#") and "\t" in l)
+        self.assertEqual(rows["cs_assault/pavement001"], "pbr_concrete_pavement")
+
     def test_paving_stones_stay_stone(self):
         self.assertEqual(pbrmap.category("x/pavingstones01"), "stone")
 
