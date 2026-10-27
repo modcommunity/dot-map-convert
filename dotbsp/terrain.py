@@ -310,6 +310,88 @@ def walk_points(hf, walk, spacing):
     return out
 
 
+def face_boxes(tris, hf, size=0.5, tol=0.3, steep=0.7, reach=1.5):
+    """Boxes (x0, y0, z0, x1, y1, z1) for the steep faces and undercuts a heightfield cannot hold.
+
+    A heightfield keeps the highest surface per sample, so a cliff is a ramp one cell wide and
+    an overhang a wall at its lip, up to metres from the drawn face. Every point of a triangle
+    steeper than `steep` (|normal.y|) with no field surface within `size` of it sideways, in
+    either direction, becomes a `size` voxel; runs of voxels merge into boxes.
+    """
+    vox = set()
+    step = size * 0.5
+    for a, b, c in tris:
+        ux, uy, uz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+        vx, vy, vz = c[0] - a[0], c[1] - a[1], c[2] - a[2]
+        nx, ny, nz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx
+        ln = math.sqrt(nx * nx + ny * ny + nz * nz)
+        if ln < 1e-12 or abs(ny) / ln >= steep:
+            continue
+        hl = math.hypot(nx, nz)
+        hx, hz = nx / hl, nz / hl
+        lu, lv = math.sqrt(ux * ux + uy * uy + uz * uz), math.sqrt(vx * vx + vy * vy + vz * vz)
+        nu, nv = max(1, int(math.ceil(lu / step))), max(1, int(math.ceil(lv / step)))
+        for i in range(nu + 1):
+            for j in range(nv + 1 - i * nv // nu if nu else 1):
+                fu, fv = i / nu, j / nv
+                if fu + fv > 1.0:
+                    continue
+                x, y, z = a[0] + fu * ux + fv * vx, a[1] + fu * uy + fv * vy, a[2] + fu * uz + fv * vz
+                held = False
+                d = 0.0
+                while d <= size and not held:
+                    for sgn in (1.0, -1.0):
+                        h = hf.height(x + sgn * hx * d, z + sgn * hz * d)
+                        if h is not None and abs(h - y) <= tol:
+                            held = True
+                    d += size * 0.5
+                if not held:
+                    vox.add((int(math.floor(x / size)), int(math.floor(y / size)), int(math.floor(z / size))))
+    return _merge_voxels(vox, size)
+
+
+def _merge_voxels(vox, size):
+    cols = {}
+    for ix, iy, iz in vox:
+        cols.setdefault((ix, iz), []).append(iy)
+    runs = []
+    for (ix, iz), ys in cols.items():
+        ys.sort()
+        lo = prev = ys[0]
+        for y in ys[1:]:
+            if y != prev + 1:
+                runs.append((ix, iz, lo, prev))
+                lo = y
+            prev = y
+        runs.append((ix, iz, lo, prev))
+    byrow = {}
+    for ix, iz, lo, hi in runs:
+        byrow.setdefault((ix, lo, hi), []).append(iz)
+    rows = []
+    for (ix, lo, hi), zs in byrow.items():
+        zs.sort()
+        z0 = prev = zs[0]
+        for z in zs[1:]:
+            if z != prev + 1:
+                rows.append((ix, z0, prev, lo, hi))
+                z0 = z
+            prev = z
+        rows.append((ix, z0, prev, lo, hi))
+    bycol = {}
+    for ix, z0, z1, lo, hi in rows:
+        bycol.setdefault((z0, z1, lo, hi), []).append(ix)
+    out = []
+    for (z0, z1, lo, hi), xs in bycol.items():
+        xs.sort()
+        x0 = prev = xs[0]
+        for x in xs[1:] + [None]:
+            if x is None or x != prev + 1:
+                out.append((x0 * size, lo * size, z0 * size, (prev + 1) * size, (hi + 1) * size, (z1 + 1) * size))
+                x0 = x
+            prev = x if x is not None else prev
+    return out
+
+
 def game_tris(tris, scale, y0=0.0):
     """Map-unit displacement triangles to metres on Godot axes (units.to_game)."""
     return [tuple((p[0] * scale, p[2] * scale - y0, -p[1] * scale) for p in t) for t in tris]
