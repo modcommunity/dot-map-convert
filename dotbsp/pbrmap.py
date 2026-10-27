@@ -61,7 +61,7 @@ NAMES = [
     ("wood", r"wood|plank|planks|door|crate|barrel|log|bark|timber|board|cabinet|desk|shelf|furniture"),
     ("grass", r"grass|lawn|moss|leaf|leaves|foliage|ivy|hedge|bush|plant"),
     ("ground", r"dirt|sand|mud|gravel|soil|path|terrain|ground|beach|swamp"),
-    ("stone", r"rock|cliff|stone|cave|granite|marble|cobble|slate|pave"),
+    ("stone", r"rock|cliff|stone|cave|granite|marble|cobble|slate|paving"),
     ("roof", r"roof|shingle|thatch"),
     ("concrete", r"concrete|cement|conc|cinder|pavement|sidewalk|curb|bunker|cmu"),
     ("plaster", r"plaster|stucco|wallpaper|paint|drywall|wall|ceiling|trim"),

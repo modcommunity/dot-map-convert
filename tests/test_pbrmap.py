@@ -88,5 +88,26 @@ class PbrMap(unittest.TestCase):
         self.assertEqual((pbrmap.tier_for(0.2), pbrmap.tier_for(0.01)), ("2k", "1k"))
 
 
+class RoadNames(unittest.TestCase):
+    def test_road_names_never_place_in_wood_dirt_or_rock(self):
+        for name in ("cs_assault/pavement001", "x/pavement_a", "x/sidewalk02", "x/road_dirty", "x/street_b", "x/asphalt01", "x/pavement_wood"):
+            self.assertIn(pbrmap.category(name), ("concrete", "asphalt"), name)
+
+    def test_paving_stones_stay_stone(self):
+        self.assertEqual(pbrmap.category("x/pavingstones01"), "stone")
+
+    def test_the_shipped_table_keeps_road_names_off_wood_dirt_and_rock(self):
+        import re
+        road = re.compile(r"(?<![a-z])(road|street|asphalt|pavement|sidewalk)")
+        wrong = re.compile(r"wood|plank|dirt|rock|mud|soil|sand|grass|gravel|bark", re.I)
+        with open(os.path.join(os.path.dirname(HERE), "rules", "pbr", "textures.tsv"), encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("#") or "\t" not in line:
+                    continue
+                name, generic = line.split("\t")[:2]
+                if road.search(name.rsplit("/", 1)[-1]):
+                    self.assertIsNone(wrong.search(generic), "%s -> %s" % (name, generic))
+
+
 if __name__ == "__main__":
     unittest.main()

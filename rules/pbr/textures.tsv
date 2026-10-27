@@ -389,8 +389,8 @@ cs_assault/assault_metalcrate001c_red	pbr_Metal023
 cs_assault/assault_metalcrate001d	pbr_Metal033	
 cs_assault/assault_warehouse_02	pbr_white_plaster_02	
 cs_assault/concretefloor026a	pbr_Concrete035	
-cs_assault/pavement001	pbr_Rock060	
-cs_assault/pavement001a	pbr_Rock060	
+cs_assault/pavement001	pbr_concrete_pavement	
+cs_assault/pavement001a	pbr_concrete_pavement	
 cs_havana/bldb	pbr_Facade018A	
 cs_havana/building011	pbr_exterior_wall_cladding	
 cs_havana/ceiling01	pbr_Plaster007	
