@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-from . import classes, coverage, environment, licence, mapcfg, mesh, movers, pbrmap, reader, rules, scripts, standins, store, units
+from . import classes, coverage, environment, licence, loose, mapcfg, mesh, movers, pbrmap, reader, rules, scripts, standins, store, units
 
 
 def _json(path):
@@ -88,6 +88,8 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     doc["props"] = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0, shaped=shaped)
     if keep is not None:
         doc["props"] = [p for p in doc["props"] if keep(p["at"])]
+    loose.mark(doc["props"], bsp.entities, scale, y0)
+    loose.hold(doc["breakables"], doc["props"], lambda mi: _model_box(bsp, mi), scale, y0)
     problems = licence.check(doc)
     # The starter per-map config: every map gets one, from the commands its entities send, commented out.
     mapcfg.write_suggestion(os.path.join(outdir, "dot_map", "map"), name.lower(), store.commands(bsp.entities))
@@ -102,6 +104,16 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
         json.dump({"map": {k: doc.get("credit", {}).get(k, "") for k in ("author", "page", "licence")}, "works": licence.credits_list(doc)}, f, indent=1)
         f.write("\n")
     return doc, rep, problems
+
+
+def _model_box(bsp, model):
+    """A brush model's (mins, maxs) in source units where it stands: its entity's origin added (an origin brush makes the model's own bounds relative)."""
+    owner = next((e for e in bsp.entities if e.get("model") == "*%d" % model), None)
+    if owner is None:
+        return None
+    lo, hi = bsp.model_bounds(model)
+    o = reader.entity_vec(owner)
+    return [lo[i] + o[i] for i in range(3)], [hi[i] + o[i] for i in range(3)]
 
 
 def _point(rec):

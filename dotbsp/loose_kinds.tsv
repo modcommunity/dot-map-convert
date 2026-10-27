@@ -1,0 +1,3 @@
+# A placed physics prop whose model name matches a row is loose: the game rolls it as that dot-props toy kind and the
+# importer notes which breakable it rests on. First match wins. Columns: regex on the model path, toy kind.
+barrel|oildrum|oil_drum|keg|propanecanister	barrel
