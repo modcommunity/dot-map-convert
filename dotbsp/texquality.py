@@ -19,6 +19,7 @@ from . import licence, mesh, pbrmap
 
 DRAW_METRES = 2.0     # metres one repeat of a PBR set covers in dot-map's world material
 TARGET = 256.0        # px per metre under which a surface reads soft at arm's length
+DENSE = 1024.0        # px per metre over which a surface is shimmer and memory a player cannot see
 
 
 def _slice_px(store, set_id, tier):
@@ -41,12 +42,29 @@ def _fallback_px(directory, use):
     return licence.SMALL_PX
 
 
-def report(prefix, store=None, target=TARGET, top=15):
+def percentiles(pairs, qs=(5, 50, 95)):
+    """Area-weighted percentiles of (area, value) pairs: the value under which `q` percent of the area lies."""
+    pairs = sorted(pairs, key=lambda p: p[1])
+    total = sum(a for a, _ in pairs)
+    out = {}
+    for q in qs:
+        run, hit = 0.0, pairs[-1][1] if pairs else 0
+        for a, v in pairs:
+            run += a
+            if run >= total * q / 100.0:
+                hit = v
+                break
+        out["p%d" % q] = round(hit)
+    return out
+
+
+def report(prefix, store=None, target=TARGET, top=15, dense=DENSE):
     man, m = mesh.read(prefix)
     uses = {t["key"]: t for t in man.get("licence", {}).get("textures", []) if t.get("key")}
     rows = collections.OrderedDict()
     here = os.path.dirname(os.path.abspath(prefix))
     total = 0.0
+    drawn, orig = [], []
     for rec, s in zip(man["surfaces"], m.surfaces):
         use = uses.get(rec.get("free"))
         if use is None or use.get("kind") != "pbr" or s.sky3d or s.water:
@@ -62,6 +80,8 @@ def report(prefix, store=None, target=TARGET, top=15):
         r["area"] += area
         r["src"] += area * ((s.texels[0] if s.texels else 0) / rm if rm else 0)
         r["materials"][rec.get("material")] += area
+        drawn.append((area, r["px"] / DRAW_METRES))
+        orig.append((area, (s.texels[0] if s.texels else 0) / rm if rm else 0))
         total += area
     out = []
     for r in rows.values():
@@ -70,12 +90,17 @@ def report(prefix, store=None, target=TARGET, top=15):
                     "materials": [k for k, _ in r["materials"].most_common(3)]})
     bad = sorted((r for r in out if r["px_per_m"] < target), key=lambda r: -r["area_m2"])
     low = sum(r["area_m2"] for r in bad)
+    over = sorted((r for r in out if r["px_per_m"] > dense), key=lambda r: -r["area_m2"])
+    soft = sorted((r for r in out if r["source_px_per_m"] > r["px_per_m"] * 2 and r["px_per_m"] >= target), key=lambda r: -r["area_m2"])
     return {"map": man.get("name"), "drawn_m2": round(total, 1), "below_target_m2": round(low, 1), "target_px_per_m": target,
-            "sets": len(out), "sets_below_target": len(bad), "worst": bad[:top]}
+            "sets": len(out), "sets_below_target": len(bad), "worst": bad[:top],
+            "drawn_percentiles": percentiles(drawn), "original_percentiles": percentiles(orig),
+            "dense_px_per_m": dense, "dense_m2": round(sum(r["area_m2"] for r in over), 1), "dense": over[:top],
+            "blurrier_than_original": soft[:top]}
 
 
 def cmd(args):
-    r = report(args.mesh, store=args.store, target=args.target, top=args.top)
+    r = report(args.mesh, store=args.store, target=args.target, top=args.top, dense=args.dense)
     if args.json:
         with open(args.json, "w") as f:
             json.dump(r, f, indent=1, sort_keys=True)
@@ -84,4 +109,7 @@ def cmd(args):
     for w in r["worst"]:
         print("  %-28s %-4s %5.0f m2  %4d px/m (original %d)%s  %s" % (w["set"], w["tier"] or "-", w["area_m2"], w["px_per_m"], w["source_px_per_m"],
                                                                       "  SLICE MISSING: %d px fallback" % w["px"] if w["slice_missing"] else "", ", ".join(w["materials"])))
+    print("  drawn px/m by area p5/p50/p95: %(p5)d / %(p50)d / %(p95)d; original %%s" % r["drawn_percentiles"] % "/".join(str(r["original_percentiles"][k]) for k in ("p5", "p50", "p95")))
+    print("  over %d px/m (too dense): %.0f m2 in %d sets; drawn under half the original's density: %d sets" % (
+        r["dense_px_per_m"], r["dense_m2"], len(r["dense"]), len(r["blurrier_than_original"])))
     return 1 if args.fail_below and r["sets_below_target"] else 0

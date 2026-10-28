@@ -396,6 +396,7 @@ def main(argv):
     tq.add_argument("--json")
     tq.add_argument("--top", type=int, default=15)
     tq.add_argument("--target", type=float, default=256.0)
+    tq.add_argument("--dense", type=float, default=1024.0, help="px per metre over which a set counts as too dense")
     tq.add_argument("--store", help="a PBR store (<id>/<tier>/albedo.webp): real slice widths; a set missing from it counts as the 64 px fallback")
     tq.add_argument("--fail-below", action="store_true", help="exit 1 when any set is under the target")
     au = sub.add_parser("audit", help="every brush and floor of the source against a converted output (dotbsp/audit.py)")

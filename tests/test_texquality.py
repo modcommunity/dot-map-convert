@@ -36,6 +36,10 @@ class TexQuality(unittest.TestCase):
         self.assertLess(licence.SMALL_PX / texquality.DRAW_METRES, texquality.TARGET)
         self.assertGreaterEqual(1024 / texquality.DRAW_METRES, texquality.TARGET)
 
+    def test_percentiles_weight_by_area(self):
+        r = texquality.percentiles([(90.0, 100.0), (10.0, 900.0)])
+        self.assertEqual((r["p5"], r["p50"], r["p95"]), (100, 100, 900))
+
 
 if __name__ == "__main__":
     unittest.main()
