@@ -69,11 +69,11 @@ def _single(root, title, games, directory, doc_kind, map_kind, argv):
     return 0
 
 
-def _pack_licence(root, mid):
+def _pack_licence(root, mid, worlds=False):
     """maps/<id>/licence.json text: base entry for original content plus the map's entry, prefixes relative to the pack root.
 
     The root licence.json names "maps/<id>"; a pack built from maps/<id> never sees that prefix, and the credited-map
-    exception refuses "", so the map's files are named: <id> (its .json/.bin/lightmap/.import) and textures/.
+    exception refuses "", so the map's files are named: <id> (its .json/.bin/lightmap/.import) and textures/; worlds=True adds worlds/<id>/ for packs that install under it.
     """
     src = os.path.join(root, "licence.json")
     if not os.path.isfile(src):
@@ -88,11 +88,11 @@ def _pack_licence(root, mid):
                 "url": "https://github.com/zees-games/" + os.path.basename(os.path.abspath(root)),
                 "title": os.path.basename(os.path.abspath(root)) + " (original content)"}
     for e in mine:
-        e["paths"] = [mid, "textures/"]
+        e["paths"] = [mid, "textures/"] + (["worlds/" + mid + "/"] if worlds else [])
     return json.dumps([base] + mine, indent=2) + "\n"
 
 
-def _each(root, games, skip, map_kind, argv):
+def _each(root, games, skip, map_kind, argv, worlds=False):
     check = "--check" in argv
     bad = []
     count = 0
@@ -112,7 +112,7 @@ def _each(root, games, skip, map_kind, argv):
         path = os.path.join(folder, "provides.json")
         count += 1
         outs = [(path, text, "provides.json")]
-        lic = _pack_licence(root, mid)
+        lic = _pack_licence(root, mid, worlds)
         if lic:
             outs.append((os.path.join(folder, "licence.json"), lic, "licence.json"))
         for p, t, label in outs:
@@ -129,8 +129,8 @@ def _each(root, games, skip, map_kind, argv):
     return 1 if bad else 0
 
 
-def run(root, games, pack="single", title="", directory="maps", doc_kind=None, map_kind=None, skip=(), argv=None):
+def run(root, games, pack="single", title="", directory="maps", doc_kind=None, map_kind=None, skip=(), argv=None, worlds=False):
     argv = sys.argv if argv is None else argv
     if pack == "each":
-        return _each(root, games, set(skip), map_kind, argv)
+        return _each(root, games, set(skip), map_kind, argv, worlds)
     return _single(root, title, games, directory, doc_kind, map_kind, argv)
