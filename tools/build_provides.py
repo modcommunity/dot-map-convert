@@ -6,7 +6,7 @@ A repo's tools/build_provides.py is a thin config that imports this and calls `r
     sys.path.insert(0, <dot-map>/tools); import build_provides; sys.exit(build_provides.run(ROOT, ...))
 
     pack="single": one provides.json at the root, one `map` entry per document in `directory`
-    pack="each":   maps/<id>/provides.json per folder (each folder is its own pack), entry scene = <id>.json
+    pack="each":   maps/<id>/provides.json and licence.json per folder (each folder is its own pack), entry scene = <id>.json
 
 Run with --check to exit 1 on a stale file, a bad id or a scene the pack lacks. Entries come from the
 documents on disk, so a map added by the builders is listed with no second edit. `scene` is relative to
@@ -69,6 +69,29 @@ def _single(root, title, games, directory, doc_kind, map_kind, argv):
     return 0
 
 
+def _pack_licence(root, mid):
+    """maps/<id>/licence.json text: base entry for original content plus the map's entry, prefixes relative to the pack root.
+
+    The root licence.json names "maps/<id>"; a pack built from maps/<id> never sees that prefix, and the credited-map
+    exception refuses "", so the map's files are named: <id> (its .json/.bin/lightmap/.import) and textures/.
+    """
+    src = os.path.join(root, "licence.json")
+    if not os.path.isfile(src):
+        return None
+    entries = json.load(open(src))
+    mine = [dict(e) for e in entries if ("maps/" + mid) in e.get("paths", [])]
+    if not mine:
+        return None
+    base = next((dict(e) for e in entries if e.get("paths") == [""] and not e.get("exception")), None)
+    if base is None:
+        base = {"paths": [""], "licence": "MIT", "author": "TMC",
+                "url": "https://github.com/zees-games/" + os.path.basename(os.path.abspath(root)),
+                "title": os.path.basename(os.path.abspath(root)) + " (original content)"}
+    for e in mine:
+        e["paths"] = [mid, "textures/"]
+    return json.dumps([base] + mine, indent=2) + "\n"
+
+
 def _each(root, games, skip, map_kind, argv):
     check = "--check" in argv
     bad = []
@@ -88,12 +111,17 @@ def _each(root, games, skip, map_kind, argv):
         text = json.dumps(doc, indent=4) + "\n"
         path = os.path.join(folder, "provides.json")
         count += 1
-        if check:
-            if not os.path.exists(path) or open(path).read() != text:
-                bad.append("stale or missing " + mid + "/provides.json")
-        else:
-            with open(path, "w") as f:
-                f.write(text)
+        outs = [(path, text, "provides.json")]
+        lic = _pack_licence(root, mid)
+        if lic:
+            outs.append((os.path.join(folder, "licence.json"), lic, "licence.json"))
+        for p, t, label in outs:
+            if check:
+                if not os.path.exists(p) or open(p).read() != t:
+                    bad.append("stale or missing " + mid + "/" + label)
+            else:
+                with open(p, "w") as f:
+                    f.write(t)
     if check:
         print("\n".join(bad) if bad else "every map has its provides.json (%d)" % count)
     else:
