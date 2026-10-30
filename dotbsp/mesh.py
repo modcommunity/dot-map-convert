@@ -760,10 +760,15 @@ def write(mesh, prefix, credit=None, name=None, extra=None):
     os.makedirs(os.path.dirname(os.path.abspath(prefix)) or ".", exist_ok=True)
     with open(prefix + ".bin", "wb") as f:
         f.write(packed)
-    with open(prefix + ".json", "w") as f:
-        json.dump(doc, f, indent=1, sort_keys=True)
-        f.write("\n")
+    dump_manifest(doc, prefix + ".json")
     return doc
+
+
+def dump_manifest(doc, path):
+    """Write a manifest compact (sorted keys, no padding): indent=1 made it nearly twice the size, and it is generated, never hand-edited."""
+    with open(path, "w") as f:
+        json.dump(doc, f, sort_keys=True, separators=(",", ":"))
+        f.write("\n")
 
 
 def read(prefix):

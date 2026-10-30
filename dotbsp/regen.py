@@ -94,9 +94,7 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     # The starter per-map config: every map gets one, from the commands its entities send, commented out.
     mapcfg.write_suggestion(os.path.join(outdir, "dot_map", "map"), name.lower(), store.commands(bsp.entities))
     rep = coverage.build(rs, bsp, doc, links, name, sha, cat)
-    with open(out + ".json", "w") as f:
-        json.dump(doc, f, indent=1, sort_keys=True)
-        f.write("\n")
+    mesh.dump_manifest(doc, out + ".json")
     store.ship_document(bsp.d, out, os.path.join(os.path.dirname(path), "doc.json"))
     with open(os.path.join(outdir, "CREDITS.md"), "w") as f:
         f.write(licence.credits_markdown(doc))

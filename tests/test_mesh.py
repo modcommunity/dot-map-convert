@@ -130,6 +130,14 @@ class RoundTrip(unittest.TestCase):
         b = sorted(tuple(round(c, 4) for p in t for c in p) for t in back.triangles())
         self.assertEqual(a, b)
 
+    def test_manifest_is_compact_and_loads(self):
+        with tempfile.TemporaryDirectory() as d:
+            doc = mesh.write(mesh.build(load()), os.path.join(d, "w"), credit={"author": "a"}, name="w")
+            text = open(os.path.join(d, "w.json")).read()
+        self.assertEqual(text.count("\n"), 1)
+        self.assertNotIn('": ', text)
+        self.assertEqual(json.loads(text), doc)
+
 
 class Fixture(unittest.TestCase):
     def test_the_godot_fixture_is_current(self):
