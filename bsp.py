@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import licence, pbrmap, modeldims, modelmap, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality  # noqa: E402
+from dotbsp import licence, pbrmap, modeldims, modelmap, standinreport, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality  # noqa: E402
 
 
 def _credit(args):
@@ -473,6 +473,12 @@ def main(argv):
     mm = sub.add_parser("modelmap", help="pick a free library model (or generate a plain one) for every ranked prop model (rules/models/picks.tsv)")
     mm.add_argument("--out", help="directory for picks.tsv; default rules/models")
     mm.add_argument("--report", help="write the models that got a generated stand-in (reason, instances, model, size) to this file")
+    si = sub.add_parser("standins", help="models of shipped worlds still drawn by a stand-in that is not an equal-quality free model, ranked by use (dotbsp/standinreport.py)")
+    si.add_argument("paths", nargs="+", help="converted world manifests or folders of them")
+    si.add_argument("--top", type=int, default=40)
+    si.add_argument("--tiers", default="placeholder,generated,kenney", help="tiers to list: free,kenney,generated,placeholder")
+    si.add_argument("--json", action="store_true")
+    si.add_argument("--strict", action="store_true", help="exit 1 while a model of the listed tiers remains")
     sp = sub.add_parser("storepack", help="publish the PBR sets and models maps draw as dot-cloud slices (dotbsp/storepack.py)")
     sp.add_argument("packs", nargs="+", help="a map pack folder (or its manifest.json), regenerated with its stores beside it")
     sp.add_argument("--out", required=True, help="the Godot project folder the slices are built and imported in")
@@ -497,7 +503,7 @@ def main(argv):
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "storepack": storepack.run_cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd}[args.cmd](args)
+                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "standins": standinreport.cmd, "storepack": storepack.run_cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2

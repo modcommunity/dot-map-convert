@@ -4,6 +4,8 @@ Which source models and sounds are still drawn by a stand-in (a Kenney block, a 
 
 The replacement layer is `rules/models/categories.tsv` (name regex to library ids) feeding `bsp.py modelmap` and `picks.tsv`; the Replaced column says what the first batch pinned.
 
+The ranking is reproducible with `python3 -I tools/bsp/bsp.py standins <zombie-zone-maps/world> <g2gfast-maps/worlds>`: it sorts every shipped model into free, kenney, generated or placeholder, flags a world whose shipped stand-in differs from `picks.tsv` (regenerate it through the converter), lists the sound rows silent by rule, and with `--strict` exits 1 while anything of the listed tiers remains. `dm_wood_crate_cube` (a cubic wooden crate remodelled in Blender by `tools/models/wood_crate.py`, CC0, TMC) now serves the wooden crates in place of the Kenney crate with bottles; it lives in the library as `dotmap/dm_wood_crate_cube`.
+
 ## Models, top 40
 
 | # | Maps | Instances | Category | Key | Current stand-in | Replaced |

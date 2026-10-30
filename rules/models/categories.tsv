@@ -67,7 +67,7 @@ chandelier|candle|fackel|torch|lantern|it_lantern	chandelier|candle|lantern|torc
 lamp|lightbulb|lights_u|neon|furniture_lamp|lamp_table|lamp_tall|floorlamp	lamproundtable|lamp_arm|vintage_oil_lamp|lampsquaretable|lampround|lamp|lantern	0.25	0.4	0.25	cyl	d8c090
 vending_?machine|vending	vending_machine|vendingmachine|vending	0.9	1.8	0.8	box	b03030
 oildrum|oil_drum|explosive|drum|bluebarrel|pipe_?barrel|_barrel$|^barrel|pallet_barrels|woodbarrel|wine_barrel|beer_barrel|keg	ph_barrel_0[0-9]$|oil_drum|barrel_open|survival-kit_barrel$|barrel	0.58	0.88	0.58	cyl	3a5a8a
-crates?_|crate$|crate[0-9]|woodcrate|wooden_crate|supply_crate|pattiescrate|du_crate|prodcrates|crates_indoor|cratebev	wooden_crate|crate|military_crate|box_large	0.6	0.6	0.6	box	8a6a40
+crates?_|crate$|crate[0-9]|woodcrate|wooden_crate|supply_crate|pattiescrate|du_crate|prodcrates|crates_indoor|cratebev	dm_wood_crate_cube|wooden_crate|crate|military_crate|box_large	0.6	0.6	0.6	box	8a6a40
 cardboard|file_box|box0|dryer_box|washer_box|^box|boxes_|_box$|boxmrounds|boxbuckshot|equipment1	cardboard_box|survival-kit_box$|cardboardbox|box	0.4	0.3	0.4	box	b8996a
 door|doorarch|doorway|metaldoor|doorframe	wooden_door|metal_door|_door$|door-rotate-square|door	1.0	2.0	0.1	box	7a6a58
 chair|stool|barstool|seat|szek|kursi|breenchair|chair_wood	office_chair|chair|stool|seat	0.5	0.9	0.5	box	6a4a30
