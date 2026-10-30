@@ -9,12 +9,12 @@ import collections
 import json
 import os
 
-from . import classes as _classes, defs, movers
+from . import classes as _classes, defs, inputs as _inputs, movers
 
 FORMAT = "dot-bsp-coverage"
 VERSION = 1
 LISTS = ("textures_unmapped", "textures_flat", "models_unmapped", "sounds_unmapped",
-         "classes_unmapped", "keys_unmapped", "links_unresolved", "surfaces_opaque")
+         "classes_unmapped", "keys_unmapped", "links_unresolved", "surfaces_opaque", "inputs_unimplemented")
 # Keys every entity may carry and the catalogue need not repeat.
 COMMON_KEYS = frozenset(("classname", "origin", "angles", "targetname", "parentname", "hammerid", "id", "model"))
 
@@ -100,6 +100,8 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
         "classes_unmapped": sorted(c for c in classes if used["classes"].get(c) is None),
         "keys_unmapped": sorted("%s.%s" % (c, k) for c, ks in keys.items() for k in ks),
         "links_unresolved": unresolved,
+        # an input the map sends that its target's runtime component does not answer: implement it in the component or list the class's component
+        "inputs_unimplemented": _inputs.unimplemented(bsp, links),
         # a translucent, cut-out or additive material drawn as a solid slab: add a materials.tsv row or fix the derivation
         "surfaces_opaque": sorted({s["material"] for s in doc.get("surfaces", [])
                                    if {"translucent", "alpha_test", "additive"} & set(s.get("material_flags", ()))
