@@ -20,7 +20,8 @@ import sys
 
 
 def _entry(mid, name, scene, map_kind):
-    return {"kind": "map", "id": mid, "name": name, "scene": scene, "map_kind": map_kind}
+    # The Workshop entry id allows only [a-z0-9_]; a hyphenated map id keeps its hyphens in the scene.
+    return {"kind": "map", "id": mid.replace("-", "_"), "name": name, "scene": scene, "map_kind": map_kind}
 
 
 def _single(root, title, games, directory, doc_kind, map_kind, argv):
@@ -100,12 +101,12 @@ def _each(root, games, skip, map_kind, argv, worlds=False):
         folder = os.path.join(root, "maps", mid)
         if not os.path.isdir(folder) or mid in skip or not os.listdir(folder):
             continue
-        if not re.fullmatch(r"[a-z0-9_]+", mid):
+        if not re.fullmatch(r"[a-z0-9_-]+", mid):
             bad.append("bad id " + mid)
         if not os.path.isfile(os.path.join(folder, mid + ".json")):
             bad.append("missing " + mid + "/" + mid + ".json")
             continue
-        name = " ".join(w if w.isdigit() else w.capitalize() for w in mid.split("_"))
+        name = " ".join(w if w.isdigit() else w.capitalize() for w in re.split("[_-]", mid))
         doc = {"schema": 1, "title": name, "kinds": ["map"], "games": games,
                "entries": [_entry(mid, name, mid + ".json", map_kind(mid))]}
         text = json.dumps(doc, indent=4) + "\n"
