@@ -1,0 +1,33 @@
+# Entity classes no game needs run, so the unconverted-class check passes them (dotbsp/unconverted.py).
+# A row is a class or prefix*, then why. Anything gameplay-relevant stays off this list until a game converts it:
+# trigger_*, filter_*, multi_manager, point_teleport, point_hurt, point_viewcontrol, game_text, game_player_equip, player_*.
+# class or prefix*	reason
+info_node*	the original AI's navigation graph; every game builds its own
+info_hint	original-AI hint
+info_mass_center	physics mass centre; nothing is simulated
+info_overlay_accessor	reaches an overlay by logic; overlays are drawn static
+info_camera_link	links a camera to a monitor; monitors draw their plain surface
+point_camera	a monitor's camera; monitors draw their plain surface
+env_microphone	relays sound to a speaker; the sound stand-ins play on their own
+env_firesource	lights fires nearby; fires are cosmetic
+env_headcrabcanister	scripted canister drop of the source campaign
+env_texturetoggle	animates a brush texture frame; cosmetic
+env_viewpunch	a camera kick; cosmetic
+env_hudhint	a screen hint; a game shows its own prompts
+env_blood	blood spray; cosmetic
+env_shooter	throws gibs; cosmetic
+env_ar2explosion	explosion effect; cosmetic
+color_correction_volume	a colour grade; the lookup files are the source's own and never ship
+func_precipitation	weather volume; a game's weather decides
+point_worldhint	a hint of the original AI
+point_zsmessage	a mode script's message; the game's own rules replace it
+logic_gamerules	a mode script's rules; the game's own rules replace them
+logic_waves	a mode script's wave control; the game's director decides
+zombiegasses	a mode script's spawner; the game's director decides
+path_track	read by the train movers as their corners
+phys_*	constraints and motors; nothing is simulated
+prop_vehicle*	a game's own vehicles replace them
+ai_changetarget	original-AI logic
+aiscripted_schedule	original-AI logic
+scripted_sequence	a scripted animation; nothing is animated
+npc_*	the game's director decides which monsters spawn and where

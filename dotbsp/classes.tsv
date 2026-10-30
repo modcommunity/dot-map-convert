@@ -43,7 +43,7 @@ func_useableladder	volume	a ladder climbed by using it; as func_ladder between i
 trigger_multiple	volume	fires outputs each time a body enters, then waits `wait` seconds	DotMapTrigger
 trigger_once	volume	fires outputs the first time a body enters	DotMapTrigger
 trigger_look	data	fires when a player looks at a target -- logic	
-trigger_soundscape	data	switches the ambient soundscape in a volume -- sound logic	
+trigger_soundscape	data	switches the ambient soundscape in a volume -- sound logic	DotMapTriggerSoundscape
 trigger_vphysics_motion	data	applies forces to physics objects inside -- props are not simulated	
 trigger_remove	data	removes entities that enter -- logic	
 trigger_autosave	dropped	saves a single-player game; no saves here	
@@ -164,11 +164,11 @@ logic_compare	data	compares a value -- logic	DotMapCompare
 logic_branch	data	a boolean switch -- logic	DotMapBranch
 logic_branch_listener	data	watches branches -- logic	
 logic_measure_movement	data	copies one entity's movement to another -- logic	DotMapMeasureMovement
-logic_collision_pair	data	disables collision between two objects -- logic	
+logic_collision_pair	data	disables collision between two objects -- logic	DotMapCollisionPair
 logic_gamerules	data	a mode script's rules entity	
-logic_winlose	data	a mode script's round end	
+logic_winlose	data	a mode script's round end	DotMapWinLose
 logic_waves	data	a mode script's wave control	
-logic_beats	data	a mode script's music beats	
+logic_beats	data	a mode script's music beats	DotMapBeats
 math_counter	data	a counter with outputs -- logic	DotMapCounter
 math_colorblend	data	maps a value to a colour -- logic	DotMapColorBlend
 multi_manager	data	the older multi-output relay -- logic	
@@ -183,14 +183,14 @@ game_weapon_manager	dropped	caps dropped weapons; the game owns weapons
 player_weaponstrip	data	takes weapons by input -- logic	
 player_speedmod	data	changes a player's speed by input -- logic	
 game_text	data	shows text on screens -- logic; its text is kept	
-game_ui	data	takes a player's controls for logic	
-game_score	data	adds score by input -- logic	
+game_ui	data	takes a player's controls for logic	DotMapGameUi
+game_score	data	adds score by input -- logic	DotMapGameScore
 env_hudhint	data	a hint on the screen -- logic	
-env_fade	data	fades the screen by input -- logic	
-env_shake	data	shakes the screen -- logic	
+env_fade	data	fades the screen by input -- logic	DotMapEffect
+env_shake	data	shakes the screen -- logic	DotMapEffect
 env_viewpunch	data	kicks the view -- logic	
-env_screenoverlay	data	puts an overlay on the screen -- logic; its material is never shipped	
-env_explosion	data	an explosion by input -- logic with a position	
+env_screenoverlay	data	puts an overlay on the screen -- logic; its material is never shipped	DotMapEffect
+env_explosion	data	an explosion by input -- logic with a position	DotMapEffect
 env_physexplosion	data	a physics push by input -- logic	
 env_ar2explosion	data	an explosion effect by input -- logic	
 env_shooter	data	throws gibs by input -- logic	

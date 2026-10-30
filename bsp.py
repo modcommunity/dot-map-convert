@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import licence, pbrmap, modeldims, modelmap, standinreport, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality  # noqa: E402
+from dotbsp import licence, pbrmap, modeldims, modelmap, standinreport, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality, unconverted  # noqa: E402
 
 
 def _credit(args):
@@ -123,6 +123,8 @@ def cmd_mesh(args):
     print("  links: %d (%d unresolved); kept as data: %d entities; unknown classes: %s" % (
         len(extra["links"]), sum(1 for k in extra["links"] if not k["to"] and not k["special"]),
         len(extra["entities"]), ", ".join(odd) or "none"))
+    for line in unconverted.text(unconverted.of_map(bsp)):
+        print("  " + line)
     if args.coverage:
         cv, sl = extra["coverage"], extra["silhouette"]
         print("  coverage: drawn %.4f of %d samples, solid %.4f of %d; silhouette kept top %.4f side %.4f/%.4f" % (
@@ -217,6 +219,28 @@ def cmd_classes_keys(args):
         print("%s: %d classes, %d without a component" % (s.label(), len(rep), plain))
         for line in coverage.class_text(rep):
             print("  " + line)
+    return rc
+
+
+def cmd_unconverted(args):
+    """Per map: the classes nothing converts, split by the ignore list; exit 6 when one is off it."""
+    ignore = unconverted.load_ignore(args.ignore)
+    rc = 0
+    for bad in unconverted.stale(ignore):
+        print("ignore list: %s is converted or has no row; remove it" % bad, file=sys.stderr)
+        rc = 6
+    for s in sources.find(args.paths):
+        try:
+            bsp = reader.Bsp(s.member or s.origin, data=s.read()).load()
+        except (ValueError, OSError) as e:
+            print("%s: %s" % (s.label(), e), file=sys.stderr)
+            rc = rc or 1
+            continue
+        print("%s:" % s.label())
+        for line in unconverted.text(unconverted.of_map(bsp), ignore):
+            print("  " + line)
+        if unconverted.check(unconverted.of_map(bsp), ignore)[1]:
+            rc = 6
     return rc
 
 
@@ -432,6 +456,9 @@ def main(argv):
     cl.add_argument("paths", nargs="*")
     cl.add_argument("--markdown", action="store_true")
     cl.add_argument("--keys", action="store_true", help="per map: keys, outputs and inputs the class catalogue lacks, and each class's component")
+    uc = sub.add_parser("unconverted", help="per map: entity classes nothing converts, against rules/unconverted_ignore.tsv; exit 6 for one not on it")
+    uc.add_argument("paths", nargs="+")
+    uc.add_argument("--ignore", help="the ignore list; default rules/unconverted_ignore.tsv")
     st = sub.add_parser("store", help="copy maps into the lossless store (dotbsp/store.py), or --check it")
     st.add_argument("paths", nargs="*")
     st.add_argument("--root", help="default $DOTBSP_STORE or ~/mapsrc/store")
@@ -503,7 +530,7 @@ def main(argv):
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "standins": standinreport.cmd, "storepack": storepack.run_cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd}[args.cmd](args)
+                "classes": cmd_classes, "unconverted": cmd_unconverted, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "standins": standinreport.cmd, "storepack": storepack.run_cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2

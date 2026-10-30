@@ -75,7 +75,7 @@ What a class becomes:
 | `move_rope` | 35 | a rope or cable's first point, with its look | `point` |  |
 | `point_template` | 35 | a template that spawns copies of entities | `data`: logic | `DotMapTemplate` |
 | `prop_door_rotating` | 35 | a model door that swings; converted like func_door_rotating with its model studied | `mover` |  |
-| `env_explosion` | 34 | an explosion by input | `data`: logic with a position |  |
+| `env_explosion` | 34 | an explosion by input | `data`: logic with a position | `DotMapEffect` |
 | `prop_dynamic_override` | 34 | as prop_dynamic | `point` |  |
 | `env_spark` | 32 | sparks | `point`: an effect position |  |
 | `point_servercommand` | 31 | runs a server console command | `dropped`: a map does not run commands on this server | `DotMapServerCommand` |
@@ -96,7 +96,7 @@ What a class becomes:
 | `func_buyzone` | 23 | where a round-based shooter's team may buy weapons; no shop here | `dropped` |  |
 | `math_counter` | 22 | a counter with outputs | `data`: logic | `DotMapCounter` |
 | `keyframe_rope` | 21 | a rope's next point | `point` |  |
-| `env_shake` | 19 | shakes the screen | `data`: logic |  |
+| `env_shake` | 19 | shakes the screen | `data`: logic | `DotMapEffect` |
 | `env_sun` | 19 | the sun's sprite in the sky: its direction and colour | `point` |  |
 | `player_speedmod` | 19 | changes a player's speed by input | `data`: logic |  |
 | `env_tonemap_controller` | 17 | exposure limits and bloom | `point` |  |
@@ -107,10 +107,10 @@ What a class becomes:
 | `func_wall_toggle` | 15 | a wall an input shows or hides; drawn and solid unless it starts off (spawnflag 1) | `world` |  |
 | `func_water_analog` | 15 | water as a movable brush; swum in, it does not move here | `volume` |  |
 | `logic_compare` | 14 | compares a value | `data`: logic | `DotMapCompare` |
-| `env_fade` | 13 | fades the screen by input | `data`: logic |  |
+| `env_fade` | 13 | fades the screen by input | `data`: logic | `DotMapEffect` |
 | `phys_thruster` | 13 | pushes a physics object | `data`: nothing is simulated |  |
 | `func_breakable_surf` | 12 | breakable glass panes; drawn and solid | `world`: listed in the manifest's `breakables`; DotMapGlass breaks it |  |
-| `game_score` | 12 | adds score by input | `data`: logic |  |
+| `game_score` | 12 | adds score by input | `data`: logic | `DotMapGameScore` |
 | `prop_ragdoll` | 12 | a placed ragdoll (a corpse); models are studied | `point` |  |
 | `env_entity_maker` | 11 | spawns a template at a point | `data`: logic |  |
 | `env_lightglow` | 11 | a glow seen around a light | `point` |  |
@@ -124,7 +124,7 @@ What a class becomes:
 | `color_correction` | 9 | a colour grade with falloff; the grade's lookup file is the source's own and never shipped, its presence is kept | `point` |  |
 | `func_dustcloud` | 9 | a particle volume of dust clouds | `dropped`: effects, as func_dustmotes |  |
 | `func_occluder` | 9 | a visibility occluder; the renderer here culls on its own | `dropped` |  |
-| `game_ui` | 9 | takes a player's controls for logic | `data` |  |
+| `game_ui` | 9 | takes a player's controls for logic | `data` | `DotMapGameUi` |
 | `light_dynamic` | 9 | a light that may move or switch at run time | `point` |  |
 | `point_camera` | 9 | a camera a monitor shows | `data`: logic |  |
 | `env_beam` | 8 | a beam between two points | `point`: an effect |  |
@@ -138,7 +138,7 @@ What a class becomes:
 | `func_precipitation` | 7 | rain or snow in a volume; kept so a game can make weather (its bounds are the model's) | `data` |  |
 | `func_smokevolume` | 7 | a particle volume of smoke | `dropped`: effects, as func_dustmotes |  |
 | `player_weaponstrip` | 7 | takes weapons by input | `data`: logic |  |
-| `trigger_soundscape` | 7 | switches the ambient soundscape in a volume | `data`: sound logic |  |
+| `trigger_soundscape` | 7 | switches the ambient soundscape in a volume | `data`: sound logic | `DotMapTriggerSoundscape` |
 | `zombiegasses` | 7 | a mode script's zombie gas spawner | `data` |  |
 | `env_embers` | 6 | a particle volume of embers | `dropped`: effects |  |
 | `env_soundscape_triggerable` | 6 | a soundscape switched by triggers | `point` |  |
@@ -161,7 +161,7 @@ What a class becomes:
 | `info_ladder_dismount` | 4 | where a ladder is left | `point` |  |
 | `info_player_deathmatch` | 4 | a spawn | `point` |  |
 | `info_player_zombie_boss` | 4 | a boss zombie's spawn | `point` |  |
-| `lua_run` | 4 | runs a script on the server | `data`: never executed; template-matched snippets become whitelisted operations, the rest are reported (`DotMapScript`) |  |
+| `lua_run` | 4 | runs a script on the server | `data`: never executed; template-matched snippets become whitelisted operations, the rest are reported (`DotMapScript`) | `DotMapScript` |
 | `npc_template_maker` | 4 | spawns monsters from a template | `data`: the game's director decides monsters |  |
 | `aiscripted_schedule` | 3 | AI logic | `data` |  |
 | `env_blood` | 3 | sprays blood by input | `data`: logic |  |
@@ -175,7 +175,7 @@ What a class becomes:
 | `ai_changetarget` | 2 | AI logic | `data` |  |
 | `color_correction_volume` | 2 | a colour grade inside a volume; its lookup file is the source's own and never shipped | `data` |  |
 | `env_citadel_energy_core` | 2 | an energy effect | `point`: an effect position |  |
-| `env_screenoverlay` | 2 | puts an overlay on the screen | `data`: logic; its material is never shipped |  |
+| `env_screenoverlay` | 2 | puts an overlay on the screen | `data`: logic; its material is never shipped | `DotMapEffect` |
 | `env_texturetoggle` | 2 | switches a brush's texture frame | `data`: logic |  |
 | `func_bomb_target` | 2 | a bomb site of a round-based shooter; another game's objective | `dropped` |  |
 | `func_hostage_rescue` | 2 | a hostage rescue zone; another game's objective | `dropped` |  |
@@ -183,7 +183,7 @@ What a class becomes:
 | `info_player_phx_spectator` | 2 | a spectator spawn of a mode script | `point` |  |
 | `info_player_redeemed` | 2 | a returned survivor's spawn | `point` |  |
 | `logic_gamerules` | 2 | a mode script's rules entity | `data` |  |
-| `logic_winlose` | 2 | a mode script's round end | `data` |  |
+| `logic_winlose` | 2 | a mode script's round end | `data` | `DotMapWinLose` |
 | `math_colorblend` | 2 | maps a value to a colour | `data`: logic | `DotMapColorBlend` |
 | `phys_constraint` | 2 | a fixed constraint | `data`: nothing is simulated |  |
 | `phys_lengthconstraint` | 2 | a rope-length constraint | `data`: nothing is simulated |  |
@@ -219,9 +219,9 @@ What a class becomes:
 | `info_player_props` | 1 | the hiders' spawn of a hide-and-seek mode | `point` |  |
 | `info_player_undead` | 1 | a zombies' spawn | `point` |  |
 | `ins_spawnpoint` | 1 | a tactical mode's spawn | `point` |  |
-| `logic_beats` | 1 | a mode script's music beats | `data` |  |
+| `logic_beats` | 1 | a mode script's music beats | `data` | `DotMapBeats` |
 | `logic_branch_listener` | 1 | watches branches | `data`: logic |  |
-| `logic_collision_pair` | 1 | disables collision between two objects | `data`: logic |  |
+| `logic_collision_pair` | 1 | disables collision between two objects | `data`: logic | `DotMapCollisionPair` |
 | `logic_measure_movement` | 1 | copies one entity's movement to another | `data`: logic | `DotMapMeasureMovement` |
 | `npc_maker` | 1 | spawns monsters | `data`: as npc_template_maker |  |
 | `phys_constraintsystem` | 1 | groups constraints | `data`: nothing is simulated |  |
