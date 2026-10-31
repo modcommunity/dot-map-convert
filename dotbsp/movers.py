@@ -398,7 +398,77 @@ def volumes(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
         if kind:
             out.append({"entity": None, "model": 0, "classname": "worldspawn", "kind": kind, "brush": bi,
                         "slime": bool(c & reader.CONTENTS_SLIME), "brushes": [planes(bi, (0.0, 0.0, 0.0))]})
+    release_pits(out, destinations(bsp, scale, y0))
     return out
+
+
+# A teleport that lands this near a jail cell is a stray unless a gate volume stands by it.
+JAIL_REACH = 30.0
+GATE_REACH = 40.0
+# A landing nearer than this (on the ground plane) is another floor of the jail, not its doorstep.
+OUTSIDE_MIN = 20.0
+
+
+def release_pits(vols, dests):
+    """Re-aim a pad that lands beside a jail cell from a volume far from the jail, to the top of the spawn.
+
+    The cell is the most-aimed-at destination (with its neighbours within 5 m), when it lies well
+    below the highest destination two or more volumes aim at (the top of a ramp). A teleport
+    aimed at nothing else, landing within JAIL_REACH of the cell, whose own volume is farther than
+    GATE_REACH from the cell (an exit or gate stands inside the jail) is a release the author
+    wired to the jail by mistake; it goes to that highest destination. Sets `retargeted_from`;
+    returns the changed entities.
+    """
+    tele = [v for v in vols if v.get("kind") == "teleport" and v.get("target") in dests]
+    aimed = {}
+    for v in tele:
+        aimed[v["target"]] = aimed.get(v["target"], 0) + 1
+    popular = [n for n, c in aimed.items() if c >= 2]
+    if not popular:
+        return []
+    top = max(popular, key=lambda n: (dests[n]["at"][1], aimed[n]))
+    first = max(popular, key=lambda n: aimed[n])
+    if aimed[first] < 3 or dests[first]["at"][1] >= dests[top]["at"][1] - 10.0:
+        return []
+    cells = [dests[n]["at"] for n in popular if _dist(dests[n]["at"], dests[first]["at"]) <= 5.0]
+    changed = []
+    for v in tele:
+        at = dests[v["target"]]["at"]
+        if aimed[v["target"]] >= 2 or not any(_dist(at, c) <= JAIL_REACH for c in cells):
+            continue
+        if min(_flat(at, c) for c in cells) < OUTSIDE_MIN:
+            continue
+        where = _centre(v)
+        if where is None or any(_dist(where, c) <= GATE_REACH for c in cells):
+            continue
+        v["retargeted_from"] = v["target"]
+        v["target"] = top
+        changed.append(v["entity"])
+    return changed
+
+
+def _flat(a, b):
+    return ((a[0] - b[0]) ** 2 + (a[2] - b[2]) ** 2) ** 0.5
+
+
+def _dist(a, b):
+    return sum((a[i] - b[i]) ** 2 for i in range(3)) ** 0.5
+
+
+def _centre(v):
+    """Centre of a volume from its axis-aligned bounding planes, None for a slanted one (a trigger model's own bounds are local to its origin)."""
+    lo, hi = [None] * 3, [None] * 3
+    for brush in v.get("brushes", []):
+        for n in brush:
+            for a in range(3):
+                if abs(n[a]) > 0.999:
+                    side = hi if n[a] > 0 else lo
+                    val = n[3] / n[a] if n[a] > 0 else -n[3] / -n[a]
+                    cur = side[a]
+                    side[a] = val if cur is None else (min(cur, val) if n[a] > 0 else max(cur, val))
+    if any(lo[a] is None or hi[a] is None for a in range(3)):
+        return None
+    return [(lo[a] + hi[a]) / 2 for a in range(3)]
 
 
 _SPECIAL = ("!activator", "!caller", "!self", "!player", "!picker")

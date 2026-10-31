@@ -21,7 +21,7 @@ sys.path.insert(0, HERE)
 import bsp as cli                                          # noqa: E402,F401
 import synth                                               # noqa: E402
 from dotbsp import (entities, flood, gamebox, gma, intermediate, lights, plan, props,  # noqa: E402
-                    reader, sources, units)
+                    movers, reader, sources, units)
 
 
 def doc_of(**kw):
@@ -147,6 +147,37 @@ def tele_doc(dest_name="dest", with_dest=True):
         ents.append({"classname": "info_teleport_destination", "targetname": "dest", "origin": "500 600 70", "angles": "0 270 0"})
         ents.append({"classname": "info_target", "targetname": "dest", "origin": "1 1 1"})    # a decoy with the same name
     return doc_of(entities=ents, boxes=((0, 0, 0, 64, 64, 8),), entity_box=(100, 100, 0, 140, 140, 32))
+
+
+
+def box(lo, hi):
+    return [[[1.0, 0.0, 0.0, hi[0]], [-1.0, 0.0, 0.0, -lo[0]], [0.0, 1.0, 0.0, hi[1]],
+             [0.0, -1.0, 0.0, -lo[1]], [0.0, 0.0, 1.0, hi[2]], [0.0, 0.0, -1.0, -lo[2]]]]
+
+
+class ReleasePits(unittest.TestCase):
+    DESTS = {"cell": {"at": [100.0, 0.0, 0.0]}, "near": {"at": [100.0, 0.0, 20.0]}, "top": {"at": [0.0, 60.0, 0.0]}}
+
+    def volumes(self, stray_at):
+        vols = [{"kind": "teleport", "entity": e, "target": t, "brushes": box((0, 0, 0), (10, 10, 10))}
+                for e, t in ((1, "cell"), (2, "cell"), (6, "cell"), (4, "top"), (5, "top"))]
+        vols.append({"kind": "teleport", "entity": 3, "target": "near",
+                     "brushes": box(stray_at, [c + 10 for c in stray_at])})
+        return vols
+
+    def test_far_pad_beside_a_cell_goes_to_the_top(self):
+        vols = self.volumes((300, 0, 0))
+        self.assertEqual(movers.release_pits(vols, self.DESTS), [3])
+        self.assertEqual(vols[-1]["target"], "top")
+        self.assertEqual(vols[-1]["retargeted_from"], "near")
+        self.assertEqual(vols[0]["target"], "cell")
+
+    def test_another_floor_of_the_jail_is_kept(self):
+        dests = dict(self.DESTS, near={"at": [100.0, 0.0, 10.0]})
+        self.assertEqual(movers.release_pits(self.volumes((300, 0, 0)), dests), [])
+
+    def test_gate_inside_the_jail_is_kept(self):
+        self.assertEqual(movers.release_pits(self.volumes((95, 0, 15)), self.DESTS), [])
 
 
 class Teleports(unittest.TestCase):
