@@ -51,6 +51,7 @@ import stock_archives  # noqa: E402
 import bsp_mechanics  # noqa: E402
 import bsp_props  # noqa: E402
 import stock_standins  # noqa: E402
+from dotbsp import mood as _mood  # noqa: E402
 
 LUMP_LIGHTING, LUMP_PAKFILE, LUMP_PLANES = 8, 40, 1
 ATLAS_W = 1024
@@ -3506,7 +3507,7 @@ def lighting_of(bsp):
         if e.get("classname") in ("light", "light_spot")
     )
 
-    return out
+    return _mood.resolve(out)
 
 
 def load_overrides(path, map_id):

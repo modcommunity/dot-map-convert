@@ -787,6 +787,20 @@ class LuaRun(unittest.TestCase):
         self.assertEqual(scripts.shape("WMI.SetWMIOut('w','input3a','Switch State',0)"), scripts.shape("WMI.SetWMIOut('w','input1b','Back Switch State',2)"))
 
 
+class MoodTest(unittest.TestCase):
+    def test_editor_default_sun_resolves_by_sky(self):
+        from dotbsp import mood
+        d = {"sun": {"colour": [1, 1, 1], "brightness": 200.0, "ambient_colour": [1, 1, 1], "yaw_src": 0.0, "pitch_src": 0.0},
+             "sky_name": "hav"}
+        out = mood.resolve(d)
+        self.assertTrue(out["sun"]["editor_default"])
+        self.assertLess(out["sun"]["brightness"], 200)
+        self.assertTrue(out["fog"]["enabled"])
+        real = {"sun": {"colour": [0.99, 0.95, 0.74], "brightness": 200.0, "ambient_colour": [1, 1, 1],
+                        "yaw_src": 210.0, "pitch_src": -65.0}, "sky_name": "hav"}
+        self.assertNotIn("editor_default", mood.resolve(real)["sun"])
+
+
 @unittest.skipUnless(os.environ.get("DOTBSP_TEST_MAPS"), "set DOTBSP_TEST_MAPS to a folder of real maps")
 class RealMaps(unittest.TestCase):
     def test_each(self):
