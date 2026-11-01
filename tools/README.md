@@ -24,13 +24,15 @@ Everything that converts a map, a model, a texture or a sound lives in this repo
 | `hide-n-seek-maps/import_bsp.py`, `murder-mystery-maps/import_bsp.py`, `game-playground-maps/import_bsp.py` | those games' box documents |
 | `mg-prop-hunt-maps/import_bsp.py`, `bsp_environment.py` | prop-hunt document and its environment pass |
 | `mg-wipeout-maps/import_world.py` | wipeout course from a regenerated world |
-| `mg-deathrun-maps/bsp_to_course.py` | deathrun course from a spec |
+| `mg-deathrun-maps/bsp_to_course.py`, `plan_route.py`, `draft_spec.py` | deathrun course from a spec, the route planner over the document the importer would write, and the first spec for a community map |
+| `mg-look-at-me/bsp_layout.py` | floor skeleton (rooms on the 4 m grid) from an intermediate |
 | `game-g2gfast/bsp_import.py`, `bsp_mechanics.py`, `bsp_props.py`, `vtf.py`, `stock_*.py`, `vrf_import.py`, `teleport_traps.py` | the g2gfast mesh, lightmap and texture pipeline, its stock-asset stand-ins and surveys |
 
 ## Stayed in the map and game repositories, on purpose
 
 - `build_maps.py`, `ambient.py`, `worlds.tsv`, `prop_sizes.json`, `tools/bsp/*.json`, `tools/convert/` (specs, ship lists, per-map rules): the game's own data and hand authoring.
 - `bsp_read.py` shims: they only name the reader for the adapter.
-- `regen_all.sh`, `ship_*.sh`, `relight.sh`, `solid_props.sh`, `publish*.sh`, `g2gmaps.py`: a game's pipeline and publishing around the converter, not conversion.
-- `mg-deathrun-maps` `plan_route.py`, `draft_spec.py`, `apply_theme.py` and `mg-look-at-me/tools/bsp_layout.py`: course design and layout tools that read a finished document, not the converter.
+- `relight.sh`, `solid_props.sh`, `publish*.sh`, `g2gmaps.py`: a game's pipeline and publishing around the converter, not conversion.
+- `mg-deathrun-maps` `apply_theme.py`: a table of per-map looks written into specs (the game's own data).
+- `zombie-zone-maps` `regen_all.sh`, `ship_*.sh`: they read that game's `convert/ship.tsv`, specs and ship lists; the generic loop is `tools/regen_worlds.sh` here.
 - `dot-map/tools/*.gd|sh`: need a Godot project (screenshots, benches, occluder bake).
