@@ -6,7 +6,7 @@ Read README.md first (layout, rule tiers, the lossless store, the intermediate).
 
 ## Rules
 
-- **One converter.** A reader fix, a table row or a class definition goes here, never into a game or map repository. Game adapters (`<maps repo>/tools/import_*.py`) stay thin and import `dotbsp` from here.
+- **One converter.** A reader fix, a table row or a class definition goes here, never into a game or map repository. Game adapters live in `adapters/<repo>/`; each map repository's `tools/<name>.py` is a launcher (`adapters/adapter_launch.py`), so edit the adapter here. `tools/README.md` lists what is where.
 - **Always `python3 -I`.** Maps are downloads.
 - **Finding things.** Callers find this checkout as the sibling `../dot-map-convert` or `$DOTBSP_PATH` (or `$DOT_MAP_CONVERT_PATH` for the tools). This converter finds the dot-map addon (assets, `io/catalogue.json`) through `dotbsp/paths.py`: sibling `../dot-map` or `$DOT_MAP_DIR`.
 - **Output must not drift.** Changing a table or rule changes every regenerated manifest; prove a refactor with a `regen` before and after and compare hashes.

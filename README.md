@@ -66,6 +66,8 @@ The split is: dot-map reads the format and cuts brushes into boxes; the game dec
 
 ## Layout
 
+Per-game importers are in `adapters/<repo>/` (launchers stay in each map repository); see [tools/README.md](tools/README.md) for what is where.
+
 | File | What it is |
 | --- | --- |
 | `dotbsp/reader.py` | `Bsp`: lumps (LZMA too), brushes and hulls, the BSP-tree walk to a model's brushes, faces, displacements, static props, the packed zip; unit and axis helpers |
