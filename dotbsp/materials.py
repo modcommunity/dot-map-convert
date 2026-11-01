@@ -105,6 +105,11 @@ class Resolver:
         self._cache[key] = p
         return p
 
+    def is_opaque(self, name):
+        """True when the packed material record exists and has no alpha: nothing about it is see-through."""
+        p = self.properties(name)
+        return p["source"] == "vmt" and not (p["translucent"] or p["alpha_test"] or p["additive"])
+
     def row(self, name, generic):
         return self.rows.get(name, generic) if self.rows is not None else None
 
@@ -151,13 +156,15 @@ SEE_THROUGH = re.compile(r"CHAINLINK|CHAIN_?LINK|FENCE|WIRE|CAGE|GRATE|GRATING|G
 SOLID_FENCE = re.compile(r"WOOD|BOARD|PLANK|PICKET|BRICK|CONCRETE|STONE")
 
 
-def see_through_material(names, contents, grate_bit=0x8):
+def see_through_material(names, contents, grate_bit=0x8, opaque=None):
     """`fence` for a brush bullets pass and bodies do not, else None. CONTENTS_GRATE says so on its
     own; otherwise every drawn side must be a fence-like texture (strict: no STAIR/BAR/MESH, which
-    name solid things), so one grate face on a wall never turns the wall into a fence."""
+    name solid things), so one grate face on a wall never turns the wall into a fence. `opaque(name)`
+    says a packed material has no alpha at all: a plank fence called "fence" is a wall, not a fence."""
     if contents & grate_bit:
         return "fence"
     drawn = [n for n in names if not n.startswith("TOOLS/")]
-    if drawn and all(SEE_THROUGH.search(n) and not SOLID_FENCE.search(n) for n in drawn):
+    if drawn and all(SEE_THROUGH.search(n) and not SOLID_FENCE.search(n)
+                                  and not (opaque and opaque(n)) for n in drawn):
         return "fence"
     return None

@@ -504,7 +504,7 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                 kind = "clip"
             elif contents & reader.CONTENTS_WINDOW:
                 kind = "glass"
-            elif _materials.see_through_material(names, contents, reader.CONTENTS_GRATE):
+            elif _materials.see_through_material(names, contents, reader.CONTENTS_GRATE, res.is_opaque):
                 kind = "fence"
             planes = []
             for (nx, ny, nz, d) in bsp.brush_planes(bi, off):

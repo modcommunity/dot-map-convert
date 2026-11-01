@@ -79,6 +79,15 @@ class Kinds(unittest.TestCase):
         self.assertEqual((kind, why, props["two_sided"]), (None, "plain", True))
 
 
+class OpaqueFence(unittest.TestCase):
+    def test_a_plank_fence_without_alpha_is_a_wall_not_a_fence(self):
+        r = materials.Resolver({"materials/x/fence.vmt": b'"LightmappedGeneric"\n{\n"$basetexture" "x/fence"\n}'})
+        self.assertTrue(r.is_opaque("x/fence"))
+        self.assertIsNone(materials.see_through_material(["X/FENCE"], 0, 0x8, r.is_opaque))
+        self.assertEqual(materials.see_through_material(["X/FENCE"], 0, 0x8), "fence")
+        self.assertEqual(materials.see_through_material(["STOCK/CHAINFENCE"], 0, 0x8, r.is_opaque), "fence")
+
+
 class Rows(unittest.TestCase):
     def test_a_row_overrides_and_opaque_forbids(self):
         class R:

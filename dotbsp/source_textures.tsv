@@ -371,6 +371,7 @@ NATURE/BLENDDIRTGRASS*	grass
 *IRON*	metal
 *RUST*	metal
 *FENCE*	metal
+SIMPSONS/FENCE*	wood_planks
 *PLANKS*	wood_planks
 *PLANK*	wood_planks
 *WOODSIDING*	wood_planks
