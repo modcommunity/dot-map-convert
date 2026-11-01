@@ -1,4 +1,4 @@
-"""Garry's Mod workshop archives (.gma), read through fastgmad.
+"""Workshop map archives (.gma), read through fastgmad.
 
 [b]No reader is written here, on purpose.[/b] A .gma is a header, a file table with CRCs and the
 files; fastgmad (github.com/WilliamVenner/fastgmad, Apache-2.0) already reads it, checks the

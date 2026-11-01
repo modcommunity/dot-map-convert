@@ -1,4 +1,4 @@
-"""Terrain heightfield tests. Run: python3 -I tools/bsp/tests/test_terrain.py
+"""Terrain heightfield tests. Run: python3 -I tests/test_terrain.py
 
 Also checks examples/bsp_mesh/terrain_fixture.json, which examples/bsp_mesh_demo.tscn reads to
 hold DotMapTerrain to the same heights and walk points; `--write` rewrites it.
@@ -13,9 +13,9 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-from dotbsp import boxes, flood, terrain  # noqa: E402
+from dotbsp import boxes, flood, paths, terrain  # noqa: E402
 
-FIXTURE = os.path.join(HERE, "..", "..", "..", "examples", "bsp_mesh", "terrain_fixture.json")
+FIXTURE = os.path.join(paths.dot_map_dir(), "examples", "bsp_mesh", "terrain_fixture.json")
 
 
 def grid_tris(f, x0, z0, x1, z1, step):

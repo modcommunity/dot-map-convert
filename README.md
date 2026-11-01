@@ -1,33 +1,33 @@
-# tools/bsp: the family's one BSP map converter
+# dot-map-convert: the family's one BSP map converter
 
 Reads community maps in the VBSP v19-21 format, inventories a folder of them, and writes each as one documented intermediate JSON that a game's thin adapter turns into that game's own map document. Python 3, standard library only (plus `unrar` or `7z` on the path to list `.rar`/`.7z` downloads, and `fastgmad` for `.gma` workshop archives).
 
 ```bash
-python3 -I tools/bsp/bsp.py list ~/godot/inspirations/g2gfast --converted ~/godot --markdown
-python3 -I tools/bsp/bsp.py convert map.zip --out map.json --author "A" --page https://... --licence "CC BY-NC-ND 4.0" --no-share-check "2026-10-19: none"
-python3 -I tools/bsp/tests/test_dotbsp.py            # 26 tests on maps written from scratch
-python3 -I tools/bsp/tests/test_texturemap.py        # the shared texture list: specificity, tints, the unmapped report
-python3 -I tools/bsp/bsp.py unmapped ~/mapsrc --top 40   # every texture that hits no row of source_textures.tsv, with face counts
-python3 -I tools/bsp/bsp.py mesh map.bsp --out world/map --author "A" --page https://... --coverage   # the drawn mesh, hulls, movers
-python3 -I tools/bsp/bsp.py classes ~/mapsrc --markdown   # every entity class, what the importer makes of it and which runtime component runs it
-python3 -I tools/bsp/bsp.py classes <map | dir> --keys    # per map: keys, outputs and inputs the class catalogue lacks, and each class's component
-python3 -I tools/bsp/defs/runtime.py                      # rewrites addons/dot_map/io/catalogue.json (what DotMapIO.load_catalogue reads) from rules/entity_defs.json
-python3 -I tools/bsp/tests/test_mesh.py              # the mesh, movers and class table on maps written from scratch
-python3 -I tools/bsp/tests/test_licence.py           # the raw store, the licence pass, environment and sound data
-python3 -I tools/bsp/tests/test_regen.py             # rule tiers, fallbacks, regen, coverage, ratchet
-python3 -I tools/bsp/tests/test_store.py             # the lossless store, repeated keys, outputs of any name
-python3 -I tools/bsp/tests/test_audit.py             # the brush and floor audit on maps written from scratch
-python3 -I tools/bsp/bsp.py audit map.bsp --mesh world/map            # every player-solid brush and standable top vs the output's collision; exit 1 on loss
-python3 -I tools/bsp/bsp.py audit map.bsp --doc maps/map.json --y0 5.49   # the same against a game's box document (its terrain field counts; --passable CLASS, --within, --band, --skip for what it leaves out on purpose)
-python3 -I tools/bsp/tests/test_lift.py              # the pieces lifted from the adapters (flood, classifier, props, lights, plan, .gma, guards)
-DOTBSP_TEST_MAPS=~/maps python3 -I tools/bsp/tests/test_dotbsp.py RealMaps   # and on real ones
+python3 -I bsp.py list ~/godot/inspirations/g2gfast --converted ~/godot --markdown
+python3 -I bsp.py convert map.zip --out map.json --author "A" --page https://... --licence "CC BY-NC-ND 4.0" --no-share-check "2026-10-19: none"
+python3 -I tests/test_dotbsp.py            # 26 tests on maps written from scratch
+python3 -I tests/test_texturemap.py        # the shared texture list: specificity, tints, the unmapped report
+python3 -I bsp.py unmapped ~/mapsrc --top 40   # every texture that hits no row of source_textures.tsv, with face counts
+python3 -I bsp.py mesh map.bsp --out world/map --author "A" --page https://... --coverage   # the drawn mesh, hulls, movers
+python3 -I bsp.py classes ~/mapsrc --markdown   # every entity class, what the importer makes of it and which runtime component runs it
+python3 -I bsp.py classes <map | dir> --keys    # per map: keys, outputs and inputs the class catalogue lacks, and each class's component
+python3 -I defs/runtime.py                      # rewrites addons/dot_map/io/catalogue.json (what DotMapIO.load_catalogue reads) from rules/entity_defs.json
+python3 -I tests/test_mesh.py              # the mesh, movers and class table on maps written from scratch
+python3 -I tests/test_licence.py           # the raw store, the licence pass, environment and sound data
+python3 -I tests/test_regen.py             # rule tiers, fallbacks, regen, coverage, ratchet
+python3 -I tests/test_store.py             # the lossless store, repeated keys, outputs of any name
+python3 -I tests/test_audit.py             # the brush and floor audit on maps written from scratch
+python3 -I bsp.py audit map.bsp --mesh world/map            # every player-solid brush and standable top vs the output's collision; exit 1 on loss
+python3 -I bsp.py audit map.bsp --doc maps/map.json --y0 5.49   # the same against a game's box document (its terrain field counts; --passable CLASS, --within, --band, --skip for what it leaves out on purpose)
+python3 -I tests/test_lift.py              # the pieces lifted from the adapters (flood, classifier, props, lights, plan, .gma, guards)
+DOTBSP_TEST_MAPS=~/maps python3 -I tests/test_dotbsp.py RealMaps   # and on real ones
 ```
 
 Always `python3 -I`: the maps are downloads, and `-I` keeps a planted module beside one from being imported. Archives are read in memory (zip by `zipfile`, rar by `unrar p`, 7z by `7z e -so`); nothing is extracted to disk and no path inside an archive is used as a path.
 
 ## The import order: raw, licence pass, environment (2026-10-22)
 
-`python3 -I tools/bsp/bsp.py import map.bsp --game zz [--out <map repo>/world/<id>/<id>] [--pak] [credit flags]` does two things in this order (`dotbsp/importer.py`):
+`python3 -I bsp.py import map.bsp --game zz [--out <map repo>/world/<id>/<id>] [--pak] [credit flags]` does two things in this order (`dotbsp/importer.py`):
 
 1. **The plain raw import**, outside every repository, at `<root>/<game>/raw/<map>/` (root: `--raw-root`, `$DOTBSP_RAW_ROOT`, default `~/mapsrc`; today `~/mapsrc/zz/raw/` holds 35 Zombie Zone maps, 208 MB). `mesh.json` + `mesh.bin` (every face with the source texture names, movers, volumes, links, entities, environment, sounds), `intermediate.json` (with faces and displacements), `entities.json` (every key of every entity), `census.json` (each texture with face counts and average colour, each placed model with its count), `pak.txt` (the packed file list), `models/` (every model the pakfile packs as glb with its textures, and `models.json`; `models-notes.txt` lists any that did not convert), `SOURCE.txt`, and with `--pak` the packed vmt/vtf/sound files. Nothing is replaced here; later passes and reconversions read from it. The author's work: never copy it into a repository.
 2. **The licence pass** (`dotbsp/licence.py`, only with `--out`). Every surface's generic id (`source_textures.tsv`) maps through `free_textures.tsv` to a free replacement: a photographic CC0 set from `addons/dot_map/surfaces/` (ambientCG; URL, author and licence per row) or an image `dotbsp/textures.py` generates in the original's average colour (carpet, glass, water, snow, and any name no row knows). The manifest gains a `licence` block (every replacement with URL, author, licence and which source names it stands for; every placed model with its stand-in, `placeholder_box` when the game's `PropTable` has none) and `free` on each surface; `CREDITS.md` is written beside it. `licence.check` must be clean or the command exits 4 and the map is not to be committed. No source texture or model file is ever written to the output; the original names stay only as the names a replacement stands for.
@@ -46,7 +46,7 @@ Always `python3 -I`: the maps are downloads, and `-I` keeps a planted module bes
 
 ## Rule tiers, `regen` and the coverage ratchet (converter v2, package 3)
 
-`bsp.py regen <hash | game/map> --out <prefix> [--addon-rules DIR]... [--game-rules DIR] [--map-rules FILE] [--ratchet]` rebuilds a map's manifest, `.bin`, textures and `CREDITS.md` from its store entry (`source.bsp` and `credit.json`, which must name author and page) and the rules alone. Rules are read in four tiers, default (the lists beside `dotbsp/` and `tools/bsp/rules/`) < addon < game < map. A tier is a directory of `textures.tsv`, `free_textures.tsv`, `models.tsv`, `sounds.tsv`, `classes.tsv` (class or `prefix*`, treatment, meaning, component), `materials.tsv`, `roles.tsv`, or one JSON file with the same tables as keys (a map's `tools/convert/maps/<id>.json`). The highest tier with a matching row answers, the most specific row inside it; a path that does not exist is an error. Nothing is dropped: a texture no row names goes to the nearest photo set or a flat image, a model to `placeholder_box`, a sound to silence, a class to `DotMapEntity` (`rule: "fallback"` in the manifest's `entities`).
+`bsp.py regen <hash | game/map> --out <prefix> [--addon-rules DIR]... [--game-rules DIR] [--map-rules FILE] [--ratchet]` rebuilds a map's manifest, `.bin`, textures and `CREDITS.md` from its store entry (`source.bsp` and `credit.json`, which must name author and page) and the rules alone. Rules are read in four tiers, default (the lists beside `dotbsp/` and `rules/`) < addon < game < map. A tier is a directory of `textures.tsv`, `free_textures.tsv`, `models.tsv`, `sounds.tsv`, `classes.tsv` (class or `prefix*`, treatment, meaning, component), `materials.tsv`, `roles.tsv`, or one JSON file with the same tables as keys (a map's `tools/convert/maps/<id>.json`). The highest tier with a matching row answers, the most specific row inside it; a path that does not exist is an error. Nothing is dropped: a texture no row names goes to the nearest photo set or a flat image, a model to `placeholder_box`, a sound to silence, a class to `DotMapEntity` (`rule: "fallback"` in the manifest's `entities`).
 
 `<prefix>.coverage.json` lists, per map, which tier answered how many textures, models, sounds and classes, and the names that fell through: `textures_unmapped`, `textures_flat`, `models_unmapped`, `sounds_unmapped`, `classes_unmapped`, `keys_unmapped` (keys of a class that `rules/entity_defs.json` does not know, a class based on another class inheriting its keys, and not those `dotbsp/keys_handled.tsv` names as read by a component or dropped on purpose, with the reason), `links_unresolved`. Commit it with the map. `--ratchet` compares against the committed report and exits 5 when any list holds a name the baseline did not (the report is then not rewritten); with no baseline it exits 2. Inputs no component implements are not in the report yet: they need the runtime of package 5.
 
@@ -60,7 +60,7 @@ Always `python3 -I`: the maps are downloads, and `-I` keeps a planted module bes
 
 ## Why here, and why not in the games
 
-Six copies of the reader and five box converters had grown in the map repositories and in game-g2gfast, each with a fix the others lacked (the table below). A reader fix reached one game. It lives in dot-map because dot-map is the content addon every map-using game already links and clones beside itself, and outside `addons/dot_map` so it never ships in an addon copy or a pack (`.gdignore` keeps Godot from scanning it). A game finds it as the sibling checkout `../dot-map/tools/bsp` that dot-bootstrap makes, or at `$DOTBSP_PATH`.
+Six copies of the reader and five box converters had grown in the map repositories and in game-g2gfast, each with a fix the others lacked (the table below). A reader fix reached one game. It lives in its own repository, apart from the dot-map addon, so no converter code ships in an addon copy or a pack and the addon holds only what a game runs at load. A game finds it as the sibling checkout `../dot-map-convert` that dot-bootstrap makes, or at `$DOTBSP_PATH`. The converter finds the addon it writes into and reads data from (`addons/dot_map`: the stand-in models, sounds and surfaces, `io/catalogue.json`) as the sibling `../dot-map`, or at `$DOT_MAP_DIR`.
 
 The split is: dot-map reads the format and cuts brushes into boxes; the game decides what an entity means (which class is a spawn, which brush entity is a gate, which material is glass) and writes its own document. That is the adapter, and it is the only per-game part.
 
@@ -179,7 +179,7 @@ Zombie-zone's re-conversion against the committed maps: Nuke differs only in the
 
 Each is the same change zombie-zone-maps made, a few hours a game:
 
-1. Delete the repository's `tools/bsp_read.py` and import `dotbsp` (`reader`, `boxes`, `intermediate`) from `$DOTBSP_PATH` or `../../dot-map/tools/bsp`, exiting with a message when neither exists. Copy `_dotbsp_path()` from zombie-zone-maps' importer.
+1. Delete the repository's `tools/bsp_read.py` and import `dotbsp` (`reader`, `boxes`, `intermediate`) from `$DOTBSP_PATH` or `../dot-map-convert`, exiting with a message when neither exists. Copy `_dotbsp_path()` from zombie-zone-maps' importer.
 2. Replace the local `turned_box` / `prism_box` / `slice_brush` / `ramp_box` with `boxes.decompose(planes, hull, slab=..., min_size=..., tilt=...)` in the game's units (prop-hunt and hide-n-seek: metres, so `slab=0.4 / 0.01905`; playground passes `tilt=True`; deathrun's scale is 0.0254, so convert with that, not `METRES_PER_UNIT`). `boxes.centre(b)` and `boxes.size(b)` give a box's centre in map coordinates and its turned-frame size.
 3. Read brushes from `intermediate.build(...)` (or a saved document) rather than walking `bs.brushes` by hand: a brush entity's planes and hull are already moved to its origin, which every copy did by hand.
 4. Re-convert every map the repository ships and compare with the committed documents. Expect fewer, larger boxes where a map has ramps wider than they are long (slabs now follow the slope) and on narrow upright prisms (now slabs, not their bounding box), and ramps that used to be blocks (the wedge fix). Render one and look.
@@ -246,6 +246,6 @@ Every importer carried its own `TEXTURE_MAP` (a substring table in its own file)
 * `tint` (`r,g,b` in 0..1 or `#rrggbb`) keeps the colour the mapper meant, so one carpet is a blue office and a red hall.
 * The **most specific row wins**, not the first: an exact name beats any glob, a glob with more literal characters beats a shorter one, a tie goes to the earlier line. Order in the file is for the reader.
 
-`texturemap.load()` returns a `TextureMap`; `docboxes.majority_material(names, table, default)` takes it where it took the old list. `python3 -I tools/bsp/bsp.py unmapped <maps...>` (`--top N`, `--json`, `--strict`) lists every texture of the given maps that hits no row, with face counts and the maps it is in. A texture that turns up there gets a row in the list, not a line in an importer.
+`texturemap.load()` returns a `TextureMap`; `docboxes.majority_material(names, table, default)` takes it where it took the old list. `python3 -I bsp.py unmapped <maps...>` (`--top N`, `--json`, `--strict`) lists every texture of the given maps that hits no row, with face counts and the maps it is in. A texture that turns up there gets a row in the list, not a line in an importer.
 
 Used by murder-mystery-maps' `import_bsp.py`. **Next (not done): the other importers keep their own `TEXTURE_MAP`s and still work** (hide-n-seek-maps, mg-prop-hunt-maps, mg-deathrun-maps, mg-wipeout-maps, zombie-zone-maps, g2gfast-maps, game-playground-maps), because each names its own game's material ids (`paint`, `plaster`, `tile`...). Moving one is a mapping from the generic ids to that game's ids in its adapter, then deleting its table; `test_material_helpers_match_every_copy` compares the old tables, so it goes with them.

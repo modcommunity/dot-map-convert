@@ -1,4 +1,4 @@
-"""dotbsp's tests. Run: python3 -I tools/bsp/tests/test_dotbsp.py
+"""dotbsp's tests. Run: python3 -I tests/test_dotbsp.py
 
 Every map here is written by tests/synth.py. Set DOTBSP_TEST_MAPS to a directory of real
 .bsp files to also convert each and check the document (slow; not run by default).
@@ -271,7 +271,7 @@ class Cli(unittest.TestCase):
 # ~/godot) and compares on that repository's committed documents. A checkout that is not there
 # skips its comparison; the fixtures below run everywhere.
 
-GODOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
+GODOT = os.path.dirname(os.path.dirname(HERE))
 
 
 def repo_importer(repo):

@@ -5,7 +5,7 @@ colour inside that category. The picks are written as an `addon` rule tier (`tex
 `pbr_<set id>`, `free_textures.tsv` the set's source, URL, author and licence, kind `pbr`), and the
 importer copies the chosen set's albedo, normal, roughness and AO beside the map.
 
-    python3 -I tools/bsp/bsp.py pbrmap [--root DIR] [--library DIR] [--out DIR]
+    python3 -I bsp.py pbrmap [--root DIR] [--library DIR] [--out DIR]
 """
 
 import csv
@@ -219,7 +219,7 @@ def build(roots, library=None, out=OUT_DIR):
         picks[name] = pick(lib, category(name, kind), colour)
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "textures.tsv"), "w", encoding="utf-8") as f:
-        f.write("# Source texture name -> PBR library set (tools/bsp/bsp.py pbrmap). Name words first, then the nearest average colour in that category.\n")
+        f.write("# Source texture name -> PBR library set (bsp.py pbrmap). Name words first, then the nearest average colour in that category.\n")
         for name, e in picks.items():
             f.write("%s\t%s%s\t\n" % (_glob_safe(name), GENERIC, e["id"]))
     used = {e["id"]: e for e in picks.values()}
@@ -358,7 +358,7 @@ def choose_layers(material):
 
 
 def cmd(args):
-    roots = args.root or [os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))]
+    roots = args.root or [os.path.dirname(os.path.dirname(HERE))]
     n, k = build(roots, args.library, args.out or OUT_DIR)
     print("pbrmap: %d source textures -> %d library sets, tier at %s" % (n, k, args.out or OUT_DIR))
     return 0

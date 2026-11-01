@@ -2,7 +2,7 @@
 
 `mesh.build` draws a door, a button and a lift where they were compiled and makes them solid
 there; this says how each moves, so a game can move the model's surfaces and hulls (found by
-`model` index in the mesh manifest) and wire a press to what it opens. The source engine runs
+`model` index in the mesh manifest) and wire a press to what it opens. The map format's engine runs
 these through outputs (`OnPressed` -> `door1,Open`); the outputs that drive another mover are
 kept as `{output, target, input, param, delay, times}` records, because "a button opens a
 door" and "a button starts the lift" are what the zombie and escape maps are built around, and

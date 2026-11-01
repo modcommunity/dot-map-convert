@@ -34,7 +34,7 @@ def sun_direction(angles, pitch=None):
     (pitch, yaw, roll; the entity's `pitch` key overrides the pitch)."""
     p = math.radians(angles[0] if pitch is None else pitch)
     y = math.radians(angles[1])
-    # A light_environment's pitch is the direction itself: -90 is straight down (Hammer's
+    # A light_environment's pitch is the direction itself: -90 is straight down (the level editor's
     # convention, the opposite of a camera's angles), so z = sin(pitch), not -sin(pitch).
     fx, fy, fz = math.cos(p) * math.cos(y), math.cos(p) * math.sin(y), math.sin(p)
     return (_r3(fx), _r3(fz), _r3(-fy))

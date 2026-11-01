@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """The family's BSP map tool: inventory a folder of maps, or convert one to the intermediate.
 
-    python3 -I tools/bsp/bsp.py convert <map.bsp | archive> --out <map.json> [--member NAME]
+    python3 -I bsp.py convert <map.bsp | archive> --out <map.json> [--member NAME]
             [--credit credit.json | --author A --page URL --licence L] [--faces] [--displacements]
-    python3 -I tools/bsp/bsp.py list <dir | file>... [--json] [--markdown] [--converted ROOT] [--queue]
-    python3 -I tools/bsp/bsp.py --list <dir>...           (the same as `list`)
-    python3 -I tools/bsp/bsp.py unmapped <dir | file>... [--table source_textures.tsv] [--top N] [--json] [--strict]
-    python3 -I tools/bsp/bsp.py --unmapped <dir | file>...   (the same as `unmapped`)
-    python3 -I tools/bsp/bsp.py mesh <map.bsp | archive> --out <prefix> [--member NAME] [credit flags]
+    python3 -I bsp.py list <dir | file>... [--json] [--markdown] [--converted ROOT] [--queue]
+    python3 -I bsp.py --list <dir>...           (the same as `list`)
+    python3 -I bsp.py unmapped <dir | file>... [--table source_textures.tsv] [--top N] [--json] [--strict]
+    python3 -I bsp.py --unmapped <dir | file>...   (the same as `unmapped`)
+    python3 -I bsp.py mesh <map.bsp | archive> --out <prefix> [--member NAME] [credit flags]
             [--y0 M] [--coverage] [--allow-unknown]
-    python3 -I tools/bsp/bsp.py classes [<dir | file>...] [--markdown | --keys]
-    python3 -I tools/bsp/bsp.py audit <map.bsp> (--mesh <prefix> | --doc <doc.json> --y0 M) [--max-loss 0.002] [--within ..] [--band ..] [--skip ..] [--json F]
-    python3 -I tools/bsp/bsp.py regen <hash | game/name> --out <prefix> [--game-rules DIR] [--addon-rules DIR]...
+    python3 -I bsp.py classes [<dir | file>...] [--markdown | --keys]
+    python3 -I bsp.py audit <map.bsp> (--mesh <prefix> | --doc <doc.json> --y0 M) [--max-loss 0.002] [--within ..] [--band ..] [--skip ..] [--json F]
+    python3 -I bsp.py regen <hash | game/name> --out <prefix> [--game-rules DIR] [--addon-rules DIR]...
             [--map-rules FILE] [--ratchet] [--baseline FILE] [--coverage FILE] [--root R]
-    python3 -I tools/bsp/bsp.py store <dir | file>... [--root R] [--game G] [credit flags] | store --check | store --scripts
+    python3 -I bsp.py store <dir | file>... [--root R] [--game G] [credit flags] | store --check | store --scripts
 
 `mesh` writes the full geometry (`<prefix>.json` + `<prefix>.bin`, dotbsp/mesh.py) with the
 movers, volumes and teleport destinations (dotbsp/movers.py) and what became of every entity
@@ -492,7 +492,7 @@ def main(argv):
     pm = sub.add_parser("pbrmap", help="pick a PBR library set for every texture name the converted maps use; writes rules/pbr")
     pm.add_argument("--root", action="append", help="a directory holding <game>/world/<map>/ (repeatable; default ~/godot)")
     pm.add_argument("--library", help="the library's materials folder; default $DOT_ART_LIBRARY or ~/art-library/materials")
-    pm.add_argument("--out", help="the tier directory to write; default tools/bsp/rules/pbr")
+    pm.add_argument("--out", help="the tier directory to write; default rules/pbr")
     md = sub.add_parser("modeldims", help="count every placed model over the store and write its size (rules/models/model_dims.tsv, ranking.tsv)")
     md.add_argument("--root", help="the store; default $DOTBSP_STORE or ~/mapsrc/store")
     md.add_argument("--game-vpk", help="a game directory's <name>_dir.vpk: the size of a stock model no map packs is read from its header")

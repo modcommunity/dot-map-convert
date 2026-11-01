@@ -1,6 +1,6 @@
 """Writes addons/dot_map/io/catalogue.json, the slice of the class catalogue DotMapIO needs.
 
-    python3 -I tools/bsp/defs/runtime.py [--out FILE] [--all]
+    python3 -I defs/runtime.py [--out FILE] [--all]
 
 Per class (bases folded in): input and output names (lower case to the written name) and each
 key's type and default. By default only the classes the scanned maps use and the classes a
@@ -18,7 +18,9 @@ sys.path.insert(0, os.path.dirname(HERE))
 
 from dotbsp import classes, defs  # noqa: E402
 
-OUT = os.path.join(HERE, "..", "..", "..", "addons", "dot_map", "io", "catalogue.json")
+from dotbsp import paths  # noqa: E402
+
+OUT = os.path.join(paths.addon_dir(), "io", "catalogue.json")
 
 
 def build(doc, everything=False):

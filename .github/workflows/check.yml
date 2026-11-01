@@ -1,0 +1,27 @@
+name: Check
+
+on:
+    push:
+        branches: ['**']
+        paths-ignore: ['**/*.md']
+    pull_request:
+    workflow_dispatch:
+
+jobs:
+    tests:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  path: dot-map-convert
+            - uses: actions/checkout@v4
+              with:
+                  repository: modcommunity/dot-map
+                  path: dot-map
+                  token: ${{ secrets.DOT_DEPS_TOKEN }}
+            - name: Suites
+              working-directory: dot-map-convert
+              run: |
+                  fail=0
+                  for t in tests/test_*.py; do python3 -I "$t" > /tmp/t.log 2>&1 || { echo "FAIL $t"; tail -5 /tmp/t.log; fail=1; }; done
+                  exit $fail

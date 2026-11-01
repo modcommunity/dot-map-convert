@@ -1,5 +1,5 @@
 """The PBR library mapper: name categories, nearest colour in a category, shipping a set.
-Run: python3 -I tools/bsp/tests/test_pbrmap.py
+Run: python3 -I tests/test_pbrmap.py
 """
 
 import os

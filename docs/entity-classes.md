@@ -1,6 +1,6 @@
 # Entity classes, and what the importer makes of each
 
-Every entity class found in 200 community maps (measured 2026-10-23 over the 105 readable maps in the lossless store, 296 classes counting `prop_static`), what it is in the original engine, and what `dotbsp` makes of it. The table is written from `dotbsp/classes.py` by `python3 -I tools/bsp/bsp.py classes --markdown <maps...>`, so a change goes there and this file is regenerated, never edited by hand. `bsp.py mesh` prints what became of every entity of the map it converts and fails on a class with no row and no prefix rule.
+Every entity class found in 200 community maps (measured 2026-10-23 over the 105 readable maps in the lossless store, 296 classes counting `prop_static`), what it is in the original engine, and what `dotbsp` makes of it. The table is written from `dotbsp/classes.py` by `python3 -I bsp.py classes --markdown <maps...>`, so a change goes there and this file is regenerated, never edited by hand. `bsp.py mesh` prints what became of every entity of the map it converts and fails on a class with no row and no prefix rule.
 
 What a class becomes:
 

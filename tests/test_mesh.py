@@ -1,4 +1,4 @@
-"""dotbsp.mesh's tests. Run: python3 -I tools/bsp/tests/test_mesh.py
+"""dotbsp.mesh's tests. Run: python3 -I tests/test_mesh.py
 
 Every map is written by tests/synth.py with `faces=True`, so the drawn faces are known exactly.
 """
@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
 import synth                                          # noqa: E402
-from dotbsp import classes, mesh, movers, reader, units  # noqa: E402
+from dotbsp import classes, mesh, movers, paths, reader, units  # noqa: E402
 
 MATS = ("concrete/concretefloor001", "metal/metalwall001")
 
@@ -147,7 +147,7 @@ class Fixture(unittest.TestCase):
             mesh_fixture.write(os.path.join(d, "fixture"))
             for ext in (".json", ".bin"):
                 with open(os.path.join(d, "fixture" + ext), "rb") as a, open(mesh_fixture.OUT + ext, "rb") as b:
-                    self.assertEqual(a.read(), b.read(), "run tools/bsp/tests/mesh_fixture.py")
+                    self.assertEqual(a.read(), b.read(), "run tests/mesh_fixture.py")
 
 
 class Glass(unittest.TestCase):
@@ -186,7 +186,7 @@ class Glass(unittest.TestCase):
             mesh_fixture.write_glass(os.path.join(d, "glass"))
             for ext in (".json", ".bin"):
                 with open(os.path.join(d, "glass" + ext), "rb") as a, open(mesh_fixture.GLASS_OUT + ext, "rb") as b:
-                    self.assertEqual(a.read(), b.read(), "run tools/bsp/tests/mesh_fixture.py")
+                    self.assertEqual(a.read(), b.read(), "run tests/mesh_fixture.py")
 
 
 class Coverage(unittest.TestCase):
@@ -243,8 +243,7 @@ class Movers(unittest.TestCase):
 
 
 class Entities(unittest.TestCase):
-    REAL = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "examples", "bsp_mesh",
-                        "zm_4way_tunnel.entities.json")
+    REAL = os.path.join(paths.dot_map_dir(), "examples", "bsp_mesh", "zm_4way_tunnel.entities.json")
 
     def test_trigger_multiple_and_once_are_volumes_with_outputs(self):
         bsp = load(entity_box=(0, 0, 0, 64, 64, 64), entity_class="trigger_multiple",

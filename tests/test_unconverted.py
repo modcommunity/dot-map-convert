@@ -1,4 +1,4 @@
-"""The unconverted-class check. Run: python3 -I tools/bsp/tests/test_unconverted.py"""
+"""The unconverted-class check. Run: python3 -I tests/test_unconverted.py"""
 
 import os
 import sys

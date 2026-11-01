@@ -1,4 +1,4 @@
-"""Implemented inputs read from the GDScript. Run: python3 -I tools/bsp/tests/test_inputs.py"""
+"""Implemented inputs read from the GDScript. Run: python3 -I tests/test_inputs.py"""
 import os
 import sys
 import unittest

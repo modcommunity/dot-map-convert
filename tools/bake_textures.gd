@@ -1,6 +1,6 @@
 extends SceneTree
 ## Bakes a PBR store's textures so a client loads them without decoding: see DotMapTextureBake.
-##   heavy -- godot --headless --path dot-map --script tools/bake_textures.gd -- <store dir> [--out=<dir>] [--max=2048]
+##   heavy -- godot --headless --path ../dot-map --script $PWD/tools/bake_textures.gd -- <store dir> [--out=<dir>] [--max=2048]
 ## Without --out the baked files sit beside the sources, where DotMapSurfaces looks. Publishes nothing.
 
 

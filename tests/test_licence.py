@@ -1,5 +1,5 @@
 """The licence pass, the raw store, and the environment and sound data.
-Run: python3 -I tools/bsp/tests/test_licence.py
+Run: python3 -I tests/test_licence.py
 """
 
 import json
@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
 import synth                                              # noqa: E402
-from dotbsp import environment, importer, licence, props, reader, texturemap, textures  # noqa: E402
+from dotbsp import environment, importer, licence, paths, props, reader, texturemap, textures  # noqa: E402
 
 ENTS = [{"classname": "worldspawn", "skyname": "sky_day01"},
         {"classname": "light_environment", "origin": "0 0 100", "pitch": "-45", "angles": "0 90 0",
@@ -59,10 +59,10 @@ class Free(unittest.TestCase):
         for g, r in table.items():
             self.assertIn(r["licence"], licence.ALLOWED, g)
             if r["kind"] != "generated":
-                self.assertTrue(os.path.isdir(os.path.join(HERE, "..", "..", "..", "addons", "dot_map", "surfaces", r["kind"])), g)
+                self.assertTrue(os.path.isdir(os.path.join(paths.addon_dir(), "surfaces", r["kind"])), g)
 
     def test_photo_sets_are_complete_and_credited(self):
-        root = os.path.join(HERE, "..", "..", "..", "addons", "dot_map", "surfaces")
+        root = os.path.join(paths.addon_dir(), "surfaces")
         credits = open(os.path.join(root, "CREDITS.md")).read()
         for r in licence.load().values():
             if r["kind"] == "generated":
@@ -108,7 +108,7 @@ class Defects(unittest.TestCase):
     def test_shape_match_neutral_blocks_only(self):
         from dotbsp import standins
         cat = standins.ShapeCatalogue()
-        props_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "addons", "dot_map", "props")
+        props_dir = os.path.join(paths.addon_dir(), "props")
         for cid in cat.dims:
             self.assertTrue(os.path.exists(os.path.join(props_dir, cid + ".glb")), cid)
             self.assertIn(cid, cat.rows, cid)                       # a credit row to ship with it
@@ -270,7 +270,7 @@ class Import(unittest.TestCase):
 
     def test_model_and_sound_stand_ins_are_free_and_exist(self):
         from dotbsp import standins
-        root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "addons", "dot_map")
+        root = paths.addon_dir()
         m, s = standins.models(), standins.sounds()
         self.assertEqual(m.get("props/cs_office/sofa.mdl")["stand_in"], "sofa")
         self.assertIsNone(m.get("props_junk/sewer_grate01.mdl"))     # no sensible match: stays a box
@@ -321,7 +321,7 @@ class Import(unittest.TestCase):
     def test_check_refuses_a_restricted_or_missing_replacement(self):
         with tempfile.TemporaryDirectory() as out:
             doc, _ = importer.ship(load(), "t", os.path.join(out, "t"), allow_unknown=True)
-            doc["licence"]["textures"][0]["licence"] = "Valve proprietary"
+            doc["licence"]["textures"][0]["licence"] = "proprietary"
             self.assertTrue(any("not free" in p for p in licence.check(doc)))
             doc["licence"]["textures"][0]["licence"] = "CC0-1.0"
             doc["surfaces"][0]["free"] = "none"

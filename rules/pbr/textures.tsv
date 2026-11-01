@@ -1,4 +1,4 @@
-# Source texture name -> PBR library set (tools/bsp/bsp.py pbrmap). Name words first, then the nearest average colour in that category.
+# Source texture name -> PBR library set (bsp.py pbrmap). Name words first, then the nearest average colour in that category.
 aaatix/aaatix_credit	pbr_yellow_plaster	
 aaatix/atix_har	pbr_patterned_clay_plaster	
 aaatix/atix_lol	pbr_PaintedPlaster006	

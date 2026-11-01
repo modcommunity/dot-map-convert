@@ -3,7 +3,7 @@
 
 A repo's tools/build_provides.py is a thin config that imports this and calls `run`:
 
-    sys.path.insert(0, <dot-map>/tools); import build_provides; sys.exit(build_provides.run(ROOT, ...))
+    sys.path.insert(0, <dot-map-convert>/tools); import build_provides; sys.exit(build_provides.run(ROOT, ...))
 
     pack="single": one provides.json at the root, one `map` entry per document in `directory`
     pack="each":   maps/<id>/provides.json and licence.json per folder (each folder is its own pack), entry scene = <id>.json

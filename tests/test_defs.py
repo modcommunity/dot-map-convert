@@ -1,4 +1,4 @@
-"""The class catalogue's tests. Run: python3 -I tools/bsp/tests/test_defs.py
+"""The class catalogue's tests. Run: python3 -I tests/test_defs.py
 
 The committed rules/entity_defs.json is checked on its own; when the definition files and dumps
 are on this machine (`$DOTBSP_DEFS`, default ~/mapsrc/defs) it is also rebuilt and compared.
@@ -111,7 +111,7 @@ class Rebuild(unittest.TestCase):
         self.assertEqual(a, b)
         committed = build.dumps_json({k: v for k, v in defs.load().items()
                                       if k not in ("map_classes", "unknown", "maps_scanned", "maps_unreadable")})
-        self.assertEqual(a, committed, "entity_defs.json is stale: python3 -I tools/bsp/defs/build.py")
+        self.assertEqual(a, committed, "entity_defs.json is stale: python3 -I defs/build.py")
 
 
 if __name__ == "__main__":

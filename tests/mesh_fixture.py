@@ -1,6 +1,6 @@
 """Writes examples/bsp_mesh/fixture.{json,bin}, the mesh the Godot suite reads.
 
-Run: python3 -I tools/bsp/tests/mesh_fixture.py (test_mesh.py checks the files are current).
+Run: python3 -I tests/mesh_fixture.py (test_mesh.py checks the files are current).
 A floor slab, a wall, and a door (a func_door brush entity with a targetname and a button that
 opens it), from synth.py, so the Godot side has a world, a hull per brush and a mover.
 """
@@ -13,9 +13,9 @@ sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
 import synth                                 # noqa: E402
-from dotbsp import mesh, movers, reader      # noqa: E402
+from dotbsp import mesh, movers, paths, reader  # noqa: E402
 
-OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "examples", "bsp_mesh", "fixture")
+OUT = os.path.join(paths.dot_map_dir(), "examples", "bsp_mesh", "fixture")
 
 
 def bsp():

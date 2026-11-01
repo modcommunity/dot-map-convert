@@ -1,5 +1,5 @@
 """The model library mapper: size matching, picking by name words, shipping a pick.
-Run: python3 -I tools/bsp/tests/test_modelmap.py
+Run: python3 -I tests/test_modelmap.py
 """
 
 import os

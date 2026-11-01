@@ -1,5 +1,5 @@
 """The stand-in coverage report: tiers, ranking, stale picks, strict exit.
-Run: python3 -I tools/bsp/tests/test_standinreport.py
+Run: python3 -I tests/test_standinreport.py
 """
 
 import json

@@ -1,6 +1,6 @@
 """Writes examples/bsp_mesh/zm_4way_tunnel.entities.json, a real map's mover, volume and link data.
 
-Run: python3 -I tools/bsp/tests/entities_fixture.py <zm_4way_tunnel_v2.bsp>. The map is a community
+Run: python3 -I tests/entities_fixture.py <zm_4way_tunnel_v2.bsp>. The map is a community
 download and is not in the repository; only the entity data derived from it is, so the suites
 (test_mesh.py, bsp_entities_demo.tscn) run without the map. Water and ladder volumes are left out.
 """
@@ -12,9 +12,9 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-from dotbsp import mesh, movers, reader      # noqa: E402
+from dotbsp import mesh, movers, paths, reader  # noqa: E402
 
-OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "examples", "bsp_mesh", "zm_4way_tunnel.entities.json")
+OUT = os.path.join(paths.dot_map_dir(), "examples", "bsp_mesh", "zm_4way_tunnel.entities.json")
 
 
 def build(path):

@@ -176,7 +176,7 @@ def load_tier(name, path=None):
 
 
 def default_tier():
-    """The family's own tables: the shared lists beside this file, then `tools/bsp/rules/`."""
+    """The family's own tables: the shared lists beside this file, then `rules/`."""
     t = Tier("default")
     t.textures = texturemap.load()
     from . import licence

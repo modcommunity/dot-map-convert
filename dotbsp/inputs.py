@@ -9,8 +9,9 @@ so this under-reports an input a sibling kind implements: it never claims one th
 import os
 import re
 
-IO_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
-                      "addons", "dot_map", "io")
+from dotbsp import paths
+
+IO_DIR = os.path.join(paths.addon_dir(), "io")
 _cache = {}
 
 

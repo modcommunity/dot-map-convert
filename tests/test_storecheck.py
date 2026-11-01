@@ -1,5 +1,5 @@
 """storecheck: a world's art resolves through published slices and their dependencies, or the gap is named.
-Run: python3 -I tools/bsp/tests/test_storecheck.py
+Run: python3 -I tests/test_storecheck.py
 """
 import base64
 import json

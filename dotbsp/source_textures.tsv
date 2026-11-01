@@ -3,7 +3,7 @@
 # order here is only for the reader. A tint is r,g,b (0..1) or #rrggbb and multiplies the game's texture.
 # A map's own folder (MAPS/<map>/) and a cubemap suffix are stripped before matching, so never name a map here.
 # Ids are generic (what the surface IS); a game draws each id from its own art. Unknown ids are drawn flat by the game.
-# `python3 -I tools/bsp/bsp.py unmapped <maps>` lists every texture that hits no row below, with face counts.
+# `python3 -I bsp.py unmapped <maps>` lists every texture that hits no row below, with face counts.
 
 # --- never drawn as a surface a player reads
 # `invisible` faces are left out of the mesh (decal overlays, fog cards, screens: drawn opaque they are slabs).

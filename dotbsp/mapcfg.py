@@ -5,7 +5,7 @@ changes nothing until an author or operator uncomments a line and the game white
 (docs/map-config.md). The same values are the manifest's `settings` (`defaults`), the weakest
 layer of `DotMapConfig`, behind the same whitelist. Nothing here runs a command.
 
-    python3 -m dotbsp.mapcfg OUT_DIR map1.bsp [map2.bsp ...]    (from tools/bsp)
+    python3 -m dotbsp.mapcfg OUT_DIR map1.bsp [map2.bsp ...]    (from the repository root)
 """
 
 import os

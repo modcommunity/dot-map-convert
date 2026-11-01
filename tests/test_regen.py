@@ -1,4 +1,4 @@
-"""Rule tiers, the fallbacks, regen and the coverage ratchet. Run: python3 -I tools/bsp/tests/test_regen.py"""
+"""Rule tiers, the fallbacks, regen and the coverage ratchet. Run: python3 -I tests/test_regen.py"""
 
 import json
 import os
