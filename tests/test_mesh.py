@@ -116,6 +116,15 @@ class Build(unittest.TestCase):
         m = mesh.build(load(materials=("TOOLS/TOOLSPLAYERCLIP",), contents=reader.CONTENTS_PLAYERCLIP))
         self.assertEqual([h["kind"] for h in m.hulls], ["clip"])
 
+    def test_fence_hull_kind(self):
+        for mat, contents, want in (("METAL/CHAINLINKFENCE001", reader.CONTENTS_SOLID, "fence"),
+                                    ("CONCRETE/WALL001", reader.CONTENTS_SOLID | reader.CONTENTS_GRATE, "fence"),
+                                    ("METAL/VENT01", reader.CONTENTS_SOLID, "fence"),
+                                    ("WOOD/WOODFENCE01", reader.CONTENTS_SOLID, "solid"),
+                                    ("CONCRETE/WALL001", reader.CONTENTS_SOLID, "solid")):
+            m = mesh.build(load(materials=(mat,), contents=contents))
+            self.assertEqual([h["kind"] for h in m.hulls], [want], mat)
+
 
 class RoundTrip(unittest.TestCase):
     def test_write_read(self):

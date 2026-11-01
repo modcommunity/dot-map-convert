@@ -145,3 +145,19 @@ def tint(props):
         return None
     m = max(c) or 1.0
     return [round(max(v / m, 0.35), 3) for v in c]
+
+
+SEE_THROUGH = re.compile(r"CHAINLINK|CHAIN_?LINK|FENCE|WIRE|CAGE|GRATE|GRATING|GRILL|VENT|LATTICE|JAIL|CATWALK")
+SOLID_FENCE = re.compile(r"WOOD|BOARD|PLANK|PICKET|BRICK|CONCRETE|STONE")
+
+
+def see_through_material(names, contents, grate_bit=0x8):
+    """`fence` for a brush bullets pass and bodies do not, else None. CONTENTS_GRATE says so on its
+    own; otherwise every drawn side must be a fence-like texture (strict: no STAIR/BAR/MESH, which
+    name solid things), so one grate face on a wall never turns the wall into a fence."""
+    if contents & grate_bit:
+        return "fence"
+    drawn = [n for n in names if not n.startswith("TOOLS/")]
+    if drawn and all(SEE_THROUGH.search(n) and not SOLID_FENCE.search(n) for n in drawn):
+        return "fence"
+    return None

@@ -351,7 +351,7 @@ class Boxes:
 class Hulls:
     """A `dot-bsp-mesh`'s convex hulls (planes `n.p <= d` in metres) as an output."""
 
-    def __init__(self, hulls, cell=4.0, kinds=("solid", "clip", "glass")):
+    def __init__(self, hulls, cell=4.0, kinds=("solid", "clip", "glass", "fence")):
         self.cell, self.grid = cell, collections.defaultdict(list)
         for h in hulls:
             if h.get("kind", "solid") not in kinds or not h["points"]:
@@ -392,7 +392,7 @@ class Hulls:
         return False
 
 
-def collision_hulls(hulls, sel, kinds=("solid", "clip", "glass")):
+def collision_hulls(hulls, sel, kinds=("solid", "clip", "glass", "fence")):
     """The hulls of `kinds` a document's `world_collision` selects: `models` whole, `flat` only hulls at
     most `flat_height` tall, none with its centre in a `skip` region [x0,y0,z0,x1,y1,z1], and, for a document
     cropped on purpose, only those touching `within` [x0,z0,x1,z1] and `band` [lo,hi] (game metres)."""
