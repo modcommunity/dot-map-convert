@@ -36,6 +36,16 @@ class BundleTest(unittest.TestCase):
             doc = json.load(open(os.path.join(t, "out", "w", "w.json")))
             self.assertEqual(doc["licence"]["model_store"], "models")
 
+    def test_gltf_brings_its_bin_and_textures(self):
+        with tempfile.TemporaryDirectory() as t:
+            w = make(t, ["p/car/car.gltf"])
+            os.makedirs(os.path.join(t, "store", "p", "car", "textures"))
+            open(os.path.join(t, "store", "p", "car", "car.bin"), "wb").write(b"b")
+            open(os.path.join(t, "store", "p", "car", "textures", "d.jpg"), "wb").write(b"j")
+            bundle.bundle_world(w, os.path.join(t, "out", "w"))
+            self.assertTrue(os.path.isfile(os.path.join(t, "out", "w", "models", "p", "car", "car.bin")))
+            self.assertTrue(os.path.isfile(os.path.join(t, "out", "w", "models", "p", "car", "textures", "d.jpg")))
+
     def test_missing_file_is_reported_not_hidden(self):
         with tempfile.TemporaryDirectory() as t:
             w = make(t, ["a/m.glb", "gone/n.glb"])

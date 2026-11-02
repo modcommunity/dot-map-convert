@@ -34,7 +34,11 @@ def bundle_world(folder, out, store=None):
             continue
         dst = os.path.join(out, "models", rel)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
-        shutil.copyfile(src, dst)
+        if rel.lower().endswith(".gltf"):
+            # A .gltf names its .bin and textures beside it; copy the model's folder, not the one file.
+            shutil.copytree(os.path.dirname(src), os.path.dirname(dst), dirs_exist_ok=True)
+        else:
+            shutil.copyfile(src, dst)
         copied.append(rel)
     if files:
         lic["model_store"] = "models"
@@ -48,7 +52,7 @@ def cmd(args):
     for folder in args.worlds:
         name = os.path.basename(os.path.normpath(folder))
         copied, missing = bundle_world(folder, os.path.join(args.out, name), args.store)
-        size = sum(os.path.getsize(os.path.join(args.out, name, "models", r)) for r in copied)
+        size = sum(os.path.getsize(os.path.join(d, f)) for d, _, fs in os.walk(os.path.join(args.out, name, "models")) for f in fs)
         print("%s: %d models, %.1f MB%s" % (name, len(copied), size / 1e6, ", MISSING %d: %s" % (len(missing), ", ".join(missing[:3])) if missing else ""))
         bad += len(missing)
     return 1 if bad and args.strict else 0
