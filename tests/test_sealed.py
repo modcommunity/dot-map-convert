@@ -20,6 +20,19 @@ def door(x, z0, z1):
     return {"at": [x, 1.1, (z0 + z1) / 2], "size": [0.2, 2.2, z1 - z0]}
 
 
+class Hurt(unittest.TestCase):
+    def test_points_inside_a_volume_are_returned(self):
+        vol = [[24, 0, -5, 31, 3, 0]]
+        inside, outside = (26.0, 0.1, -2.0), (20.0, 0.1, -2.0)
+        self.assertEqual(flood.inside_volumes([inside, outside], vol), [inside])
+
+    def test_no_volumes_returns_nothing(self):
+        self.assertEqual(flood.inside_volumes([(1.0, 0.0, 1.0)], []), [])
+
+    def test_above_the_volume_is_outside(self):
+        self.assertEqual(flood.inside_volumes([(26.0, 5.0, -2.0)], [[24, 0, -5, 31, 3, 0]]), [])
+
+
 class Sealed(unittest.TestCase):
     def test_closed_door_seals_the_room_behind_it(self):
         boxes = [floor(0, 0, 10, 4), floor(10, 0, 16, 4)]

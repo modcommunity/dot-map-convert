@@ -331,3 +331,9 @@ def sealed_by(boxes, shut, starts, points, **kw):
     closed = Flood(list(boxes) + list(shut), **kw).run(starts)
     return [p for p in points if free.reachable(*p) is not None and closed.reachable(*p) is None]
 
+
+
+def inside_volumes(points, volumes, pad=0.0):
+    """The `points` (x, y, z) inside any of the `volumes`, boxes `[x0, y0, z0, x1, y1, z1]` (metres)."""
+    return [p for p in points if any(v[0] - pad <= p[0] <= v[3] + pad and v[1] - pad <= p[1] <= v[4] + pad
+                                     and v[2] - pad <= p[2] <= v[5] + pad for v in volumes)]

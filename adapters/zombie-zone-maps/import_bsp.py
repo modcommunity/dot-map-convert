@@ -2336,6 +2336,25 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
             if sealed:
                 print("  zombie starts: %d behind a door closed at the start dropped" % len(sealed))
                 zsp = [p for p in zsp if p not in sealed]
+        # A start inside a damaging trigger_hurt (a shelter under a nuke's kill trigger) is a zombie that dies on
+        # spawn or when the event fires. A volume holding over half the starts is the map-wide kill, not a place.
+        burnt = []
+        for e in ents:
+            m = str(e.get("model", ""))
+            if e.get("classname") != "trigger_hurt" or not m.startswith("*") or float(e.get("damage", 10) or 0) <= 0:
+                continue
+            hurt = []
+            for rec in bs.model_brushes(int(m[1:])):
+                if rec["hull"]:
+                    pts = [gpt(q, y0) for q in rec["hull"]]
+                    hurt.append([min(q[k] for q in pts) if k < 3 else max(q[k - 3] for q in pts) for k in range(6)])
+            for h in hurt:
+                hit = dflood.inside_volumes(zsp, [h], pad=0.25)
+                if 0 < len(hit) <= len(zsp) // 2:
+                    burnt.extend(q for q in hit if q not in burnt)
+        if burnt:
+            print("  zombie starts: %d inside a damaging trigger_hurt dropped" % len(burnt))
+            zsp = [p for p in zsp if p not in burnt]
         zkeep = [p for p in zsp if any(G.find(i) == main and (q[0] - p[0]) ** 2 + (q[2] - p[2]) ** 2 <= 1.0 and abs(q[1] - p[1]) <= 0.6
                                       for i, q in enumerate(G.pts))]
         if len(zkeep) >= 4:
