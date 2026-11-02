@@ -18,7 +18,6 @@ jobs:
               with:
                   repository: modcommunity/dot-map
                   path: dot-map
-                  token: ${{ secrets.DOT_DEPS_TOKEN }}
             - name: Suites
               working-directory: dot-map-convert
               run: |
