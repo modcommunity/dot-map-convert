@@ -318,3 +318,16 @@ def cell_index(boxes, cell=0.5):
             for iz in range(int(math.floor(z0 / cell)), int(math.floor(z1 / cell)) + 1):
                 grid.setdefault((ix, iz), []).append(bi)
     return grid
+
+
+def sealed_by(boxes, shut, starts, points, **kw):
+    """The `points` (x, y, z metres) a walker from `starts` reaches over `boxes` but not once the
+    `shut` boxes (doors closed at map start, which still block) are added. Differential on purpose:
+    a point this flood cannot reach either way (a narrow doorway) is not blamed on a door."""
+    if not shut:
+        return []
+    kw.setdefault("thin_walls", True)    # a door is thinner than a cell and would fall between samples
+    free = Flood(boxes, **kw).run(starts)
+    closed = Flood(list(boxes) + list(shut), **kw).run(starts)
+    return [p for p in points if free.reachable(*p) is not None and closed.reachable(*p) is None]
+

@@ -58,6 +58,7 @@ sys.path.insert(1, _dotbsp_path())
 from dotbsp import boxes as dboxes, classes as dclasses, docboxes, intermediate, reader, texturemap  # noqa: E402
 from dotbsp import lights as dlights  # noqa: E402
 from dotbsp import terrain as dterrain  # noqa: E402
+from dotbsp import flood as dflood, movers  # noqa: E402
 
 TERRAIN_AUTO_M2 = 500.0    # displacement ground that turns the heightfield on for a spec that does not say
 # The displacement ground (dotbsp.terrain.Heightfield) the floods walk by slope; None without terrain.
@@ -1575,6 +1576,7 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
 
     # brush entities: solid ones are part of the world; gates are held back for the route
     gate_cands = []
+    door_shut = []   # boxes of doors closed at map start: they block the reachability filters only
     wc_models, wc_flat = [0], []    # what `world_collision` collides with, the same selection as the boxes
     for e in ents:
         m = str(e.get("model", ""))
@@ -1595,6 +1597,8 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
             else:
                 wc_models.append(int(m[1:]))
             boxes.extend(mb)
+        elif not gate and movers.closed_door(e):
+            door_shut.extend(model_boxes(bs, int(m[1:]), y0))
         elif gate:
             only = spec.get("gate_names")
             gb = model_boxes(bs, int(m[1:]), y0)
@@ -2327,6 +2331,11 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
     # A start the horde cannot path out of is a zombie idling for the whole wave (an octagon room
     # whose stepped edge the graph cannot climb): zkeep the starts within a metre of the main ground.
     if zsp and G.pts:
+        if door_shut:
+            sealed = dflood.sealed_by([b for b in boxes if b.get("solid", True)], door_shut, [starts[0]], zsp, cell=CELL)
+            if sealed:
+                print("  zombie starts: %d behind a door closed at the start dropped" % len(sealed))
+                zsp = [p for p in zsp if p not in sealed]
         zkeep = [p for p in zsp if any(G.find(i) == main and (q[0] - p[0]) ** 2 + (q[2] - p[2]) ** 2 <= 1.0 and abs(q[1] - p[1]) <= 0.6
                                       for i, q in enumerate(G.pts))]
         if len(zkeep) >= 4:

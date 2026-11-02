@@ -179,6 +179,12 @@ def touch_opens(e):
 PANEL_MIN, PANEL_MAX = 0.6, 1.6   # metres: the range a door panel is clamped to when its width is only inferred
 
 
+def closed_door(e):
+    """A solid sliding or hinged door that starts shut: it blocks until something opens it."""
+    flags = _i(e, "spawnflags")
+    return e.get("classname") in ("func_door", "func_door_rotating") and not flags & (SF_DOOR_START_OPEN | SF_DOOR_PASSABLE)
+
+
 def movers(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
     """One record per moving brush entity (and per prop_door_rotating, which has no model)."""
     from . import mesh
