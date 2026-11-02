@@ -18,6 +18,8 @@ jobs:
               with:
                   repository: modcommunity/dot-map
                   path: dot-map
+            - name: Python dependencies
+              run: python3 -m pip install numpy scipy pillow trimesh matplotlib
             - name: Suites
               working-directory: dot-map-convert
               run: |
