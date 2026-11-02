@@ -14,11 +14,11 @@ from dotbsp import licence, storepack  # noqa: E402
 
 DOC = {"licence": {
     "textures": [
-        {"kind": "pbr", "key": "a", "file": "pbr/set_a", "tier": "1k", "generic": "A", "author": "x", "licence": "CC0-1.0", "url": "u/a", "surfaces": 3},
+        {"kind": "pbr", "key": "a", "file": "pbr/set_a", "tier": "1k", "generic": "A", "author": "x", "licence": "CC0-1.0", "url": "https://x.example/a", "surfaces": 3},
         {"kind": "generated", "key": "g", "generic": "G", "file": "g.png"}],
     "model_stand_ins": [
-        {"stand_in": "lib/m", "store_file": "poly/m/m.glb", "author": "y", "licence": "CC-BY-4.0", "url": "u/m", "count": 2},
-        {"stand_in": "kenney/k", "author": "z", "licence": "CC0-1.0", "url": "u/k", "count": 1}],
+        {"stand_in": "lib/m", "store_file": "poly/m/m.glb", "author": "y", "licence": "CC-BY-4.0", "url": "https://x.example/m", "count": 2},
+        {"stand_in": "kenney/k", "author": "z", "licence": "CC0-1.0", "url": "https://x.example/k", "count": 1}],
     "sounds": []}}
 
 
@@ -173,6 +173,64 @@ class Plan(unittest.TestCase):
 
     def test_shared_name_is_stable(self):
         self.assertEqual(storepack.shared_name({"a", "b"}), storepack.shared_name(["b", "a"]))
+
+
+class Licences(unittest.TestCase):
+    """Every file a slice holds has a licence entry by the site's rule, or the build fails naming the files."""
+
+    def setUp(self):
+        self.t = tempfile.mkdtemp()
+        self.pbr = os.path.join(self.t, "pbr-library")
+        self.mod = os.path.join(self.t, "model-library")
+        touch(os.path.join(self.pbr, "set_a", "1k", "albedo.webp"), b"A")
+        touch(os.path.join(self.mod, "poly", "m", "m.glb"), b"G")
+        touch(os.path.join(self.mod, "poly", "m", "Textures", "t.png"), b"T")
+        self.dest = os.path.join(self.t, "s")
+        self.owners = {}
+        self.files = storepack.slice_for([DOC], self.pbr, self.mod, self.dest, owners=self.owners)
+        # What the engine's import leaves: an output per source, named by the marker.
+        with open(os.path.join(self.dest, "pbr/set_a/1k/albedo.webp.import"), "a") as f:
+            f.write('path.s3tc="res://.godot/imported/albedo.webp-abc.s3tc.ctex"\n')
+        with open(os.path.join(self.dest, "models/poly/m/m.glb.import"), "a") as f:
+            f.write('path="res://.godot/imported/m.glb-def.scn"\ndest_files=["res://.godot/imported/m.glb-def.scn"]\n')
+
+    def test_every_file_is_covered_with_its_own_source(self):
+        entries = storepack.write_licence(self.dest, self.files, self.owners, storepack.rows_of([DOC]))
+        held = self.files + [f + ".import" for f in self.files if f.endswith((".webp", ".glb"))] + list(storepack.imported_outputs(self.dest))
+        held.append("licence.json")
+        self.assertEqual(storepack.uncovered(held, entries), [])
+        by = lambda p: storepack._longest(p, entries)
+        self.assertEqual(by("pbr/set_a/1k/albedo.webp")["licence"], "CC0-1.0")
+        self.assertEqual(by("_imported/albedo.webp-abc.s3tc.ctex")["url"], "https://x.example/a")
+        self.assertEqual(by("models/poly/m/Textures/t.png")["licence"], "CC-BY-4.0")
+        self.assertEqual(by("_imported/m.glb-def.scn")["author"], "y")
+        with open(os.path.join(self.dest, "licence.json")) as f:
+            self.assertEqual(json.load(f)["licences"], entries)
+
+    def test_unknown_provenance_fails_listing_the_files(self):
+        rows = storepack.rows_of([DOC])
+        rows[("m", "poly/m/m.glb")] = {"licence": "CC-BY-NC-4.0", "author": "y", "url": "https://x.example/m"}
+        with self.assertRaises(ValueError) as e:
+            storepack.write_licence(self.dest, self.files, self.owners, rows)
+        self.assertIn("models/poly/m/m.glb", str(e.exception))
+        self.assertIn("models/poly/m/Textures/t.png", str(e.exception))
+        self.assertNotIn("albedo", str(e.exception))
+
+    def test_row_without_author_url_falls_back_to_the_stores_list(self):
+        rows = storepack.rows_of([DOC])
+        rows[("p", "set_a", "1k")] = {"licence": "CC0-1.0", "author": "", "url": ""}
+        stores = [{"paths": ["pbr-library/set_a/"], "licence": "CC0-1.0", "author": "Store", "url": "https://s.example"}]
+        entries = storepack.write_licence(self.dest, self.files, self.owners, rows, stores)
+        self.assertEqual(storepack._longest("pbr/set_a/1k/albedo.webp", entries)["author"], "Store")
+        rows[("p", "set_a", "1k")] = {}
+        with self.assertRaises(ValueError):
+            storepack.write_licence(self.dest, self.files, self.owners, rows, [])
+
+    def test_group_node_has_a_licence(self):
+        g = os.path.join(self.t, "g")
+        touch(os.path.join(g, "group.json"), b"{}")
+        entries = storepack.write_licence(g, [], {}, {})
+        self.assertEqual(storepack.uncovered(["group.json", "licence.json"], entries), [])
 
 
 if __name__ == "__main__":
