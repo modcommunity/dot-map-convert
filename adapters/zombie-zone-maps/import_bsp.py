@@ -2020,16 +2020,17 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
 
     def ground_cells(plist):
         r = build_nav(boxes, starts, blocks_of(plist), True)
-        return r, {(a, b) for a, b, _ in r[2]}
+        return r, {(a, b, round(h, 2)) for a, b, h in r[2]}
 
     keep = list(cand)
     res, have = ground_cells(keep)
-    base = {(a, b) for a, b, _ in build_nav(boxes, starts, None, True)[2]}
+    base = {(a, b, round(h, 2)) for a, b, h in build_nav(boxes, starts, None, True)[2]}
     for pr in list(cand):
         if sizes[pr["id"]][1] <= 0.5 or have >= base:
             continue
         trial = [q for q in keep if q is not pr]
         r2, h2 = ground_cells(trial)
+        # Cells are (x, z, height): a car park's roof a prop seals off is a level, not new ground columns.
         # A prop's own footprint is cells the flood loses by definition; only what it cut off
         # beyond that (a room behind it) is a reason to drop it, or every prop on open ground goes.
         if len(h2) - len(have) > len(blocks_of([pr])) + 6:
@@ -2049,7 +2050,7 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
                     f[lo], f[hi] = r3(mid - nd / 2), r3(mid + nd / 2)
                     n_grown += 1
         print("  nav_min_depth: %d floor sides grown to %.2f m" % (n_grown, nd))
-    lost = {(a, b) for a, b, _ in seen} - have
+    lost = {(a, b) for a, b, _ in seen} - {(a, b) for a, b, _ in have}
     seen = seen2
     if TERRAIN:
         tseen = {(a, b) for a, b, h in seen if (a, b, h) in build_nav.tsurf}
