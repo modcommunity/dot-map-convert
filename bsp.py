@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import licence, pbrmap, modeldims, modelmap, standinreport, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality, unconverted  # noqa: E402
+from dotbsp import bundle, licence, pbrmap, modeldims, modelmap, standinreport, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality, unconverted  # noqa: E402
 
 
 def _credit(args):
@@ -519,6 +519,11 @@ def main(argv):
     sp.add_argument("--shared", type=int, default=8, help="per map, how many of its biggest groups of items drawn by the same maps become shared slices (0: one self-contained slice per map)")
     sp.add_argument("--lossless", action="store_true", help="import textures lossless instead of VRAM-compressed")
     sp.add_argument("--dry-run", action="store_true", help="build the slice folders and stop")
+    bu = sub.add_parser("bundle", help="copy world folders with exactly the library models they draw into a pack (dotbsp/bundle.py)")
+    bu.add_argument("worlds", nargs="+", help="converted world folders")
+    bu.add_argument("--out", required=True, help="the folder that gets one <id>/ per world")
+    bu.add_argument("--store", help="the model store; default each manifest's licence.model_store")
+    bu.add_argument("--strict", action="store_true", help="exit 1 when a model file is missing")
     sk = sub.add_parser("storecheck", help="every art slice a world names is published and holds what the manifest draws (dotbsp/storecheck.py)")
     sk.add_argument("manifests", nargs="+", help="a world pack's manifest json")
     sk.add_argument("--dist", help="a storepack --dist folder to read the signed slice manifests from")
@@ -530,7 +535,7 @@ def main(argv):
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "unconverted": cmd_unconverted, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "standins": standinreport.cmd, "storepack": storepack.run_cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd}[args.cmd](args)
+                "classes": cmd_classes, "unconverted": cmd_unconverted, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "standins": standinreport.cmd, "storepack": storepack.run_cmd, "bundle": bundle.cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2
