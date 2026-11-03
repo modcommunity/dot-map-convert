@@ -9,7 +9,15 @@ published `--origin`), follows `dependencies` the way the client does, and lists
 import base64
 import json
 import os
+import urllib.error
 import urllib.request
+
+# Cloudflare in front of the CDN answers 403 to Python's default agent.
+USER_AGENT = "dot-map-convert-storecheck/1 (+https://github.com/modcommunity/dot-map-convert)"
+
+
+class FetchError(Exception):
+    """The slice could not be read for a reason other than 'not published' (403, 5xx, network)."""
 
 
 def _payload(raw):
@@ -21,21 +29,32 @@ def _payload(raw):
 
 
 def fetch(sid, version, dist=None, origin=None):
-    """The decoded manifest payload of one slice, or None when it is not there."""
-    try:
-        if dist:
+    """The decoded manifest payload of one slice, None when it is not there (404 / no file); FetchError otherwise."""
+    if dist:
+        try:
             with open(os.path.join(dist, sid.replace("/", "_"), version, "manifest.json"), "rb") as f:
                 return _payload(f.read())
-        with urllib.request.urlopen("%s/content/%s/%s/manifest.json" % (origin.rstrip("/"), sid, version), timeout=30) as r:
+        except FileNotFoundError:
+            return None
+        except (OSError, ValueError, KeyError) as e:
+            raise FetchError("%s@%s: %s" % (sid, version, e))
+    url = "%s/content/%s/%s/manifest.json" % (origin.rstrip("/"), sid, version)
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=30) as r:
             return _payload(r.read())
-    except (OSError, ValueError, KeyError):
-        return None
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise FetchError("%s@%s: HTTP %d from %s" % (sid, version, e.code, url))
+    except (OSError, ValueError, KeyError) as e:
+        raise FetchError("%s@%s: %s (%s)" % (sid, version, e, url))
 
 
 def closure(pack, dist=None, origin=None, cache=None):
-    """(file paths, missing 'id@version' list) of a root slice and every dependency below it."""
+    """(file paths, missing 'id@version' list, fetch error list) of a root slice and every dependency below it."""
     cache = {} if cache is None else cache
-    files, missing, todo, seen = set(), [], [(pack["id"], pack["version"])], set()
+    files, missing, errors, todo, seen = set(), [], [], [(pack["id"], pack["version"])], set()
     for s in pack.get("shared", []):
         todo.append((s["id"], s["version"]))
     while todo:
@@ -44,14 +63,20 @@ def closure(pack, dist=None, origin=None, cache=None):
             continue
         seen.add(key)
         if key not in cache:
-            cache[key] = fetch(key[0], key[1], dist, origin)
+            try:
+                cache[key] = fetch(key[0], key[1], dist, origin)
+            except FetchError as e:
+                cache[key] = e
         m = cache[key]
+        if isinstance(m, FetchError):
+            errors.append(str(m))
+            continue
         if m is None:
             missing.append("%s@%s" % key)
             continue
         files.update(f["path"] for f in m.get("files", []))
         todo += [(d["id"], d["version"]) for d in m.get("dependencies", [])]
-    return files, missing
+    return files, missing, errors
 
 
 def check(doc, pack_dir, dist=None, origin=None, cache=None):
@@ -77,7 +102,9 @@ def check(doc, pack_dir, dist=None, origin=None, cache=None):
     pack = lic.get("store_pack")
     if not pack:
         return bad + ["no licence.store_pack: %d PBR sets and %d models draw as fallbacks (run ship_store.sh)" % (len(pbr), len(models))]
-    files, missing = closure(pack, dist, origin, cache)
+    files, missing, errors = closure(pack, dist, origin, cache)
+    if errors:    # unknown is not 'not published': report it and skip the checks that would be guesses
+        return bad + ["could not read slices (not the same as unpublished): %s" % "; ".join(sorted(errors))]
     if missing:
         bad.append("slices not published: %s" % ", ".join(sorted(missing)))
     if missing and pack["id"] + "@" + pack["version"] in missing:
