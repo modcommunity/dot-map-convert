@@ -33,6 +33,11 @@ class Source:
         return self.origin if not self.member else "%s!%s" % (self.origin, self.member)
 
 
+def _read(path):
+    with open(path, "rb") as fh:
+        return fh.read()
+
+
 def _stem(path):
     return os.path.splitext(os.path.basename(path.replace("\\", "/")))[0].lower()
 
@@ -121,7 +126,7 @@ def find(paths):
         for f in files:
             low = f.lower()
             if low.endswith(".bsp"):
-                out.append(Source(_stem(f), f, None, os.path.getsize(f), lambda f=f: open(f, "rb").read()))
+                out.append(Source(_stem(f), f, None, os.path.getsize(f), lambda f=f: _read(f)))
             elif low.endswith(ARCHIVES):
                 out.append(("archive", f))
     res = []
