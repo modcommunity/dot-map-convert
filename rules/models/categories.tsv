@@ -1,6 +1,11 @@
 # name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour
 furniture_?bed|^bed$	dm_bed	1.0	0.95	2.0	box	7a7a88
 ^servers|server_?rack|serverrack	dm_server_rack	0.6	2.0	0.8	box	202024
+^powerbox02[a-d]$	dm_power_box	0.18	0.27	0.17	box	6a6c6a
+furnituresink	dm_basin_unit	0.5	0.85	0.4	box	c8c4b8
+garbage128_composite	dm_rubbish_pile	0.9	0.6	0.8	box	303438
+furniturefireplace	dm_fireplace	1.36	1.65	0.56	box	8a4a34
+^light_inset$	dm_light_inset	0.21	0.03	0.21	box	e8e8e0
 lab_flourescentlight002|lab_flourescentlight001|lights_florescent|prison_flourescent|fl[ou]+rescentlight	weathered_fluorescent_light_lamp|fluorescent_light_fixtures	1.2	0.1	0.2	box	e8e8e0
 ^table_coffee|^coffeetable|coffee_table	coffee_table	1.2	0.4	0.6	box	7a5a38
 (coffee)?mug\d|coffeemug	coffee_mug	0.1	0.1	0.1	cyl	8a6a50
