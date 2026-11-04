@@ -97,6 +97,7 @@ def flood_step(value):
 
 
 STEP = 0.42           # a body climbs this between neighbouring cells
+TREAD_STEP = 0.45     # and this onto or off a kept stair tread (`keep_treads`): two 8-inch risers fall in one cell
 THIN_WALLS = False    # set from the spec: see _thin_wall_over
 THIN_LINTELS = False   # set from the spec (`thin_lintels`): see _thin_wall_over
 GREEDY_FLOORS = False  # set from the spec (`greedy_floors`): see build_nav
@@ -403,6 +404,61 @@ def surfaces_at(boxes, grid, ix, iz):
     return sorted(set(out))
 
 
+def stair_links(seen, treads, surf):
+    """Links across each flight of kept treads, from the ground at one end to the ground at the other.
+    The game's graph joins floor points no more than half a spacing apart in height, so a flight steeper
+    than that is points it never joins: the flood walks the stair, the horde needs the link."""
+    cells = [c for c in seen if c in treads]
+    parent = {c: c for c in cells}
+
+    def find(c):
+        while parent[c] != c:
+            parent[c] = parent[parent[c]]
+            c = parent[c]
+        return c
+    exits = {}
+    for c in cells:
+        ix, iz, h = c
+        for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            for h2 in surf.get((ix + dx, iz + dz), ()):
+                n = (ix + dx, iz + dz, h2)
+                if n not in seen or abs(h2 - h) > TREAD_STEP:
+                    continue
+                if n in parent:
+                    parent[find(n)] = find(c)
+                elif n not in treads:
+                    exits.setdefault(c, []).append(n)
+    by_flight = {}
+    for c, ns in exits.items():
+        by_flight.setdefault(find(c), set()).update(ns)
+    out = []
+    for ns in by_flight.values():
+        ns = sorted(ns, key=lambda n: n[2])
+        levels, cur = [], [ns[0]]
+        for n in ns[1:]:
+            if n[2] - cur[-1][2] > 0.3:
+                levels.append(cur)
+                cur = []
+            cur.append(n)
+        levels.append(cur)
+        # Up to three spread-out exits per level: the cell neighbours ignore thin walls, so one may sit
+        # behind a stairwell's rail; cut_blocked drops the blocked pairings once another joins the ends.
+        ends = []
+        for lv in levels:
+            mx, mz = sum(n[0] for n in lv) / len(lv), sum(n[1] for n in lv) / len(lv)
+            pick = []
+            for n in sorted(lv, key=lambda n: ((n[0] - mx) ** 2 + (n[1] - mz) ** 2, n)):
+                if len(pick) < 3 and all(abs(n[0] - m[0]) + abs(n[1] - m[1]) > 1 for m in pick):
+                    pick.append(n)
+            ends.append(pick)
+        for i, aa in enumerate(ends):
+            for bb in ends[i + 1:]:
+                pairs = sorted(((ka + kb, a, b) for ka, a in enumerate(aa) for kb, b in enumerate(bb)), key=lambda t: t[0])
+                for _k, a, b in pairs[:4]:
+                    out.append([r3((a[0] + 0.5) * CELL), r3(a[2]), r3((a[1] + 0.5) * CELL), r3((b[0] + 0.5) * CELL), r3(b[2]), r3((b[1] + 0.5) * CELL)])
+    return out
+
+
 def build_nav(boxes, starts, blocked=None, wide=False):
     solid = [b for b in boxes if b.get("solid", True) and b.get("nav", True) is not False and not b.get("_sky")]
     grid = cell_index(solid)
@@ -416,6 +472,23 @@ def build_nav(boxes, starts, blocked=None, wide=False):
                 surf[(ix, iz)] = s
     tsurf = dterrain.add_surfaces(TERRAIN, surf, lambda a, b: spans_at(solid, grid, a, b), CELL, HEAD) if TERRAIN else set()
     build_nav.tsurf = tsurf
+    treads = set()
+    for (ix, iz), bis in grid.items():
+        for bi in bis:
+            b = solid[bi]
+            if b.get("_tread") and inside_box(b, (ix + 0.5) * CELL, (iz + 0.5) * CELL):
+                top = round(b["at"][1] + b["size"][1] / 2, 2)
+                if top in surf.get((ix, iz), ()):
+                    treads.add((ix, iz, top))
+
+    near_tread = {}
+    for ix, iz, th in treads:
+        for dx in (-1, 0, 1):
+            for dz in (-1, 0, 1):
+                near_tread.setdefault((ix + dx, iz + dz), []).append(th)
+
+    def step_of(a, b):
+        return max(STEP, TREAD_STEP) if a in treads or b in treads else STEP
     seen = set()
     parent = {}
     dist = {}
@@ -427,7 +500,11 @@ def build_nav(boxes, starts, blocked=None, wide=False):
 
     def is_wide(ix, iz, h):
         """The game's graph is a metre apart: a way narrower than two cells has no point in it, and
-        a prop in the middle of a doorway takes the rest. Only a 2x2 block of open cells counts."""
+        a prop in the middle of a doorway takes the rest. Only a 2x2 block of open cells counts, or a stair
+        tread and the cells round it: a flight or landing a metre wide between thin stringers is one cell, and the
+        graph centres a point on a narrow floor."""
+        if any(abs(th - h) <= JUMP + TREAD_STEP for th in near_tread.get((ix, iz), ())) and is_open(ix, iz, h):
+            return True
         for ox in (-1, 0):
             for oz in (-1, 0):
                 if all(any(abs(h2 - h) <= (CELL * dterrain.WALK_RISE * 2 if (ix, iz, h) in tsurf else STEP) and is_open(ix + ox + i, iz + oz + j, h2) for h2 in surf.get((ix + ox + i, iz + oz + j), ()))
@@ -460,18 +537,22 @@ def build_nav(boxes, starts, blocked=None, wide=False):
                         dist[(ix + dx, iz + dz, h2)] = dist[(ix, iz, h)] + 1
                         dq.append((ix + dx, iz + dz, h2))
                     continue
-                if (-DROP <= dh < -STEP or STEP < dh <= JUMP) and (ix + dx, iz + dz, h2) not in seen and (
+                step = step_of((ix, iz, h), (ix + dx, iz + dz, h2))
+                if (-DROP <= dh < -step or step < dh <= JUMP) and (ix + dx, iz + dz, h2) not in seen and (
                         not wide or (is_open(ix + dx, iz + dz, h2) and is_wide(ix + dx, iz + dz, h2))):
                     # a drop or a jump up: the body crosses it, the zombies by a link
                     key = (ix // 3, iz // 3, round(h, 1), round(h2, 1))
                     if key not in links:
                         links[key] = [r3((ix + 0.5) * CELL), r3(h), r3((iz + 0.5) * CELL), r3((ix + dx + 0.5) * CELL), r3(h2), r3((iz + dz + 0.5) * CELL)]
-                if (abs(dh) <= STEP or -DROP <= dh <= JUMP) and (ix + dx, iz + dz, h2) not in seen and (
+                if (abs(dh) <= step or -DROP <= dh <= JUMP) and (ix + dx, iz + dz, h2) not in seen and (
                         not wide or (is_open(ix + dx, iz + dz, h2) and is_wide(ix + dx, iz + dz, h2))):
                     seen.add((ix + dx, iz + dz, h2))
                     parent[(ix + dx, iz + dz, h2)] = (ix, iz, h)
                     dist[(ix + dx, iz + dz, h2)] = dist[(ix, iz, h)] + 1
                     dq.append((ix + dx, iz + dz, h2))
+    stairs = stair_links(seen, treads, surf)
+    if stairs:
+        links = {**{("stair", i): l for i, l in enumerate(stairs)}, **links}
     # Surfaces within 0.12 m of each other (a kerb, a worn step) are one floor: the game joins
     # nav points by distance, and two floors 0.1 m apart that merely touch are not joined.
     hs = sorted({t[2] for t in seen if t not in tsurf})
@@ -563,7 +644,7 @@ class LinkSolids:
             for gz in range(int(lo[2] // self.CELL), int(hi[2] // self.CELL) + 1):
                 self.cells[(gx, gz)].append(item)
 
-    def add_box(self, b):
+    def add_box(self, b, ground_below=None):
         if not b.get("solid", True) or b.get("gate") or b.get("kind") == "sky" or max(b["size"]) <= 0.3:
             return
         import nav_emulate
@@ -573,7 +654,8 @@ class LinkSolids:
         hx, hy, hz = b["size"][0] / 2, b["size"][1] / 2, b["size"][2] / 2
         at = b["at"]
         low = at[1] - hy
-        if abs(at[1] + hy) < 0.05 and b["size"][1] <= 0.5:    # a ground slab collides 1.8 m deeper than drawn (ZzMap.GROUND_DEPTH)
+        # A ground slab collides 1.8 m deeper than drawn (ZzMap.GROUND_DEPTH), unless a floor or spawn lies under that depth (ZzMap._ground_below).
+        if abs(at[1] + hy) < 0.05 and b["size"][1] <= 0.5 and not (ground_below and ground_below(at, b["size"])):
             low -= 1.8
             nb[1] = low
         planes = [(0, 1, 0, at[1] + hy), (0, -1, 0, -low)]
@@ -634,9 +716,16 @@ class LinkSolids:
 def link_solids(doc, extra_boxes=()):
     """The [LinkSolids] of a finished document: its boxes (and `extra_boxes`), solid props and the hulls its `world_collision` selects."""
     solids = LinkSolids()
+    floors = doc.get("nav", {}).get("floors", [])
+    spawns = [e["at"] for side in doc.get("spawns", {}).values() for e in side]
+
+    def ground_below(at, size):
+        y = at[1] + size[1] / 2 - 1.8
+        x0, x1, z0, z1 = at[0] - size[0] / 2, at[0] + size[0] / 2, at[2] - size[2] / 2, at[2] + size[2] / 2
+        return any(f[4] < y and f[0] < x1 and f[2] > x0 and f[1] < z1 and f[3] > z0 for f in floors) or any(p[1] < y and x0 < p[0] < x1 and z0 < p[2] < z1 for p in spawns)
     for b in list(doc["boxes"]) + list(extra_boxes):
         if not b.get("barricade"):
-            solids.add_box(b)
+            solids.add_box(b, ground_below)
     for rec in doc.get("solid_props", []):
         solids.add_box({"at": rec[:3], "size": rec[3:6], "yaw": rec[6]})
     sel = doc.get("world_collision")
@@ -1782,6 +1871,11 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
 
             treads = [b for b in small if riser_beside(b)]
             treads += [b for b in stair_runs(small) if b not in treads]
+            # A flight drawn as one sloped board is slab-cut into slices a few centimetres deep: no riser
+            # and no 0.25 m2 footprint, but a walkable slope a body's width across is a stair, not trim.
+            treads += [b for b in small if b.get("_walkable") and not b.get("yaw") and max(b["size"][0], b["size"][2]) >= 0.5 and b not in treads]
+            for b in treads:
+                b["_tread"] = True
             small = [b for b in small if b not in treads]
             # A tread is ground, not an obstacle: the graph grows every box by the clearance, and a
             # flight of 0.25 m risers is within that of every point on it, so no point stood on a stair.
