@@ -1,7 +1,7 @@
-"""Four low-poly work vehicles, CC0, for `rules/models/categories.tsv`: a box truck, a flatbed truck, a box trailer and a forklift.
+"""Ten low-poly work vehicles, CC0, for `rules/models/categories.tsv`: a box truck, a flatbed truck, a box trailer, a forklift, a fuel tanker, a generator trailer, a hand truck, a panel van, an armoured carrier and a wooden hand cart.
 
 blender -b --factory-startup --python vehicles.py -- outdir
-Writes dm_boxtruck.glb, dm_flatbedtruck.glb, dm_boxtrailer.glb and dm_forkliftmachine.glb into outdir. Length along X, front at +X, origin on the floor, centred.
+Writes dm_boxtruck, dm_flatbedtruck, dm_boxtrailer, dm_forkliftmachine, dm_fueltanker, dm_generatortrailer, dm_handtruck, dm_panelvan, dm_armouredcarrier and dm_woodcart (.glb) into outdir. Length along X, front at +X, origin on the floor, centred.
 Plain colour materials only, under 700 triangles each, real-world scale (the picker rescales).
 """
 import math
@@ -143,3 +143,89 @@ for x, y in ((0.15, -0.55), (0.15, 0.55)):
 for y in (-0.5, 0.5):
     wheel(p, -1.0, y, 0.27, 0.2)
 finish(p, "Forklift", f"{outdir}/dm_forkliftmachine.glb")
+
+
+def drum(parts, x0, x1, y, z, r, m, n=16):
+    """Cylinder lying along X."""
+    bpy.ops.mesh.primitive_cylinder_add(vertices=n, radius=r, depth=x1 - x0, location=((x0 + x1) / 2, y, z), rotation=(0, math.pi / 2, 0))
+    o = bpy.context.object
+    o.data.materials.append(m)
+    parts.append(o)
+
+
+# Fuel tanker, 8.5 x 2.5 x 2.8 m: cab-over tractor, round tank on a frame.
+p = fresh()
+box(p, -4.2, 3.0, -0.9, 0.9, 0.55, 0.85, steel())
+drum(p, -4.25, 2.0, 0, 1.75, 1.0, cargo(), 20)
+for x in (-4.25, 1.9):
+    drum(p, x, x + 0.1, 0, 1.75, 1.03, steel(), 20)         # end bands
+box(p, -3.0, 1.0, -0.2, 0.2, 2.7, 2.8, steel())             # walkway
+cab(p, 2.15, 4.2, 1.2, 0.8, 2.5)
+axle_wheels(p, (3.3, -1.8, -3.2), 1.3, 0.5, 0.3)
+finish(p, "Tanker", f"{outdir}/dm_fueltanker.glb")
+
+# Generator trailer, 4.5 x 2.0 x 2.3 m: ribbed sound-proof enclosure on a one-axle chassis with a draw bar.
+p = fresh()
+box(p, -2.0, 1.8, -0.85, 0.85, 0.5, 0.65, steel())
+box(p, -2.0, 1.8, -0.95, 0.95, 0.65, 2.3, paint())
+for x in (-1.5, -0.5, 0.5):
+    box(p, x, x + 0.05, -0.96, 0.96, 0.9, 2.1, dark())      # louvre bands
+box(p, 1.8, 2.25, -0.06, 0.06, 0.55, 0.62, steel())          # draw bar
+box(p, 2.2, 2.3, -0.12, 0.12, 0.45, 0.7, dark())             # coupling
+for s in (-1, 1):
+    box(p, -1.8, -1.6, s * 0.7, s * 0.8, 0.0, 0.5, steel())  # stands
+axle_wheels(p, (-0.2,), 1.1, 0.45, 0.28)
+finish(p, "GeneratorTrailer", f"{outdir}/dm_generatortrailer.glb")
+
+# Hand truck, 0.5 x 0.5 x 1.2 m: two rails, cross bars, a toe plate and two wheels.
+p = fresh()
+for s in (-1, 1):
+    box(p, -0.03, 0.03, s * 0.22 - 0.015, s * 0.22 + 0.015, 0.12, 1.2, steel())
+box(p, -0.04, 0.02, -0.23, 0.23, 1.15, 1.2, steel())
+for z in (0.4, 0.7, 0.95):
+    box(p, -0.04, 0.02, -0.22, 0.22, z, z + 0.02, steel())
+box(p, 0.0, 0.3, -0.2, 0.2, 0.1, 0.13, steel())              # toe plate
+for s in (-1, 1):
+    wheel(p, -0.08, s * 0.27, 0.13, 0.06)
+finish(p, "HandTruck", f"{outdir}/dm_handtruck.glb")
+
+# Panel van, 4.4 x 1.8 x 1.7 m.
+p = fresh()
+box(p, -2.2, 2.2, -0.9, 0.9, 0.3, 0.55, steel())
+box(p, -2.2, 0.9, -0.9, 0.9, 0.55, 1.7, cargo())             # load area
+box(p, 0.9, 2.2, -0.9, 0.9, 0.55, 1.0, paint())              # bonnet
+box(p, 0.4, 1.4, -0.88, 0.88, 1.0, 1.7, paint())             # cab roof and body
+box(p, 1.38, 1.46, -0.8, 0.8, 1.05, 1.55, glass())           # windscreen
+for s in (-1, 1):
+    box(p, 0.5, 1.2, s * 0.9, s * 0.915, 1.05, 1.55, glass())
+box(p, 2.2, 2.3, -0.9, 0.9, 0.3, 0.5, steel())
+axle_wheels(p, (1.4, -1.3), 0.9, 0.34, 0.22)
+finish(p, "Van", f"{outdir}/dm_panelvan.glb")
+
+# Armoured personnel carrier, 4.2 x 1.84 x 1.9 m: sloped hull, turret, four big wheels.
+p = fresh()
+box(p, -2.1, 2.1, -0.9, 0.9, 0.5, 1.3, mat("armour", (0.36, 0.4, 0.3), 0.8))
+box(p, -2.1, 2.1, -0.75, 0.75, 1.3, 1.45, mat("armour", (0.36, 0.4, 0.3), 0.8))
+box(p, 1.6, 2.15, -0.8, 0.8, 0.8, 1.2, mat("armour", (0.36, 0.4, 0.3), 0.8))   # nose
+box(p, 1.0, 1.4, -0.5, 0.5, 1.4, 1.5, glass())               # driver slit
+drum(p, -0.4, -0.4 + 0.9, 0, 1.6, 0.4, mat("armour", (0.36, 0.4, 0.3), 0.8), 12)   # turret ring
+box(p, 0.5, 1.8, -0.04, 0.04, 1.55, 1.65, dark())            # gun
+for s in (-1, 1):
+    box(p, -1.6, 1.0, s * 0.9, s * 0.92, 0.9, 1.1, dark())    # hatches/side ports
+for x in (1.3, 0.45, -0.7, -1.55):
+    for s in (-1, 1):
+        wheel(p, x, s * 0.85, 0.5, 0.3)
+finish(p, "Apc", f"{outdir}/dm_armouredcarrier.glb")
+
+# Wooden hand cart, 2.2 x 0.9 x 1.0 m: open bed, two big spoked-look wheels, two shafts.
+p = fresh()
+box(p, -0.7, 0.7, -0.45, 0.45, 0.6, 0.68, wood())            # bed floor
+for s in (-1, 1):
+    box(p, -0.7, 0.7, s * 0.43, s * 0.45, 0.68, 1.0, wood())  # sides
+box(p, -0.72, -0.68, -0.45, 0.45, 0.68, 1.0, wood())          # back
+box(p, 0.68, 0.72, -0.45, 0.45, 0.68, 1.0, wood())            # front
+for s in (-1, 1):
+    box(p, 0.0, 2.2, s * 0.3 - 0.03, s * 0.3 + 0.03, 0.55, 0.62, wood())  # shafts
+    wheel(p, 0.0, s * 0.55, 0.55, 0.08, wood())
+box(p, 0.0, 0.0 + 0.04, -0.6, 0.6, 0.53, 0.57, steel())      # axle
+finish(p, "Cart", f"{outdir}/dm_woodcart.glb")
