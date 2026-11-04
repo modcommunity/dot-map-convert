@@ -16,6 +16,14 @@ crate_(extra)?(small|large)mill|crate_extralargemill	wooden_military_crate|old_m
 ^door01_|^door0[0-9]_(left|right)	door_wood|wooden_door|wood_door	1.0	2.0	0.1	box	7a6a58
 ^benchoutdoor	park_bench	1.8	0.85	0.6	box	6a5a50
 ^(car|truck)_nuke_glass$	NONE	1.3	0.4	2.2	box	8a9aa8
+utility_truck_windows	NONE	1.0	0.4	1.4	box	8a9aa8
+^concrete_barrier	dm_jerseybarrier	3.0	0.82	0.6	box	a8a69f
+wood_fence|woodenfence|fencewood|housefence|^fence0[34]	dm_woodfence	2.4	1.1	0.1	box	9a7a50
+chain_?link|^fence0[12]|^fence00|(interior|exterior)_fence|combine_fence|tides_fences	dm_chainlinkfence	3.0	1.9	0.1	box	707878
+^truck_nuke$|utility_truck|truck001|truck002|fuel_truck	dm_boxtruck	6.2	3.0	2.4	box	606870
+truck003|^truck$	dm_flatbedtruck	5.6	2.5	2.3	box	606870
+^forklift$	dm_forkliftmachine	3.1	2.1	1.3	box	c08020
+trailer	dm_boxtrailer	4.0	1.8	1.8	box	909090
 ^car001[ab]_hatchback$	covered_car	4.4	1.5	1.8	box	606870
 horizontalcoolingtank	dm_cooling_tank	6.0	2.3	2.0	box	b0b0a8
 ^tanker\d	NONE	2.5	2.8	8.5	box	c8c8c0
