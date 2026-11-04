@@ -1,7 +1,7 @@
-"""Ten low-poly work vehicles, CC0, for `rules/models/categories.tsv`: a box truck, a flatbed truck, a box trailer, a forklift, a fuel tanker, a generator trailer, a hand truck, a panel van, an armoured carrier and a wooden hand cart.
+"""Low-poly vehicles, CC0, for `rules/models/categories.tsv`: a box truck, a flatbed truck, a box trailer, a forklift, a fuel tanker, a generator trailer, a hand truck, a panel van, an armoured carrier a wooden hand cart, four sedans and hatchbacks (one police), a minibus and a refuse truck.
 
 blender -b --factory-startup --python vehicles.py -- outdir
-Writes dm_boxtruck, dm_flatbedtruck, dm_boxtrailer, dm_forkliftmachine, dm_fueltanker, dm_generatortrailer, dm_handtruck, dm_panelvan, dm_armouredcarrier and dm_woodcart (.glb) into outdir. Length along X, front at +X, origin on the floor, centred.
+Writes dm_boxtruck, dm_flatbedtruck, dm_boxtrailer, dm_forkliftmachine, dm_fueltanker, dm_generatortrailer, dm_handtruck, dm_panelvan, dm_armouredcarrier, dm_woodcart, dm_carsedan, dm_carsedanblack, dm_carsedanred, dm_carhatch, dm_carpolice, dm_minibus and dm_refusetruck (.glb) into outdir. Length along X, front at +X, origin on the floor, centred.
 Plain colour materials only, under 700 triangles each, real-world scale (the picker rescales).
 """
 import math
@@ -229,3 +229,64 @@ for s in (-1, 1):
     wheel(p, 0.0, s * 0.55, 0.55, 0.08, wood())
 box(p, 0.0, 0.0 + 0.04, -0.6, 0.6, 0.53, 0.57, steel())      # axle
 finish(p, "Cart", f"{outdir}/dm_woodcart.glb")
+
+
+def car(name, rgb, length=4.5, width=1.8, hatch=False, police=False):
+    """Passenger car: body, cabin with glass band, bumpers, lights and four wheels; hatch ends the roof square."""
+    p = fresh()
+    body = mat("body" + name, rgb, 0.35, 0.3)
+    l0, l1 = -length / 2, length / 2
+    hw = width / 2
+    box(p, l0, l1, -hw, hw, 0.32, 0.88, body)
+    cl0, cl1 = (l0 + 0.15, l1 - 1.15) if hatch else (l0 + 0.95, l1 - 1.2)
+    box(p, cl0, cl1, -hw + 0.08, hw - 0.08, 0.88, 1.42, body)
+    box(p, cl0 + 0.1, cl1 - 0.1, -hw + 0.06, hw - 0.06, 0.95, 1.36, glass())
+    box(p, cl0 + 0.25, cl1 - 0.25, -hw + 0.1, hw - 0.1, 1.36, 1.44, body)
+    for x in (l0 - 0.04, l1 - 0.01):
+        box(p, x, x + 0.05, -hw, hw, 0.28, 0.5, dark())
+    box(p, l1 - 0.02, l1 + 0.02, -hw + 0.1, -hw + 0.42, 0.62, 0.74, mat("headlight", (1.0, 0.95, 0.75), 0.3))
+    box(p, l1 - 0.02, l1 + 0.02, hw - 0.42, hw - 0.1, 0.62, 0.74, mat("headlight", (1.0, 0.95, 0.75), 0.3))
+    for s in (-1, 1):
+        box(p, l0 - 0.02, l0 + 0.02, min(s * (hw - 0.1), s * (hw - 0.4)), max(s * (hw - 0.1), s * (hw - 0.4)), 0.62, 0.74, mat("taillight", (0.8, 0.05, 0.05), 0.4))
+    if police:
+        box(p, (cl0 + cl1) / 2 - 0.12, (cl0 + cl1) / 2 + 0.12, -0.55, 0.0, 1.44, 1.52, mat("sirenr", (0.9, 0.1, 0.1), 0.3))
+        box(p, (cl0 + cl1) / 2 - 0.12, (cl0 + cl1) / 2 + 0.12, 0.0, 0.55, 1.44, 1.52, mat("sirenb", (0.1, 0.2, 0.9), 0.3))
+        box(p, l0 + 0.9, l1 - 0.9, -hw - 0.005, hw + 0.005, 0.5, 0.62, mat("stripe", (0.95, 0.95, 0.95), 0.5))
+    axle_wheels(p, (l1 - 0.95, l0 + 0.85), hw + 0.05, 0.32, 0.22)
+    finish(p, name, f"{outdir}/dm_{name}.glb")
+
+
+car("carsedan", (0.25, 0.35, 0.55))
+car("carsedanblack", (0.07, 0.07, 0.08))
+car("carsedanred", (0.65, 0.1, 0.1))
+car("carhatch", (0.75, 0.72, 0.6), 3.9, 1.7, hatch=True)
+car("carpolice", (0.12, 0.14, 0.2), 4.9, 1.9, police=True)
+
+# Minibus, 5.7 x 2.2 x 3.2 m, front at +X: window band, door, destination sign.
+p = fresh()
+bus = mat("busbody", (0.9, 0.7, 0.1), 0.4, 0.2)
+box(p, -2.85, 2.85, -1.1, 1.1, 0.4, 3.0, bus)
+box(p, -2.8, 2.8, -1.105, 1.105, 1.5, 2.55, glass())
+for x in (-1.6, -0.5, 0.6, 1.7):
+    box(p, x - 0.04, x + 0.04, -1.11, 1.11, 1.5, 2.55, bus)
+box(p, 2.84, 2.88, -1.0, 1.0, 1.1, 2.6, glass())
+box(p, 2.84, 2.88, -0.7, 0.7, 2.65, 2.9, mat("sign", (1.0, 0.6, 0.1), 0.4))
+box(p, 2.84, 2.9, -1.1, 1.1, 0.25, 0.5, dark())
+for s in (-1, 1):
+    box(p, 2.8, 2.88, s * 0.65 - 0.2, s * 0.65 + 0.2, 0.6, 0.78, mat("headlight", (1.0, 0.95, 0.75), 0.3))
+box(p, 1.4, 2.2, 1.105, 1.12, 0.5, 2.4, dark())
+box(p, -2.4, -0.6, -0.6, 0.6, 3.0, 3.2, steel())
+axle_wheels(p, (1.85, -1.8), 1.1, 0.42, 0.28)
+finish(p, "BusMini", f"{outdir}/dm_minibus.glb")
+
+# Refuse truck, 7.5 x 2.5 x 3.3 m, front at +X: cab, compactor body with a rear hopper and a bin lift.
+p = fresh()
+box(p, -3.75, 1.7, -1.1, 1.1, 0.5, 0.9, steel())
+box(p, -3.75, 1.6, -1.2, 1.2, 0.9, 3.0, mat("refuse", (0.2, 0.45, 0.25), 0.5))
+box(p, -3.75, -2.9, -1.2, 1.2, 0.9, 1.6, dark())
+box(p, -3.9, -3.75, -0.9, 0.9, 0.6, 2.6, steel())
+cab(p, 1.65, 3.75, 1.1, 0.7, 2.7)
+for z in (1.6, 2.2, 2.8):
+    box(p, -2.9, 1.6, -1.205, 1.205, z, z + 0.05, steel())
+axle_wheels(p, (2.6, -0.4, -2.5), 1.2, 0.5, 0.32)
+finish(p, "TruckRefuse", f"{outdir}/dm_refusetruck.glb")

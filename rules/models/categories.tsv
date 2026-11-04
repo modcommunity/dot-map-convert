@@ -1,4 +1,21 @@
 # name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour
+^(utilitypole0|telephone_pole0)	dm_utilitypole	0.3	5.0	0.3	cyl	6a5038
+^(light_ceiling|light_shop2?|lab_flourescentlight00|lights_florescent|prison_flourescentlight|combine_light00)	dm_lighttroffer	1.2	0.1	0.6	box	e8e8e0
+^(lightsmallround|condo_ceilinglight|ceiling_light$)	dm_lightdisc	0.3	0.05	0.3	box	e8e8e0
+^lightfixture0[13]$	dm_lightpendant	0.3	0.5	0.3	box	d8d0b8
+^pipe0[0-9]_(straight|lcurve)	dm_pipestraight	1.0	0.2	0.2	cyl	707070
+^pipe0[0-9]_connector	dm_pipecoupling	0.2	0.2	0.04	cyl	707070
+^pipe0[0-9]_(90|45)degree|^pipeset\w*corner	dm_pipeelbow	0.5	0.2	0.5	cyl	707070
+^(pipeset|pipesystem|gaspipes)	dm_pipecluster	1.5	0.8	0.6	box	707070
+^crate_extrasmallmill$|^crate_extrasmall$	dm_milcrate	0.92	0.92	0.92	box	5a6a40
+^crate_(extralargemill|extralarge)$	dm_milcratetall	1.84	2.45	1.84	box	5a6a40
+^car001[ab](_hatchback|_phy)?$|^wagon1(_destroyed)?$	dm_carhatch	3.9	1.45	1.7	box	bdb899
+^car002[ab](_physics)?$|^car005[ab](_physics)?$	dm_carsedan	4.5	1.45	1.8	box	405a8c
+^car003[ab](_physics)?$	dm_carsedanblack	4.5	1.45	1.8	box	121214
+^car004[ab](_physics)?$	dm_carsedanred	4.5	1.45	1.8	box	a61a1a
+^police_car_city$	dm_carpolice	4.9	1.5	1.9	box	1f2433
+^bikibus$	dm_minibus	5.7	3.2	2.2	box	e6b319
+^wagon001a$	dm_woodcart	2.2	0.9	1.0	box	9a7a50
 furniture_?bed|^bed$	dm_bed	1.0	0.95	2.0	box	7a7a88
 ^servers|server_?rack|serverrack	dm_server_rack	0.6	2.0	0.8	box	202024
 ^powerbox02[a-d]$	dm_power_box	0.18	0.27	0.17	box	6a6c6a
