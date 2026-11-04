@@ -88,6 +88,14 @@ S = 0.01905           # metres per Source unit
 CELL = 0.5            # nav analysis grid
 DROP = 3.0            # a body drops this far
 JUMP = 0.9            # and jumps up this far
+STAIR_RISE = 0.32     # a 12-inch stair riser (0.3048) is a walkable step whatever a spec asks for
+
+
+def flood_step(value):
+    """The spec's flood_step, never below a real stair riser: 0.3 cut every 12-inch flight out of the flood and left whole storeys as islands."""
+    return max(float(value), STAIR_RISE)
+
+
 STEP = 0.42           # a body climbs this between neighbouring cells
 THIN_WALLS = False    # set from the spec: see _thin_wall_over
 THIN_LINTELS = False   # set from the spec (`thin_lintels`): see _thin_wall_over
@@ -1535,10 +1543,7 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
     MIN_FLOOR_Y = spec.get("min_floor_y")
     HEAD = float(spec.get("head", 1.7))    # a crouching body fits under 1.3: a duck-under grate is part of the route
     if spec.get("flood_step"):
-        # The game's graph joins points only when they differ by half a spacing at most, so a body the
-        # flood lets jump up 0.9 m reaches a ledge the horde never will: a flood that walks only what
-        # the graph can keeps ground nobody can reach out of the map.
-        STEP = JUMP = float(spec["flood_step"])
+        STEP = JUMP = flood_step(spec["flood_step"])
     out_dir = argv[3] if len(argv) > 3 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "maps")
     bs = load_source(argv[2], spec.get("terrain") is not False)    # displacements are read unless the spec opts out, for the auto rule below
     ents = bs.entities
