@@ -1296,7 +1296,7 @@ def widen_doorways(boxes, width, min_gap=0.5, min_h=1.5):
 
 
 BREAKABLE = ("func_breakable", "func_breakable_surf", "func_physbox", "func_physbox_multiplayer")
-TERRAIN_BUDGET = 1_500_000    # bytes of heightfield a document may carry: the wire sends a big map in pieces
+TERRAIN_BUDGET = int(os.environ.get("ZZ_TERRAIN_BUDGET", 1_500_000))    # $ZZ_TERRAIN_BUDGET overrides; bytes of heightfield a document may carry: the wire sends a big map in pieces
 TERRAIN_CELLS = (0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0)    # finest first: a cliff face is only as steep as one cell lets it be
 WIRE_BUDGET = 30_000_000   # ZzMapDoc.WIRE_LIMIT (32 MiB, a hostile-input bound; the wire sends a big map in pieces) less the header
 LIMITS = {"boxes": 400000, "floors": 50000, "links": 50000}   # ZzMapDoc.MAX_BOXES, MAX_NAV_FLOORS, MAX_NAV_LINKS
