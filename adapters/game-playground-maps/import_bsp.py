@@ -106,6 +106,17 @@ CONFIGS = {
             {"min": [-12.4, 5.0, -12.4], "max": [12.4, 5.4, 12.4], "why": "tops of the upper brick walls"},
         ],
     },
+    "mountain_resort": {
+        "id": "pgc_mountain_resort",
+        "name": "Mountain Resort",
+        "blurb": "A snowbound mountain lodge for building and wiring: the buildings and terraces around the first spawn, cut from a much larger valley.",
+        "author": "prvec",
+        "source": "gm_mountainresort, https://steamcommunity.com/sharedfiles/filedetails/?id=2312309380",
+        "spawn_at": 4,
+        # The valley is far larger than a sandbox needs and the document must stay small.
+        "region": ((-125.0, -55.0), (-12.0, 30.0), (-60.0, 15.0)),
+        "min_size": 0.6,
+    },
 }
 
 WATER = 0x20

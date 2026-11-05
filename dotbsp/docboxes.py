@@ -202,6 +202,34 @@ def drop_door_leaves(boxes):
 
 
 
+def drop_small(boxes, min_size):
+    """Drops boxes whose longest side is under `min_size` metres (trim, rails, clutter) and returns how many; a map over the game's wire limit shrinks most here."""
+    keep = [b for b in boxes if max(b["size"]) >= min_size]
+    n = len(boxes) - len(keep)
+    boxes[:] = keep
+    return n
+
+
+def pad_spawns(doc, sides, mat="concrete", pad=2.5, reach=0.4):
+    """Lays a flat pad under each spawn that has no solid top within `reach` metres below it (a start
+    the author stood on terrain this converter leaves out), one pad per pad-sized cell, and returns the count."""
+    solid = [b for b in doc["boxes"] if b.get("solid", True)]
+    cells = {}
+    for side in sides:
+        for o in doc.get("spawns", {}).get(side, []):
+            x, y, z = o["at"]
+            if any(b["at"][1] + b["size"][1] / 2 <= y + 0.02 and b["at"][1] + b["size"][1] / 2 >= y - reach and within(b, x, z) for b in solid):
+                continue
+            cells.setdefault((round(x / pad), round(z / pad), round(y, 1)), []).append(o["at"])
+    for pts in cells.values():
+        x0, x1 = min(p[0] for p in pts) - 0.8, max(p[0] for p in pts) + 0.8
+        z0, z1 = min(p[2] for p in pts) - 0.8, max(p[2] for p in pts) + 0.8
+        top = min(p[1] for p in pts) - 0.05
+        doc["boxes"].append({"at": [round((x0 + x1) / 2, 3), round(top - 0.15, 3), round((z0 + z1) / 2, 3)],
+                             "size": [round(x1 - x0, 3), 0.3, round(z1 - z0, 3)], "mat": mat})
+    return len(cells)
+
+
 def prune_far_scenery(boxes, starts, reach=12.0, log=print):
     """Drops the boxes of every cluster that is out of reach of the starts. A community map keeps
     its 3D skybox scenery (a distant city, a crane) in the same world as the play space, and the

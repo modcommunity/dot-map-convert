@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community .bsp (VBSP 19/20) into a murder_map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--hang-doorways] [--dress=N] [--no-doors] [--slide-doors] [--terrain[=material]] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--dusk] [--skip-start=N] [--skip-door=x,z] [--one-way=x,z] [--cover=N] [--cover-gap=m] [--blurb=text] [--drop-kind=id] [--thin=id:N]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--hang-doorways] [--dress=N] [--no-doors] [--slide-doors] [--floor=m] [--min-size=m] [--terrain[=material]] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--dusk] [--skip-start=N] [--skip-door=x,z] [--one-way=x,z] [--cover=N] [--cover-gap=m] [--blurb=text] [--drop-kind=id] [--thin=id:N]
 
 Adapted from hide-n-seek-maps' importer (copied, not linked): one spawn group, `players`, from the author's starts plus the clearest open floor up to 24.
 
@@ -56,6 +56,8 @@ from dotbsp import terrain as dterrain  # noqa: E402
 import build_maps  # noqa: E402
 
 S = 0.01905
+FLOOR = 0.0   # --floor=m: the author's ground, in metres of the finished map; subtracted so it stands at y = 0
+MIN_SIZE = 0.0   # --min-size=m: boxes with a longest side under this are dropped
 
 TERRAIN_TINT = (0.85, 0.9, 0.78)
 
@@ -310,7 +312,7 @@ START_CLASSES = ("info_player_start", "info_player_terrorist", "info_player_coun
 
 
 def gd(p):
-    return (p[0] * S, p[2] * S, -p[1] * S)
+    return (p[0] * S, p[2] * S - FLOOR, -p[1] * S)
 
 
 def kv(e, k, default=None):
@@ -676,8 +678,8 @@ def model_bounds(bsp, index):
     hi = [-1e9, -1e9, -1e9]
     for bi in bsp.model_brushes(index):
         for (x0, x1), (y0, y1), (z0, z1), _phi in brush_boxes(bsp, bi)[0]:
-            lo = [min(lo[0], x0 * S), min(lo[1], z0 * S), min(lo[2], -y1 * S)]
-            hi = [max(hi[0], x1 * S), max(hi[1], z1 * S), max(hi[2], -y0 * S)]
+            lo = [min(lo[0], x0 * S), min(lo[1], z0 * S - FLOOR), min(lo[2], -y1 * S)]
+            hi = [max(hi[0], x1 * S), max(hi[1], z1 * S - FLOOR), max(hi[2], -y0 * S)]
     return None if lo[0] > hi[0] else (lo, hi)
 
 
@@ -765,6 +767,7 @@ def patch_environment(bsp, path, fog_override=None, ambience=None):
 
 
 def main(argv):
+    global FLOOR, MIN_SIZE
     args = [a for a in argv[1:] if not a.startswith("--")]
     out_path = None
     style = ""
@@ -847,6 +850,10 @@ def main(argv):
             thin[k] = int(n)
         elif a == "--slide-doors":
             slide = True
+        elif a.startswith("--floor="):
+            FLOOR = float(a[8:])
+        elif a.startswith("--min-size="):
+            MIN_SIZE = float(a[11:])
         elif a == "--terrain" or a.startswith("--terrain="):
             terrain = a[10:] or "grass"
         elif a.startswith("--graft-terrain="):
@@ -921,7 +928,7 @@ def main(argv):
                 bx = m.box((gx, gy, gz), ((x1 - x0) * S, (z1 - z0) * S, (y1 - y0) * S), mt[0], mt[1], yaw=phi)
             else:
                 # Source y is godot -z: the box's range flips.
-                bx = m.span(x0 * S, x1 * S, z0 * S, z1 * S, -y1 * S, -y0 * S, mt[0], mt[1])
+                bx = m.span(x0 * S, x1 * S, z0 * S - FLOOR, z1 * S - FLOOR, -y1 * S, -y0 * S, mt[0], mt[1])
             if invisible and bx is not None:
                 bx["visible"] = False
             elif bx is not None and mt[0] == "flat" and style == "yard":
@@ -937,7 +944,7 @@ def main(argv):
         for c in dboxes.terrain_cells(tris):
             # terrain_cells names the axes as the map does (z is height); this loop's y is the height, z the map's y.
             (x0, x1), (y0, y1), (z0, z1) = c["x"], c["z"], c["y"]
-            m.span(x0 * S, x1 * S, y0 * S, y1 * S, -z1 * S, -z0 * S, terrain, (0.85, 0.9, 0.78) if terrain == "grass" else None)
+            m.span(x0 * S, x1 * S, y0 * S - FLOOR, y1 * S - FLOOR, -z1 * S, -z0 * S, terrain, (0.85, 0.9, 0.78) if terrain == "grass" else None)
             n += 1
         print("terrain: %d ground boxes from the displacements" % n)
     print("brushes %d  tool-only %d  sliced %d  boxes %d" % (len(bsp.model_brushes(0)), skipped, sliced, len(m.boxes)))
@@ -945,6 +952,8 @@ def main(argv):
     docboxes.drop_door_leaves(m.boxes)
     print("ceilings: %d floor-tiled skins retextured" % retexture_ceilings(m.boxes))
     docboxes.prune_far_scenery(m.boxes, [gd(vec(e["origin"])) for e in bsp.entities if e.get("classname") in START_CLASSES])
+    if MIN_SIZE:
+        print("small boxes dropped: %d" % docboxes.drop_small(m.boxes, MIN_SIZE))
 
     # Props: sit on the highest solid box under the footprint when one is within reach of the
     # source height, else at the source height (a lamp on a table the author placed as a prop).
@@ -1115,6 +1124,7 @@ def main(argv):
         doc["spawns"]["players"].remove(sp)
     if low:
         print("left out %d starts more than 8 m below the rest" % len(low))
+    print("ground pads under %d spawn groups with no floor" % docboxes.pad_spawns(doc, list(doc["spawns"])))
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % docboxes.prune_pockets(doc, build_maps.size_of, build_maps.footprint, spawn_key="players"))
     # Spots are found beside props, so taking the prop away takes the spot: for a place the
@@ -1158,7 +1168,7 @@ def main(argv):
         hinged = [dict(e, classname="prop_door_rotating") for e in bsp.entities
                   if e.get("classname") == "func_door_rotating" and e.get("targetname")
                   and not str(e["targetname"]).lower().startswith(NOT_DOORS)]
-        docboxes.add_doors(m, doc, bsp.entities + hinged, (ox, oy, oz), slide, scale=S, skip=SKIP_DOORS)
+        docboxes.add_doors(m, doc, bsp.entities + hinged, (ox, oy + FLOOR, oz), slide, scale=S, skip=SKIP_DOORS)
         # A double door is two entities whose hinges each find the whole doorway: one leaf across it is kept.
         kept_d = []
         for d in doc["doors"]:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt or hide-and-seek .bsp (VBSP 19/20) into a hide-n-seek map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--no-doors] [--terrain] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--slide-doors] [--scale=k] [--drop-door=x,z] [--cover=N] [--cover-gap=m] [--lobby=r,gap] [--cover-seed=N] [--seekers-at=x,z] [--anchor=N] [--drop-kind=id] [--thin=id:N]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--no-doors] [--floor=m] [--min-size=m] [--terrain] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--slide-doors] [--scale=k] [--drop-door=x,z] [--cover=N] [--cover-gap=m] [--lobby=r,gap] [--cover-seed=N] [--seekers-at=x,z] [--anchor=N] [--drop-kind=id] [--thin=id:N]
 
 --field=<name>=<number> sets a document number the map's own band wants (round_seconds, hide_seconds), found by headless_bots, so a rerun of the importer keeps it.
 
@@ -98,6 +98,8 @@ from dotbsp import terrain as dterrain  # noqa: E402
 import build_maps  # noqa: E402
 
 S = 0.01905
+FLOOR = 0.0   # --floor=m: the author's ground, in metres of the finished map; subtracted so it stands at y = 0
+MIN_SIZE = 0.0   # --min-size=m: boxes with a longest side under this are dropped
 
 
 TERRAIN_TINT = (0.85, 0.9, 0.78)
@@ -332,7 +334,7 @@ START_CLASSES = ("info_player_start", "info_player_terrorist", "info_player_coun
 
 
 def gd(p):
-    return (p[0] * S, p[2] * S, -p[1] * S)
+    return (p[0] * S, p[2] * S - FLOOR, -p[1] * S)
 
 
 def kv(e, k, default=None):
@@ -359,7 +361,7 @@ COVER_INDOOR = ("furniture_bed_single", "furniture_bookcase_closed_wide", "furni
 
 
 def main(argv):
-    global S
+    global S, FLOOR, MIN_SIZE
     args = [a for a in argv[1:] if not a.startswith("--")]
     out_path = None
     style = ""
@@ -424,6 +426,10 @@ def main(argv):
             drop_doors.append(tuple(float(t) for t in a[12:].split(",")))
         elif a.startswith("--scale="):
             S = 0.01905 * float(a[8:])
+        elif a.startswith("--floor="):
+            FLOOR = float(a[8:])
+        elif a.startswith("--min-size="):
+            MIN_SIZE = float(a[11:])
         elif a == "--terrain":
             terrain = True
         elif a.startswith("--graft-terrain="):
@@ -489,7 +495,7 @@ def main(argv):
                 bx = m.box((gx, gy, gz), ((x1 - x0) * S, (z1 - z0) * S, (y1 - y0) * S), mt[0], mt[1], yaw=phi)
             else:
                 # Source y is godot -z: the box's range flips.
-                bx = m.span(x0 * S, x1 * S, z0 * S, z1 * S, -y1 * S, -y0 * S, mt[0], mt[1])
+                bx = m.span(x0 * S, x1 * S, z0 * S - FLOOR, z1 * S - FLOOR, -y1 * S, -y0 * S, mt[0], mt[1])
             if invisible and bx is not None:
                 bx["visible"] = False
             elif bx is not None and mt[0] == "flat" and style == "yard":
@@ -505,13 +511,15 @@ def main(argv):
         for c in dboxes.terrain_cells(tris):
             # terrain_cells names the axes as the map does (z is height); this loop's y is the height, z the map's y.
             (x0, x1), (y0, y1), (z0, z1), mat = c["x"], c["z"], c["y"], "grass"
-            m.span(x0 * S, x1 * S, y0 * S, y1 * S, -z1 * S, -z0 * S, mat, (0.85, 0.9, 0.78))
+            m.span(x0 * S, x1 * S, y0 * S - FLOOR, y1 * S - FLOOR, -z1 * S, -z0 * S, mat, (0.85, 0.9, 0.78))
             n += 1
         print("terrain: %d ground boxes from the displacements" % n)
     print("brushes %d  tool-only %d  sliced %d  boxes %d" % (len(bsp.model_brushes(0)), skipped, sliced, len(m.boxes)))
 
     docboxes.drop_door_leaves(m.boxes)
     docboxes.prune_far_scenery(m.boxes, [gd(vec(e["origin"])) for e in bsp.entities if e.get("classname") in START_CLASSES])
+    if MIN_SIZE:
+        print("small boxes dropped: %d" % docboxes.drop_small(m.boxes, MIN_SIZE))
 
     # Props: sit on the highest solid box under the footprint when one is within reach of the
     # source height, else at the source height (a lamp on a table the author placed as a prop).
@@ -707,6 +715,7 @@ def main(argv):
                     shift(v)
         for key in ("boxes", "props", "lights", "spawns", "toys", "doors"):
             shift(doc.get(key))
+    print("ground pads under %d spawn groups with no floor" % docboxes.pad_spawns(doc, list(doc["spawns"])))
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % docboxes.prune_pockets(doc, build_maps.size_of, build_maps.footprint))
     # Spots are found beside props, so taking the prop away takes the spot: for a place the
@@ -742,7 +751,7 @@ def main(argv):
             sp["yaw"] = 0.0
         print("seekers moved to (%.1f, %.1f)" % seekers_at)
     if not no_doors:
-        docboxes.add_doors(m, doc, bsp.entities, (ox, oy, oz), slide, scale=S)
+        docboxes.add_doors(m, doc, bsp.entities, (ox, oy + FLOOR, oz), slide, scale=S)
     for dx, dz in drop_doors:
         near = [d for d in doc["doors"] if (d["at"][0] - dx) ** 2 + (d["at"][2] - dz) ** 2 <= 1.5 ** 2]
         for d in near:
