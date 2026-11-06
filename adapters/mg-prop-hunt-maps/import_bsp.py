@@ -23,11 +23,11 @@ ground boxes; without it a map whose yard is terrain has no floor.
 --terrain-cell=<cell>[,<quant>] is --terrain with a coarser (or finer) field, in source units (default 80,5): a map whose terrain would pass the 6000-box limit wants 120 or more.
 
 --merge-boxes joins touching same-material boxes with one cross-section; --min-box-volume=<m3> and
---min-box-thickness=<m> then drop detail boxes below that size (a panel a metre long stays whatever its thickness), so a
+--min-box-thickness=<m> then drop detail boxes below that size (a box a metre long or a walkable surface such as a stair or floor stays), so a
 trim-heavy map fits the 6000-box limit. All three are off by default and are reported before and after.
 
---bounds=x0,y0,z0,x1,y1,z1 (source units, z up) keeps only brushes, props, lights and starts whose middle is inside the
-box: it cuts a map's sky-box room or other geometry placed far outside the playable space.
+--bounds=x0,y0,z0,x1,y1,z1 (source units, z up) keeps only brushes, terrain, props, lights and starts whose middle is inside the
+box (Prop Hunt only): it cuts a map's sky-box room or other geometry placed far outside the playable space.
 
 --style=yard gives the developer-grid boxes a suburban surface by their shape (a yard map the
 author left unskinned); other maps keep the surface their material names say.
@@ -1237,14 +1237,16 @@ def prune_pockets(doc, rounds=4, levels=False, margin=0.0, floor_lo=-0.05):
     return total
 
 
-def start_entities(bsp):
-    return [e for e in bsp.entities if e.get("classname") in START_CLASSES]
+def start_entities(bsp, inside=None):
+    """The author's starts that have an origin and, with `inside` (--bounds), lie in the kept space."""
+    return [e for e in bsp.entities if e.get("classname") in START_CLASSES and e.get("origin") is not None
+            and (inside is None or inside(vec(e["origin"])))]
 
 
-def starts_unfloored(bsp, boxes):
+def starts_unfloored(bsp, boxes, inside=None):
     """How many of the author's starts have no solid box top within reach of their feet."""
     n = 0
-    for e in start_entities(bsp):
+    for e in start_entities(bsp, inside):
         gx, gy, gz = gd(vec(e["origin"]))
         if not any(b.get("solid", True) and gy - 0.3 <= b["at"][1] + b["size"][1] / 2 <= gy + 0.6 and docboxes.within(b, gx, gz, 0.001)
                    for b in boxes):
@@ -1252,7 +1254,7 @@ def starts_unfloored(bsp, boxes):
     return n
 
 
-def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0):
+def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0, inside=None):
     """The map's displacement ground as a stepped field of boxes (--terrain).
 
     A displacement is a heightmap the mapper sculpted over a quad, not a brush, so the box
@@ -1267,6 +1269,9 @@ def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0):
     for f in bsp.model_faces(0):
         if f[6] >= 0:
             tris += bsp.displacement_tris(f)
+    if inside is not None:
+        # --bounds: a triangle belongs to the field when its middle is inside, like a brush box.
+        tris = [t for t in tris if inside(tuple(sum(p[i] for p in t) / 3 for i in range(3)))]
     if not tris:
         return []
     x0 = min(p[0] for t in tris for p in t)
@@ -1506,13 +1511,13 @@ def main(argv):
                     bx["tint"] = list(tint)
                 else:
                     bx.pop("tint", None)
-    if not terrain and starts_unfloored(bsp, m.boxes) * 2 > len(start_entities(bsp)) and any(f[6] >= 0 for f in bsp.model_faces(0)):
+    if not terrain and starts_unfloored(bsp, m.boxes, inside) * 2 > len(start_entities(bsp, inside)) and any(f[6] >= 0 for f in bsp.model_faces(0)):
         # The ground is sculpted (Bikini Bottom's sea bed), so the box pass found none under the starts.
         terrain = True
         print("starts stand on nothing and the map has displacements: --terrain")
     if terrain:
         n = 0
-        field = terrain_boxes(bsp, **terrain_args)
+        field = terrain_boxes(bsp, inside=inside, **terrain_args)
         # The document's box limit is 6000 (PhMapDoc.MAX_BOXES): coarsen the field until the walls and the ground fit.
         # Boxes the ground covers are dropped first: a coarse field steps more than a body can climb.
         if not terrain_args and len(m.boxes) + len(field) > 5600:
@@ -1520,7 +1525,7 @@ def main(argv):
         for cell in (120.0, 160.0, 240.0):
             if terrain_args or len(m.boxes) + len(field) <= 5600:
                 break
-            field = terrain_boxes(bsp, cell=cell)
+            field = terrain_boxes(bsp, cell=cell, inside=inside)
             print("terrain: cell %.0f for the box limit" % cell)
         for (x0, x1), (y0, y1), (z0, z1), mat in field:
             m.span(x0 * S, x1 * S, y0 * S, y1 * S, -z1 * S, -z0 * S, mat, (0.85, 0.9, 0.78))
@@ -1529,7 +1534,7 @@ def main(argv):
     print("brushes %d  tool-only %d  sliced %d  boxes %d" % (len(bsp.model_brushes(0)), skipped, sliced, len(m.boxes)))
 
     docboxes.drop_door_leaves(m.boxes)
-    docboxes.prune_far_scenery(m.boxes, [gd(vec(e["origin"])) for e in bsp.entities if e.get("classname") in START_CLASSES])
+    docboxes.prune_far_scenery(m.boxes, [gd(vec(e["origin"])) for e in start_entities(bsp, inside)])
 
     # Props: sit on the highest solid box under the footprint when one is within reach of the
     # source height, else at the source height (a lamp on a table the author placed as a prop).
@@ -1564,7 +1569,7 @@ def main(argv):
     for e in bsp.entities:
         cls = e.get("classname")
         if cls in PROP_CLASSES or cls in ("light", "light_spot") or cls in START_CLASSES:
-            if not inside(vec(e["origin"])):
+            if e.get("origin") is None or not inside(vec(e["origin"])):
                 continue
         if cls in PROP_CLASSES:
             # Keys are matched lower-cased: authors spell one model Chair_office and chair_office.
@@ -1633,7 +1638,7 @@ def main(argv):
                 print("over a hole: %s at %.2f %.2f %.2f" % (pid, gx, y, gz))
             continue
         m.prop(pid, gx, gz, yaw=yaw, y=y)
-    starts = [e for e in bsp.entities if e.get("classname") in START_CLASSES and inside(vec(e["origin"]))]
+    starts = start_entities(bsp, inside)
     for i, e in enumerate(starts):
         o = vec(e["origin"])
         gx, gy, gz = gd(o)
@@ -1674,6 +1679,7 @@ def main(argv):
         if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
             m.spawn("hunters", x, z, yaw=0.0, y=floor_y + 0.05)
             have.append((x, z))
+    docboxes.lend_starts(m.spawns, "props", "hunters")
     hy = sorted(sp["at"][1] for sp in m.spawns["hunters"])
     fy = round(hy[len(hy) // 2] - 0.05, 3) if hy else 0.0
     # The median level first (every earlier map keeps its toys), then the other levels the hunters
@@ -1721,7 +1727,7 @@ def main(argv):
         oy = round(ys[len(ys) // 2] - 0.05, 3)
         ground = [b for b in doc["boxes"] if b.get("solid", True) and abs(b["at"][1] + b["size"][1] / 2 - oy) < 0.05
                   and b["size"][0] > 4.0 and b["size"][2] > 4.0]
-    if ground:
+    if ground and doc["spawns"]["hunters"]:
         cx = sum(sp["at"][0] for sp in doc["spawns"]["hunters"]) / len(doc["spawns"]["hunters"])
         cz = sum(sp["at"][2] for sp in doc["spawns"]["hunters"]) / len(doc["spawns"]["hunters"])
         g = min(ground, key=lambda b: (b["at"][0] - cx) ** 2 + (b["at"][2] - cz) ** 2)

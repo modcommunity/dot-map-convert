@@ -713,7 +713,6 @@ def main(argv):
                     shift(v)
         for key in ("boxes", "props", "lights", "spawns", "toys", "doors"):
             shift(doc.get(key))
-    docboxes.apply_budget(doc["boxes"], box_budget)
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % docboxes.prune_pockets(doc, build_maps.size_of, build_maps.footprint))
     # Spots are found beside props, so taking the prop away takes the spot: for a place the
@@ -757,6 +756,8 @@ def main(argv):
         print("--drop-door=%.1f,%.1f: dropped %d door(s); the doorway stays open" % (dx, dz, len(near)))
     if widen:
         print("widened %d doorways to 1.4 m" % docboxes.widen_doors(doc["boxes"], doors=doc["doors"]))
+    # The budget runs after the doors are hung and widened: they look for the author's narrow, untrimmed slabs.
+    docboxes.apply_budget(doc["boxes"], box_budget)
     # The doors are hung after build() settled the spawns, so one that stood against a doorway is
     # in the panel now (hs_apartment's 31st): settle again, with the doors in the way.
     if doc["doors"] is m.doors and doc["boxes"] is m.boxes and doc["spawns"] is m.spawns:

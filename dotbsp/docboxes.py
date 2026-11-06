@@ -514,18 +514,22 @@ def merge_touching(boxes, tol=0.002):
     return start - len(boxes)
 
 
-def drop_trim(boxes, min_volume=0.0, min_thickness=0.0, panel=1.0):
+def drop_trim(boxes, min_volume=0.0, min_thickness=0.0, panel=1.0, walkable=0.25):
     """Drops detail boxes below a volume or thinner than a thickness (a moulding, a skirting, a frame).
 
-    A box whose longest side reaches `panel` metres is a wall, floor or door leaf and stays when only its
-    thickness is small; an unseen collision box (visible false) always stays. Returns how many went."""
+    A box whose longest side reaches `panel` metres, or whose footprint (x by z) reaches `walkable` square
+    metres, is a wall, header, floor or stair step and stays; an unseen collision box (visible false) always
+    stays. Returns how many went."""
     def trim(b):
         if b.get("visible", True) is False:
             return False
         s = b["size"]
+        # A long box (a wall, a header, a floor panel) and a walkable top (a stair step) are structure, not trim.
+        if max(s) >= panel or s[0] * s[2] >= walkable:
+            return False
         if min_volume > 0.0 and s[0] * s[1] * s[2] < min_volume:
             return True
-        return min_thickness > 0.0 and min(s) < min_thickness and max(s) < panel
+        return min_thickness > 0.0 and min(s) < min_thickness
     n = len(boxes)
     boxes[:] = [b for b in boxes if not trim(b)]
     return n - len(boxes)
@@ -552,3 +556,15 @@ def apply_budget(boxes, opts):
     merged = merge_touching(boxes) if opts.get("merge") else 0
     trimmed = drop_trim(boxes, opts.get("volume", 0.0), opts.get("thickness", 0.0))
     print("box budget: %d boxes, merged %d, dropped %d trim, %d left" % (before, merged, trimmed, len(boxes)))
+
+
+def lend_starts(spawns, src, dst, want=3):
+    """Moves starts from `src` to `dst` while `dst` has none and `src` keeps at least one (a small map whose
+    top-up of `src` took every spot). Returns how many moved."""
+    n = 0
+    if spawns[dst]:
+        return 0
+    while len(spawns[src]) > 1 and n < want:
+        spawns[dst].append(spawns[src].pop())
+        n += 1
+    return n
