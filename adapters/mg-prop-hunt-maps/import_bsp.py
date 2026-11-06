@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt .bsp (VBSP 19/20) into a mg-prop-hunt map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--start-island] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--bounds=x0,y0,z0,x1,y1,z1]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--start-island] [--dress=N] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--bounds=x0,y0,z0,x1,y1,z1]
 
 --field=<name>=<number> sets a document number the map's own band wants (players_per_hunter, round_seconds,
 hide_seconds), found by headless_bots, so a rerun of the importer keeps it.
@@ -28,6 +28,9 @@ trim-heavy map fits the 6000-box limit. All three are off by default and are rep
 
 --start-island moves the start and hunter spawns onto the largest connected floor (walked at 0.25 m, any height, doors
 as widened) and tops them up there: for a map whose author starts include an isolated platform.
+
+--dress=N scatters N props (a house's and garden's furniture, seeded so a rerun is the same) on the open floor of each
+level the author's starts stand on, for a map whose own decor is static brush work and leaves the props few to hide as.
 
 --bounds=x0,y0,z0,x1,y1,z1 (source units, z up) keeps only brushes, terrain, props, lights and starts whose middle is inside the
 box (Prop Hunt only): it cuts a map's sky-box room or other geometry placed far outside the playable space.
@@ -1407,6 +1410,12 @@ def audit_props(doc):
     return gone
 
 
+# What a house and its garden have that a map's static decor leaves out (--dress).
+HOUSE_DRESS = ("furniture_potted_plant", "furniture_trashcan", "furniture_lounge_sofa", "furniture_bookcase_closed_wide", "furniture_side_table",
+               "furniture_plant_small1", "furniture_cardboard_box_closed", "furniture_coat_rack_standing", "furniture_lamp_round_floor",
+               "survival_barrel", "furniture_cabinet_television", "furniture_plant_small2")
+
+
 def main(argv):
     args = [a for a in argv[1:] if not a.startswith("--")]
     out_path = None
@@ -1416,6 +1425,7 @@ def main(argv):
     clears = []
     pockets = False
     start_island = False
+    dress = 0
     levels = False
     margin = 0.0
     widen = False
@@ -1444,6 +1454,8 @@ def main(argv):
             bounds = [float(t) for t in a[9:].split(",")]
             if len(bounds) != 6:
                 sys.exit("--bounds wants x0,y0,z0,x1,y1,z1")
+        elif a.startswith("--dress="):
+            dress = int(a[8:])
         elif a == "--start-island":
             start_island = True
         elif a == "--prune-pockets":
@@ -1645,6 +1657,11 @@ def main(argv):
             continue
         m.prop(pid, gx, gz, yaw=yaw, y=y)
     starts = start_entities(bsp, inside)
+    if dress:
+        lv_ys = sorted({round(support(gd(vec(e["origin"]))[0], gd(vec(e["origin"]))[2], None, 0.0, gd(vec(e["origin"]))[1] + 0.6) or max(gd(vec(e["origin"]))[1] - 0.05, 0.0), 2)
+                        for e in starts} | {0.0})
+        for lv in lv_ys:
+            print("dressing at floor %.2f: %d placed" % (lv, docboxes.scatter_cover(m, max(2, dress // len(lv_ys)), 11, HOUSE_DRESS, spacing=2.5, clear=1.2, floor_y=lv)))
     for i, e in enumerate(starts):
         o = vec(e["origin"])
         gx, gy, gz = gd(o)
