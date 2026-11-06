@@ -470,3 +470,85 @@ def add_doors(m, doc, entities, shift, slide=False, scale=0.01905, skip=(), log=
             log("  door at (%.1f, %.1f): %d props cleared from its swing" % (hx, hz, len(gone)))
     log("doors: %d hung, %d with no doorway" % (hung, missed))
     return hung
+
+
+def merge_touching(boxes, tol=0.002):
+    """Merges axis-aligned boxes of one material that touch face to face with the same cross-section.
+
+    Repeats along each axis until nothing joins; a turned box is left alone. Returns how many boxes went."""
+    start = len(boxes)
+    keep = [b for b in boxes if b.get("yaw")]
+    work = [b for b in boxes if not b.get("yaw")]
+    changed = True
+    while changed:
+        changed = False
+        for ax in (1, 0, 2):
+            o1, o2 = [a for a in (0, 1, 2) if a != ax]
+            groups = {}
+            for b in work:
+                attrs = tuple(sorted((k, repr(v)) for k, v in b.items() if k not in ("at", "size")))
+                key = (attrs, round(b["at"][o1] / tol), round(b["size"][o1] / tol),
+                       round(b["at"][o2] / tol), round(b["size"][o2] / tol))
+                groups.setdefault(key, []).append(b)
+            out = []
+            for grp in groups.values():
+                grp.sort(key=lambda b: b["at"][ax] - b["size"][ax] / 2)
+                cur = grp[0]
+                for b in grp[1:]:
+                    lo, hi = cur["at"][ax] - cur["size"][ax] / 2, cur["at"][ax] + cur["size"][ax] / 2
+                    blo, bhi = b["at"][ax] - b["size"][ax] / 2, b["at"][ax] + b["size"][ax] / 2
+                    if blo <= hi + tol:
+                        top = max(hi, bhi)
+                        cur = dict(cur)
+                        cur["at"] = list(cur["at"])
+                        cur["size"] = list(cur["size"])
+                        cur["at"][ax] = round((lo + top) / 2, 3)
+                        cur["size"][ax] = round(top - lo, 3)
+                        changed = True
+                    else:
+                        out.append(cur)
+                        cur = b
+                out.append(cur)
+            work = out
+    boxes[:] = keep + work
+    return start - len(boxes)
+
+
+def drop_trim(boxes, min_volume=0.0, min_thickness=0.0, panel=1.0):
+    """Drops detail boxes below a volume or thinner than a thickness (a moulding, a skirting, a frame).
+
+    A box whose longest side reaches `panel` metres is a wall, floor or door leaf and stays when only its
+    thickness is small; an unseen collision box (visible false) always stays. Returns how many went."""
+    def trim(b):
+        if b.get("visible", True) is False:
+            return False
+        s = b["size"]
+        if min_volume > 0.0 and s[0] * s[1] * s[2] < min_volume:
+            return True
+        return min_thickness > 0.0 and min(s) < min_thickness and max(s) < panel
+    n = len(boxes)
+    boxes[:] = [b for b in boxes if not trim(b)]
+    return n - len(boxes)
+
+
+def budget_flag(arg, opts):
+    """Reads --merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> into opts; True when arg was one."""
+    if arg == "--merge-boxes":
+        opts["merge"] = True
+    elif arg.startswith("--min-box-volume="):
+        opts["volume"] = float(arg.split("=", 1)[1])
+    elif arg.startswith("--min-box-thickness="):
+        opts["thickness"] = float(arg.split("=", 1)[1])
+    else:
+        return False
+    return True
+
+
+def apply_budget(boxes, opts):
+    """Runs the opt-in box budget (merge, then trim) and prints the counts; nothing happens with no flag."""
+    if not opts:
+        return
+    before = len(boxes)
+    merged = merge_touching(boxes) if opts.get("merge") else 0
+    trimmed = drop_trim(boxes, opts.get("volume", 0.0), opts.get("thickness", 0.0))
+    print("box budget: %d boxes, merged %d, dropped %d trim, %d left" % (before, merged, trimmed, len(boxes)))

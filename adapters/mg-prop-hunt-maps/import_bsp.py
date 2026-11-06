@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt .bsp (VBSP 19/20) into a mg-prop-hunt map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--bounds=x0,y0,z0,x1,y1,z1]
 
 --field=<name>=<number> sets a document number the map's own band wants (players_per_hunter, round_seconds,
 hide_seconds), found by headless_bots, so a rerun of the importer keeps it.
@@ -21,6 +21,13 @@ beds and bookcases a hand off a wall), by a flood fill over a grid, instead of o
 --terrain turns the map's displacement ground (sculpted terrain, which is not a brush) into a stepped field of
 ground boxes; without it a map whose yard is terrain has no floor.
 --terrain-cell=<cell>[,<quant>] is --terrain with a coarser (or finer) field, in source units (default 80,5): a map whose terrain would pass the 6000-box limit wants 120 or more.
+
+--merge-boxes joins touching same-material boxes with one cross-section; --min-box-volume=<m3> and
+--min-box-thickness=<m> then drop detail boxes below that size (a panel a metre long stays whatever its thickness), so a
+trim-heavy map fits the 6000-box limit. All three are off by default and are reported before and after.
+
+--bounds=x0,y0,z0,x1,y1,z1 (source units, z up) keeps only brushes, props, lights and starts whose middle is inside the
+box: it cuts a map's sky-box room or other geometry placed far outside the playable space.
 
 --style=yard gives the developer-grid boxes a suburban surface by their shape (a yard map the
 author left unskinned); other maps keep the surface their material names say.
@@ -1210,9 +1217,16 @@ def prune_pockets(doc, rounds=4, levels=False, margin=0.0, floor_lo=-0.05):
                     if (i == 0 and team == "props") or (nearest_free(sp["at"][0], sp["at"][2]) or (0, True))[1]:
                         continue
                     ci, cj = int((sp["at"][2] - zs0) / R), int((sp["at"][0] - xs0) / R)
-                    best = min(((zi - ci) ** 2 + (xi - cj) ** 2, zi, xi)
-                               for zi in range(max(0, ci - 60), min(H, ci + 61))
-                               for xi in range(max(0, cj - 60), min(W, cj + 61)) if seen[zi * W + xi])
+                    # An upper floor's start can have no reached cell within 6 m: search the whole grid then.
+                    best = min((((zi - ci) ** 2 + (xi - cj) ** 2, zi, xi)
+                                for zi in range(max(0, ci - 60), min(H, ci + 61))
+                                for xi in range(max(0, cj - 60), min(W, cj + 61)) if seen[zi * W + xi]),
+                               default=None)
+                    if best is None:
+                        best = min((((i // W - ci) ** 2 + (i % W - cj) ** 2, i // W, i % W)
+                                    for i in range(W * H) if seen[i]), default=None)
+                    if best is None:
+                        continue
                     sp["at"][0], sp["at"][2] = round(xs0 + (best[2] + 0.5) * R, 3), round(zs0 + (best[1] + 0.5) * R, 3)
                     sp["at"][1] = 0.05
                     total += 1
@@ -1399,6 +1413,8 @@ def main(argv):
     thick_doors = False
     terrain = False
     terrain_args = {}
+    box_budget = {}
+    bounds = None
     for a in argv[1:]:
         if a.startswith("--out="):
             out_path = a[6:]
@@ -1413,6 +1429,12 @@ def main(argv):
             terrain = True
             t_cell, _, t_quant = a[15:].partition(",")
             terrain_args = dict(cell=float(t_cell), quant=float(t_quant or 5.0))
+        elif docboxes.budget_flag(a, box_budget):
+            pass
+        elif a.startswith("--bounds="):
+            bounds = [float(t) for t in a[9:].split(",")]
+            if len(bounds) != 6:
+                sys.exit("--bounds wants x0,y0,z0,x1,y1,z1")
         elif a == "--prune-pockets":
             pockets = True
         elif a.startswith("--pocket-margin="):
@@ -1440,6 +1462,9 @@ def main(argv):
     m.doc.update(fields)
     m.doc["source"] = url
 
+    def inside(p):
+        return bounds is None or all(bounds[i] <= p[i] <= bounds[i + 3] for i in range(3))
+
     sliced = skipped = 0
     for bi in sorted(bsp.model_brushes(0)):
         names = docboxes.brush_material_names(bsp, bi)
@@ -1455,6 +1480,11 @@ def main(argv):
         boxes, was_sliced = brush_boxes(bsp, bi)
         sliced += was_sliced
         for (x0, x1), (y0, y1), (z0, z1), phi in boxes:
+            if bounds is not None:
+                lx, ly = (x0 + x1) / 2, (y0 + y1) / 2
+                c, sn = math.cos(math.radians(phi)), math.sin(math.radians(phi))
+                if not inside((lx * c - ly * sn, lx * sn + ly * c, (z0 + z1) / 2)):
+                    continue
             if phi:
                 # A turned box: its centre back out of the turned frame, its sides as measured,
                 # its yaw the same angle (Source turns counter-clockwise seen from above, and so
@@ -1533,6 +1563,9 @@ def main(argv):
     by_shape = {}
     for e in bsp.entities:
         cls = e.get("classname")
+        if cls in PROP_CLASSES or cls in ("light", "light_spot") or cls in START_CLASSES:
+            if not inside(vec(e["origin"])):
+                continue
         if cls in PROP_CLASSES:
             # Keys are matched lower-cased: authors spell one model Chair_office and chair_office.
             key = os.path.splitext(os.path.basename(e.get("model", "")))[0].lower()
@@ -1600,7 +1633,7 @@ def main(argv):
                 print("over a hole: %s at %.2f %.2f %.2f" % (pid, gx, y, gz))
             continue
         m.prop(pid, gx, gz, yaw=yaw, y=y)
-    starts = [e for e in bsp.entities if e.get("classname") in START_CLASSES]
+    starts = [e for e in bsp.entities if e.get("classname") in START_CLASSES and inside(vec(e["origin"]))]
     for i, e in enumerate(starts):
         o = vec(e["origin"])
         gx, gy, gz = gd(o)
@@ -1631,6 +1664,14 @@ def main(argv):
             break
         if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
             m.spawn("props", x, z, yaw=0.0)
+            have.append((x, z))
+    # One author start deals nothing to the hunters: top them up to the game's three the same way.
+    floor_y = round(m.spawns["props"][0]["at"][1] - 0.05, 3) if m.spawns["props"] and not m.spawns["hunters"] else 0.0
+    for size, x, z in m.spots(y=floor_y, step=1.5, top=60):
+        if len(m.spawns["hunters"]) >= 3:
+            break
+        if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
+            m.spawn("hunters", x, z, yaw=0.0, y=floor_y + 0.05)
             have.append((x, z))
     hy = sorted(sp["at"][1] for sp in m.spawns["hunters"])
     fy = round(hy[len(hy) // 2] - 0.05, 3) if hy else 0.0
@@ -1701,6 +1742,7 @@ def main(argv):
             n_doors += widen_sliced_doors(doc["boxes"])
             print("dropped %d door trim posts" % drop_trim_posts(doc["boxes"]))
         print("widened %d doorways to 1.4 m" % n_doors)
+    docboxes.apply_budget(doc["boxes"], box_budget)
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % prune_pockets(doc, levels=levels, margin=margin, floor_lo=-1.0 if terrain else -0.05))
     # Spots are found beside props, so taking the prop away takes the spot: for a place the

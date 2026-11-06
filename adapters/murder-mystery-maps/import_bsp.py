@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community .bsp (VBSP 19/20) into a murder_map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--hang-doorways] [--dress=N] [--no-doors] [--slide-doors] [--terrain[=material]] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--dusk] [--skip-start=N] [--skip-door=x,z] [--one-way=x,z] [--cover=N] [--cover-gap=m] [--blurb=text] [--drop-kind=id] [--thin=id:N]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--hang-doorways] [--dress=N] [--no-doors] [--slide-doors] [--terrain[=material]] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--dusk] [--skip-start=N] [--skip-door=x,z] [--one-way=x,z] [--cover=N] [--cover-gap=m] [--blurb=text] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15]
+
+--merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> shrink a trim-heavy map under the 6000-box limit: touching
+same-material boxes join, then detail boxes below that size go (a panel a metre long stays). Off by default; counts are printed.
 
 Adapted from hide-n-seek-maps' importer (copied, not linked): one spawn group, `players`, from the author's starts plus the clearest open floor up to 24.
 
@@ -772,6 +775,7 @@ def main(argv):
     drops = []
     clears = []
     pockets = False
+    box_budget = {}
     widen = False
     hang = False
     dress = 0
@@ -853,6 +857,8 @@ def main(argv):
             graft = a[16:]
         elif a.startswith("--terrain-budget="):
             budget = int(a[17:])
+        elif docboxes.budget_flag(a, box_budget):
+            pass
         elif a == "--prune-pockets":
             pockets = True
         elif a.startswith("--style="):
@@ -1115,6 +1121,7 @@ def main(argv):
         doc["spawns"]["players"].remove(sp)
     if low:
         print("left out %d starts more than 8 m below the rest" % len(low))
+    docboxes.apply_budget(doc["boxes"], box_budget)
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % docboxes.prune_pockets(doc, build_maps.size_of, build_maps.footprint, spawn_key="players"))
     # Spots are found beside props, so taking the prop away takes the spot: for a place the
