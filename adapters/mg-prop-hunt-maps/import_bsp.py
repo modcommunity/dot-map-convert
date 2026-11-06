@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt .bsp (VBSP 19/20) into a mg-prop-hunt map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--start-island] [--dress=N] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--bounds=x0,y0,z0,x1,y1,z1]
 
 --field=<name>=<number> sets a document number the map's own band wants (players_per_hunter, round_seconds,
 hide_seconds), found by headless_bots, so a rerun of the importer keeps it.
@@ -21,6 +21,19 @@ beds and bookcases a hand off a wall), by a flood fill over a grid, instead of o
 --terrain turns the map's displacement ground (sculpted terrain, which is not a brush) into a stepped field of
 ground boxes; without it a map whose yard is terrain has no floor.
 --terrain-cell=<cell>[,<quant>] is --terrain with a coarser (or finer) field, in source units (default 80,5): a map whose terrain would pass the 6000-box limit wants 120 or more.
+
+--merge-boxes joins touching same-material boxes with one cross-section; --min-box-volume=<m3> and
+--min-box-thickness=<m> then drop detail boxes below that size (a box a metre long or a walkable surface such as a stair or floor stays), so a
+trim-heavy map fits the 6000-box limit. All three are off by default and are reported before and after.
+
+--start-island moves the start and hunter spawns onto the largest connected floor (walked at 0.25 m, any height, doors
+as widened) and tops them up there: for a map whose author starts include an isolated platform.
+
+--dress=N scatters N props (a house's and garden's furniture, seeded so a rerun is the same) on the open floor of each
+level the author's starts stand on, for a map whose own decor is static brush work and leaves the props few to hide as.
+
+--bounds=x0,y0,z0,x1,y1,z1 (source units, z up) keeps only brushes, terrain, props, lights and starts whose middle is inside the
+box (Prop Hunt only): it cuts a map's sky-box room or other geometry placed far outside the playable space.
 
 --style=yard gives the developer-grid boxes a suburban surface by their shape (a yard map the
 author left unskinned); other maps keep the surface their material names say.
@@ -1210,9 +1223,16 @@ def prune_pockets(doc, rounds=4, levels=False, margin=0.0, floor_lo=-0.05):
                     if (i == 0 and team == "props") or (nearest_free(sp["at"][0], sp["at"][2]) or (0, True))[1]:
                         continue
                     ci, cj = int((sp["at"][2] - zs0) / R), int((sp["at"][0] - xs0) / R)
-                    best = min(((zi - ci) ** 2 + (xi - cj) ** 2, zi, xi)
-                               for zi in range(max(0, ci - 60), min(H, ci + 61))
-                               for xi in range(max(0, cj - 60), min(W, cj + 61)) if seen[zi * W + xi])
+                    # An upper floor's start can have no reached cell within 6 m: search the whole grid then.
+                    best = min((((zi - ci) ** 2 + (xi - cj) ** 2, zi, xi)
+                                for zi in range(max(0, ci - 60), min(H, ci + 61))
+                                for xi in range(max(0, cj - 60), min(W, cj + 61)) if seen[zi * W + xi]),
+                               default=None)
+                    if best is None:
+                        best = min((((i // W - ci) ** 2 + (i % W - cj) ** 2, i // W, i % W)
+                                    for i in range(W * H) if seen[i]), default=None)
+                    if best is None:
+                        continue
                     sp["at"][0], sp["at"][2] = round(xs0 + (best[2] + 0.5) * R, 3), round(zs0 + (best[1] + 0.5) * R, 3)
                     sp["at"][1] = 0.05
                     total += 1
@@ -1223,14 +1243,16 @@ def prune_pockets(doc, rounds=4, levels=False, margin=0.0, floor_lo=-0.05):
     return total
 
 
-def start_entities(bsp):
-    return [e for e in bsp.entities if e.get("classname") in START_CLASSES]
+def start_entities(bsp, inside=None):
+    """The author's starts that have an origin and, with `inside` (--bounds), lie in the kept space."""
+    return [e for e in bsp.entities if e.get("classname") in START_CLASSES and e.get("origin") is not None
+            and (inside is None or inside(vec(e["origin"])))]
 
 
-def starts_unfloored(bsp, boxes):
+def starts_unfloored(bsp, boxes, inside=None):
     """How many of the author's starts have no solid box top within reach of their feet."""
     n = 0
-    for e in start_entities(bsp):
+    for e in start_entities(bsp, inside):
         gx, gy, gz = gd(vec(e["origin"]))
         if not any(b.get("solid", True) and gy - 0.3 <= b["at"][1] + b["size"][1] / 2 <= gy + 0.6 and docboxes.within(b, gx, gz, 0.001)
                    for b in boxes):
@@ -1238,7 +1260,7 @@ def starts_unfloored(bsp, boxes):
     return n
 
 
-def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0):
+def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0, inside=None):
     """The map's displacement ground as a stepped field of boxes (--terrain).
 
     A displacement is a heightmap the mapper sculpted over a quad, not a brush, so the box
@@ -1253,6 +1275,9 @@ def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0):
     for f in bsp.model_faces(0):
         if f[6] >= 0:
             tris += bsp.displacement_tris(f)
+    if inside is not None:
+        # --bounds: a triangle belongs to the field when its middle is inside, like a brush box.
+        tris = [t for t in tris if inside(tuple(sum(p[i] for p in t) / 3 for i in range(3)))]
     if not tris:
         return []
     x0 = min(p[0] for t in tris for p in t)
@@ -1301,6 +1326,57 @@ def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0):
             j2 += 1
             done.add((i, e, ht, j2))
         out.append(((x0 + i * cell, x0 + (e + 1) * cell), (ht - depth, ht), (y0 + j * cell, y0 + (j2 + 1) * cell), "grass"))
+    for (xs, ys, zs) in terrace_stairs(h, x0, y0, cell, depth, 0.35 / S, 0.8 / S, 3.0 / S):
+        out.append((xs, ys, zs, "grass"))
+    return out
+
+
+def terrace_stairs(h, x0, y0, cell, depth, riser, tread, tallest):
+    """Stair strips that join the terraces of a stepped field, one flight per join, and no more.
+
+    Neighbouring slabs differ by more than the bots' climb (1.2 m at the coarse cell), so the
+    field was terraces a bot dropped between and could never leave: its goals were then
+    unreachable and the nav query failed. The cells are grouped by climbable neighbours; the
+    smallest drops that would join two groups (a spanning tree, about a flight per group, not per
+    edge) get a flight of strips in the lower slab, two metres wide, the highest against the edge.
+    Drops over `tallest` are left as cliffs. Yields (xs, ys, zs) in source units."""
+    parent = {k: k for k in h}
+
+    def find(k):
+        while parent[k] != k:
+            parent[k] = parent[parent[k]]
+            k = parent[k]
+        return k
+
+    edges = []
+    for (i, j), v in h.items():
+        for k in ((i + 1, j), (i, j + 1)):
+            if k in h:
+                d = abs(h[k] - v)
+                if d <= riser + 1e-6:
+                    parent[find(k)] = find((i, j))
+                elif d <= tallest:
+                    edges.append((d, (i, j), k))
+    out = []
+    for d, a, b in sorted(edges):
+        if find(a) == find(b):
+            continue
+        parent[find(a)] = find(b)
+        lo, hi = (a, b) if h[a] < h[b] else (b, a)
+        n = int(math.ceil(d / riser)) - 1
+        for m in range(1, n + 1):
+            top = h[lo] + m * d / (n + 1)
+            back = (n + 1 - m) * tread
+            if lo[0] != hi[0]:
+                edge = x0 + (max(lo[0], hi[0])) * cell
+                mid = y0 + (lo[1] + 0.5) * cell
+                xs = (edge - back, edge) if hi[0] > lo[0] else (edge, edge + back)
+                out.append((xs, (top - depth, top), (mid - 52.0, mid + 52.0)))
+            else:
+                edge = y0 + (max(lo[1], hi[1])) * cell
+                mid = x0 + (lo[0] + 0.5) * cell
+                zs = (edge - back, edge) if hi[1] > lo[1] else (edge, edge + back)
+                out.append(((mid - 52.0, mid + 52.0), (top - depth, top), zs))
     return out
 
 
@@ -1385,6 +1461,12 @@ def audit_props(doc):
     return gone
 
 
+# What a house and its garden have that a map's static decor leaves out (--dress).
+HOUSE_DRESS = ("furniture_potted_plant", "furniture_trashcan", "furniture_lounge_sofa", "furniture_bookcase_closed_wide", "furniture_side_table",
+               "furniture_plant_small1", "furniture_cardboard_box_closed", "furniture_coat_rack_standing", "furniture_lamp_round_floor",
+               "survival_barrel", "furniture_cabinet_television", "furniture_plant_small2")
+
+
 def main(argv):
     args = [a for a in argv[1:] if not a.startswith("--")]
     out_path = None
@@ -1393,12 +1475,16 @@ def main(argv):
     drops = []
     clears = []
     pockets = False
+    start_island = False
+    dress = 0
     levels = False
     margin = 0.0
     widen = False
     thick_doors = False
     terrain = False
     terrain_args = {}
+    box_budget = {}
+    bounds = None
     for a in argv[1:]:
         if a.startswith("--out="):
             out_path = a[6:]
@@ -1413,6 +1499,16 @@ def main(argv):
             terrain = True
             t_cell, _, t_quant = a[15:].partition(",")
             terrain_args = dict(cell=float(t_cell), quant=float(t_quant or 5.0))
+        elif docboxes.budget_flag(a, box_budget):
+            pass
+        elif a.startswith("--bounds="):
+            bounds = [float(t) for t in a[9:].split(",")]
+            if len(bounds) != 6:
+                sys.exit("--bounds wants x0,y0,z0,x1,y1,z1")
+        elif a.startswith("--dress="):
+            dress = int(a[8:])
+        elif a == "--start-island":
+            start_island = True
         elif a == "--prune-pockets":
             pockets = True
         elif a.startswith("--pocket-margin="):
@@ -1440,6 +1536,9 @@ def main(argv):
     m.doc.update(fields)
     m.doc["source"] = url
 
+    def inside(p):
+        return bounds is None or all(bounds[i] <= p[i] <= bounds[i + 3] for i in range(3))
+
     sliced = skipped = 0
     for bi in sorted(bsp.model_brushes(0)):
         names = docboxes.brush_material_names(bsp, bi)
@@ -1455,6 +1554,11 @@ def main(argv):
         boxes, was_sliced = brush_boxes(bsp, bi)
         sliced += was_sliced
         for (x0, x1), (y0, y1), (z0, z1), phi in boxes:
+            if bounds is not None:
+                lx, ly = (x0 + x1) / 2, (y0 + y1) / 2
+                c, sn = math.cos(math.radians(phi)), math.sin(math.radians(phi))
+                if not inside((lx * c - ly * sn, lx * sn + ly * c, (z0 + z1) / 2)):
+                    continue
             if phi:
                 # A turned box: its centre back out of the turned frame, its sides as measured,
                 # its yaw the same angle (Source turns counter-clockwise seen from above, and so
@@ -1476,13 +1580,13 @@ def main(argv):
                     bx["tint"] = list(tint)
                 else:
                     bx.pop("tint", None)
-    if not terrain and starts_unfloored(bsp, m.boxes) * 2 > len(start_entities(bsp)) and any(f[6] >= 0 for f in bsp.model_faces(0)):
+    if not terrain and starts_unfloored(bsp, m.boxes, inside) * 2 > len(start_entities(bsp, inside)) and any(f[6] >= 0 for f in bsp.model_faces(0)):
         # The ground is sculpted (Bikini Bottom's sea bed), so the box pass found none under the starts.
         terrain = True
         print("starts stand on nothing and the map has displacements: --terrain")
     if terrain:
         n = 0
-        field = terrain_boxes(bsp, **terrain_args)
+        field = terrain_boxes(bsp, inside=inside, **terrain_args)
         # The document's box limit is 6000 (PhMapDoc.MAX_BOXES): coarsen the field until the walls and the ground fit.
         # Boxes the ground covers are dropped first: a coarse field steps more than a body can climb.
         if not terrain_args and len(m.boxes) + len(field) > 5600:
@@ -1490,7 +1594,7 @@ def main(argv):
         for cell in (120.0, 160.0, 240.0):
             if terrain_args or len(m.boxes) + len(field) <= 5600:
                 break
-            field = terrain_boxes(bsp, cell=cell)
+            field = terrain_boxes(bsp, cell=cell, inside=inside)
             print("terrain: cell %.0f for the box limit" % cell)
         for (x0, x1), (y0, y1), (z0, z1), mat in field:
             m.span(x0 * S, x1 * S, y0 * S, y1 * S, -z1 * S, -z0 * S, mat, (0.85, 0.9, 0.78))
@@ -1499,7 +1603,7 @@ def main(argv):
     print("brushes %d  tool-only %d  sliced %d  boxes %d" % (len(bsp.model_brushes(0)), skipped, sliced, len(m.boxes)))
 
     docboxes.drop_door_leaves(m.boxes)
-    docboxes.prune_far_scenery(m.boxes, [gd(vec(e["origin"])) for e in bsp.entities if e.get("classname") in START_CLASSES])
+    docboxes.prune_far_scenery(m.boxes, [gd(vec(e["origin"])) for e in start_entities(bsp, inside)])
 
     # Props: sit on the highest solid box under the footprint when one is within reach of the
     # source height, else at the source height (a lamp on a table the author placed as a prop).
@@ -1533,6 +1637,9 @@ def main(argv):
     by_shape = {}
     for e in bsp.entities:
         cls = e.get("classname")
+        if cls in PROP_CLASSES or cls in ("light", "light_spot") or cls in START_CLASSES:
+            if e.get("origin") is None or not inside(vec(e["origin"])):
+                continue
         if cls in PROP_CLASSES:
             # Keys are matched lower-cased: authors spell one model Chair_office and chair_office.
             key = os.path.splitext(os.path.basename(e.get("model", "")))[0].lower()
@@ -1600,7 +1707,12 @@ def main(argv):
                 print("over a hole: %s at %.2f %.2f %.2f" % (pid, gx, y, gz))
             continue
         m.prop(pid, gx, gz, yaw=yaw, y=y)
-    starts = [e for e in bsp.entities if e.get("classname") in START_CLASSES]
+    starts = start_entities(bsp, inside)
+    if dress:
+        lv_ys = sorted({round(support(gd(vec(e["origin"]))[0], gd(vec(e["origin"]))[2], None, 0.0, gd(vec(e["origin"]))[1] + 0.6) or max(gd(vec(e["origin"]))[1] - 0.05, 0.0), 2)
+                        for e in starts} | {0.0})
+        for lv in lv_ys:
+            print("dressing at floor %.2f: %d placed" % (lv, docboxes.scatter_cover(m, max(2, dress // len(lv_ys)), 11, HOUSE_DRESS, spacing=2.5, clear=1.2, floor_y=lv)))
     for i, e in enumerate(starts):
         o = vec(e["origin"])
         gx, gy, gz = gd(o)
@@ -1626,12 +1738,22 @@ def main(argv):
     # The author gave six starts; a prop hunt wants six hiding starts and three hunter ones.
     # More are taken from the clearest open floor, at least 3 m from any other start.
     have = [(sp["at"][0], sp["at"][2]) for side in m.spawns.values() for sp in side]
-    for size, x, z in m.spots(step=1.5, top=60):
+    # With one author start the level it stands on (a raised terrace) is the level to look on, not zero.
+    floor_y = round(m.spawns["props"][0]["at"][1] - 0.05, 3) if m.spawns["props"] and not m.spawns["hunters"] else 0.0
+    for size, x, z in m.spots(y=floor_y, step=1.5, top=60):
         if len(m.spawns["props"]) >= 8:
             break
         if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
-            m.spawn("props", x, z, yaw=0.0)
+            m.spawn("props", x, z, yaw=0.0, y=floor_y + 0.05)
             have.append((x, z))
+    # One author start deals nothing to the hunters: top them up to the game's three the same way.
+    for size, x, z in m.spots(y=floor_y, step=1.5, top=60):
+        if len(m.spawns["hunters"]) >= 3:
+            break
+        if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
+            m.spawn("hunters", x, z, yaw=0.0, y=floor_y + 0.05)
+            have.append((x, z))
+    docboxes.lend_starts(m.spawns, "props", "hunters")
     hy = sorted(sp["at"][1] for sp in m.spawns["hunters"])
     fy = round(hy[len(hy) // 2] - 0.05, 3) if hy else 0.0
     # The median level first (every earlier map keeps its toys), then the other levels the hunters
@@ -1679,7 +1801,7 @@ def main(argv):
         oy = round(ys[len(ys) // 2] - 0.05, 3)
         ground = [b for b in doc["boxes"] if b.get("solid", True) and abs(b["at"][1] + b["size"][1] / 2 - oy) < 0.05
                   and b["size"][0] > 4.0 and b["size"][2] > 4.0]
-    if ground:
+    if ground and doc["spawns"]["hunters"]:
         cx = sum(sp["at"][0] for sp in doc["spawns"]["hunters"]) / len(doc["spawns"]["hunters"])
         cz = sum(sp["at"][2] for sp in doc["spawns"]["hunters"]) / len(doc["spawns"]["hunters"])
         g = min(ground, key=lambda b: (b["at"][0] - cx) ** 2 + (b["at"][2] - cz) ** 2)
@@ -1701,6 +1823,11 @@ def main(argv):
             n_doors += widen_sliced_doors(doc["boxes"])
             print("dropped %d door trim posts" % drop_trim_posts(doc["boxes"]))
         print("widened %d doorways to 1.4 m" % n_doors)
+    docboxes.apply_budget(doc["boxes"], box_budget)
+    if start_island:
+        moved = docboxes.restart_on_largest_island(doc, build_maps.size_of, build_maps.footprint)
+        print("start island: %s spawns moved onto the largest connected floor" % moved)
+        docboxes.drop_other_terrain(doc)
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % prune_pockets(doc, levels=levels, margin=margin, floor_lo=-1.0 if terrain else -0.05))
     # Spots are found beside props, so taking the prop away takes the spot: for a place the

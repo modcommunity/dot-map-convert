@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community .bsp (VBSP 19/20) into a murder_map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--hang-doorways] [--dress=N] [--no-doors] [--slide-doors] [--terrain[=material]] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--dusk] [--skip-start=N] [--skip-door=x,z] [--one-way=x,z] [--cover=N] [--cover-gap=m] [--blurb=text] [--drop-kind=id] [--thin=id:N]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--hang-doorways] [--dress=N] [--no-doors] [--slide-doors] [--terrain[=material]] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--dusk] [--skip-start=N] [--skip-door=x,z] [--one-way=x,z] [--cover=N] [--cover-gap=m] [--blurb=text] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15]
+
+--merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> shrink a trim-heavy map under the 6000-box limit: touching
+same-material boxes join, then detail boxes below that size go (a panel a metre long stays). Off by default; counts are printed.
 
 Adapted from hide-n-seek-maps' importer (copied, not linked): one spawn group, `players`, from the author's starts plus the clearest open floor up to 24.
 
@@ -772,6 +775,7 @@ def main(argv):
     drops = []
     clears = []
     pockets = False
+    box_budget = {}
     widen = False
     hang = False
     dress = 0
@@ -853,6 +857,8 @@ def main(argv):
             graft = a[16:]
         elif a.startswith("--terrain-budget="):
             budget = int(a[17:])
+        elif docboxes.budget_flag(a, box_budget):
+            pass
         elif a == "--prune-pockets":
             pockets = True
         elif a.startswith("--style="):
@@ -1174,6 +1180,8 @@ def main(argv):
         print("widened %d doorways to 1.4 m" % docboxes.widen_doors(doc["boxes"], doors=doc["doors"]))
     if hang:
         hang_doorways(m, doc)
+    # The budget runs after the doors are hung and widened: they look for the author's narrow, untrimmed slabs.
+    docboxes.apply_budget(doc["boxes"], box_budget)
     if dress_walls_n or spread_n:
         zones = [(z[0] - ox, z[1] - ox, round(z[2] - oy, 3), z[3] - oz, z[4] - oz, z[5]) for z in floor_zones(bsp)]
     if dress_walls_n:
