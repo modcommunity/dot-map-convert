@@ -535,6 +535,154 @@ def drop_trim(boxes, min_volume=0.0, min_thickness=0.0, panel=1.0, walkable=0.25
     return n - len(boxes)
 
 
+def floor_islands(boxes, cell=0.25, step=0.4, head=1.4):
+    """Labels the walkable floor of a document: (islands, state_of), no body radius, any height.
+
+    A surface is a solid box's top with nothing solid between 0.3 m and `head` above it; two
+    neighbouring cells join when their surfaces differ by at most `step` (the bots' climb).
+    `islands` is [(cells, [states])] largest first; `state_of(x, z, y)` is the state index of the
+    surface under a point (within 0.3 m of y), or None. A state is (zi, xi, top)."""
+    solid = [b for b in boxes if b.get("solid", True)]
+    if not solid:
+        return [], lambda x, z, y: None
+    x0 = min(b["at"][0] - b["size"][0] / 2 for b in solid) - 1.0
+    z0 = min(b["at"][2] - b["size"][2] / 2 for b in solid) - 1.0
+    W = int((max(b["at"][0] + b["size"][0] / 2 for b in solid) + 1.0 - x0) / cell) + 1
+    H = int((max(b["at"][2] + b["size"][2] / 2 for b in solid) + 1.0 - z0) / cell) + 1
+    spans = {}
+
+    def over(b, grow):
+        hx, hz = b["size"][0] / 2, b["size"][2] / 2
+        if b.get("yaw"):
+            hx = hz = math.hypot(hx, hz)
+        for zi in range(max(0, int((b["at"][2] - hz - z0) / cell)), min(H, int((b["at"][2] + hz - z0) / cell) + 2)):
+            for xi in range(max(0, int((b["at"][0] - hx - x0) / cell)), min(W, int((b["at"][0] + hx - x0) / cell) + 2)):
+                if grow or within(b, x0 + (xi + 0.5) * cell, z0 + (zi + 0.5) * cell):
+                    yield zi * W + xi
+
+    for b in solid:
+        lo, hi = round(b["at"][1] - b["size"][1] / 2, 3), round(b["at"][1] + b["size"][1] / 2, 3)
+        thin = min(b["size"][0], b["size"][2]) < cell
+        for i in over(b, thin):
+            spans.setdefault(i, []).append((lo, hi, thin))
+    surfaces = {}
+    for i, sp in spans.items():
+        for lo, hi, thin in sp:
+            if thin and hi - lo < 0.5:
+                continue
+            if not any(l2 < hi + head and h2 > hi + 0.3 for l2, h2, _t in sp):
+                if hi not in surfaces.setdefault(i, []):
+                    surfaces[i].append(hi)
+    label = {}
+    islands = []
+    for i0 in sorted(surfaces):
+        for t0 in surfaces[i0]:
+            if (i0, t0) in label:
+                continue
+            members = [(i0, t0)]
+            label[(i0, t0)] = len(islands)
+            k = 0
+            while k < len(members):
+                i, t = members[k]
+                k += 1
+                zi, xi = divmod(i, W)
+                for dz, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nz, nx = zi + dz, xi + dx
+                    if not (0 <= nz < H and 0 <= nx < W):
+                        continue
+                    n = nz * W + nx
+                    for t2 in surfaces.get(n, ()):
+                        if abs(t2 - t) <= step and (n, t2) not in label:
+                            label[(n, t2)] = len(islands)
+                            members.append((n, t2))
+            islands.append(members)
+    order = sorted(range(len(islands)), key=lambda k: -len(islands[k]))
+    rank = {k: r for r, k in enumerate(order)}
+    ranked = [[(divmod(i, W), t) for i, t in islands[k]] for k in order]
+
+    def state_of(x, z, y):
+        zi, xi = int((z - z0) / cell), int((x - x0) / cell)
+        if not (0 <= zi < H and 0 <= xi < W):
+            return None
+        i = zi * W + xi
+        best = min(((abs(t - y), t) for t in surfaces.get(i, ()) if abs(t - y) <= 0.3), default=None)
+        return None if best is None else (rank[label[(i, best[1])]], zi, xi, best[1])
+
+    return [(len(m), m) for m in ranked], state_of, (x0, z0, cell)
+
+
+def restart_on_largest_island(doc, size_of, footprint, props_wanted=8, hunters_wanted=3, spacing=3.0, log=print):
+    """Puts the start and hunter spawns on the largest connected floor island (--start-island).
+
+    A map whose author starts are scattered by order can put the props' first start on a small
+    isolated platform while the hiding places are on the big floor, and every place then reads
+    as cut off. Spawns already on it stay; the rest are dropped and topped up
+    from its clearest open floor, `spacing` m apart. Toys off the island follow to its spots.
+    The island is the largest one that holds at least one author spawn (all of them if none do).
+    Returns the number of spawns moved, or None when the document has no floor."""
+    islands, state_of, (x0, z0, cell) = floor_islands(doc["boxes"])
+    if not islands:
+        return None
+    log("floor islands: %s cells (largest first)" % ", ".join(str(n) for n, _m in islands[:6]))
+    # Roofs and wall tops are islands too, so the biggest must be one an author start stands on.
+    own = {s[0] for side in doc["spawns"].values() for sp in side
+           for s in [state_of(sp["at"][0], sp["at"][2], sp["at"][1] - 0.05)] if s is not None}
+    top = min(own) if own else 0
+    members = islands[top][1]
+    cells = {(zi, xi, t) for (zi, xi), t in members}
+    flat = {}
+    for zi, xi, t in cells:
+        flat.setdefault((zi, xi), []).append(t)
+
+    def on_island(at, base=0.05):
+        s = state_of(at[0], at[2], at[1] - base)
+        return s is not None and s[0] == top
+
+    props = [q for q in doc["props"]]
+
+    def clear_of_props(x, y, z):
+        for q in props:
+            sx, sy, sz = size_of(q["id"])
+            fw, fd = footprint(q["id"], q.get("yaw", 0.0))
+            if q["at"][1] < y + 1.4 and q["at"][1] + sy > y + 0.1 and abs(x - q["at"][0]) < fw / 2 + 0.5 and abs(z - q["at"][2]) < fd / 2 + 0.5:
+                return False
+        return True
+
+    def room(zi, xi, t, r):
+        """How many of the (2r+1)^2 cells round this one are the same island at about this level."""
+        return sum(1 for dz in range(-r, r + 1) for dx in range(-r, r + 1)
+                   if any(abs(t2 - t) <= 0.4 for t2 in flat.get((zi + dz, xi + dx), ())))
+
+    cx = sum(zi for zi, xi, t in cells) / len(cells)
+    cz = sum(xi for zi, xi, t in cells) / len(cells)
+    r = max(1, int(1.5 / cell))
+    full = (2 * r + 1) ** 2
+    cand = sorted(((zi, xi, t) for zi, xi, t in cells if room(zi, xi, t, r) == full),
+                  key=lambda c: ((c[0] - cx) ** 2 + (c[1] - cz) ** 2, c[0], c[1]))
+    kept = {side: [sp for sp in doc["spawns"][side] if on_island(sp["at"])] for side in ("props", "hunters")}
+    taken = [(sp["at"][0], sp["at"][2]) for side in kept.values() for sp in side]
+    moved = sum(len(doc["spawns"][s]) - len(kept[s]) for s in kept)
+    for side, want in (("props", props_wanted), ("hunters", hunters_wanted)):
+        for zi, xi, t in cand:
+            if len(kept[side]) >= want:
+                break
+            x, z = x0 + (xi + 0.5) * cell, z0 + (zi + 0.5) * cell
+            if all((x - a) ** 2 + (z - b) ** 2 >= spacing ** 2 for a, b in taken) and clear_of_props(x, t, z):
+                kept[side].append({"at": [round(x, 3), round(t + 0.05, 3), round(z, 3)], "yaw": 0})
+                taken.append((x, z))
+    doc["spawns"].update(kept)
+    for toy in doc.get("toys", []):
+        if on_island(toy["at"], 0.0):
+            continue
+        for zi, xi, t in cand:
+            x, z = x0 + (xi + 0.5) * cell, z0 + (zi + 0.5) * cell
+            if all((x - a) ** 2 + (z - b) ** 2 >= 4.0 for a, b in taken) and clear_of_props(x, t, z):
+                toy["at"] = [round(x, 3), round(t, 3), round(z, 3)]
+                taken.append((x, z))
+                break
+    return moved
+
+
 def budget_flag(arg, opts):
     """Reads --merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> into opts; True when arg was one."""
     if arg == "--merge-boxes":

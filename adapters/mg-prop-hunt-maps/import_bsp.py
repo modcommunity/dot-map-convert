@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt .bsp (VBSP 19/20) into a mg-prop-hunt map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--bounds=x0,y0,z0,x1,y1,z1]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--start-island] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--bounds=x0,y0,z0,x1,y1,z1]
 
 --field=<name>=<number> sets a document number the map's own band wants (players_per_hunter, round_seconds,
 hide_seconds), found by headless_bots, so a rerun of the importer keeps it.
@@ -25,6 +25,9 @@ ground boxes; without it a map whose yard is terrain has no floor.
 --merge-boxes joins touching same-material boxes with one cross-section; --min-box-volume=<m3> and
 --min-box-thickness=<m> then drop detail boxes below that size (a box a metre long or a walkable surface such as a stair or floor stays), so a
 trim-heavy map fits the 6000-box limit. All three are off by default and are reported before and after.
+
+--start-island moves the start and hunter spawns onto the largest connected floor (walked at 0.25 m, any height, doors
+as widened) and tops them up there: for a map whose author starts include an isolated platform.
 
 --bounds=x0,y0,z0,x1,y1,z1 (source units, z up) keeps only brushes, terrain, props, lights and starts whose middle is inside the
 box (Prop Hunt only): it cuts a map's sky-box room or other geometry placed far outside the playable space.
@@ -1412,6 +1415,7 @@ def main(argv):
     drops = []
     clears = []
     pockets = False
+    start_island = False
     levels = False
     margin = 0.0
     widen = False
@@ -1440,6 +1444,8 @@ def main(argv):
             bounds = [float(t) for t in a[9:].split(",")]
             if len(bounds) != 6:
                 sys.exit("--bounds wants x0,y0,z0,x1,y1,z1")
+        elif a == "--start-island":
+            start_island = True
         elif a == "--prune-pockets":
             pockets = True
         elif a.startswith("--pocket-margin="):
@@ -1750,6 +1756,9 @@ def main(argv):
             print("dropped %d door trim posts" % drop_trim_posts(doc["boxes"]))
         print("widened %d doorways to 1.4 m" % n_doors)
     docboxes.apply_budget(doc["boxes"], box_budget)
+    if start_island:
+        moved = docboxes.restart_on_largest_island(doc, build_maps.size_of, build_maps.footprint)
+        print("start island: %s spawns moved onto the largest connected floor" % moved)
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % prune_pockets(doc, levels=levels, margin=margin, floor_lo=-1.0 if terrain else -0.05))
     # Spots are found beside props, so taking the prop away takes the spot: for a place the
