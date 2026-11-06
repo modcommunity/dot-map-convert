@@ -536,13 +536,15 @@ def drop_trim(boxes, min_volume=0.0, min_thickness=0.0, panel=1.0, walkable=0.25
 
 
 def budget_flag(arg, opts):
-    """Reads --merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> into opts; True when arg was one."""
+    """Reads --merge-boxes, --min-box-volume=<m3>, --min-box-thickness=<m> and --max-boxes=<n> into opts; True when arg was one."""
     if arg == "--merge-boxes":
         opts["merge"] = True
     elif arg.startswith("--min-box-volume="):
         opts["volume"] = float(arg.split("=", 1)[1])
     elif arg.startswith("--min-box-thickness="):
         opts["thickness"] = float(arg.split("=", 1)[1])
+    elif arg.startswith("--max-boxes="):
+        opts["max"] = int(arg.split("=", 1)[1])
     else:
         return False
     return True
@@ -550,12 +552,190 @@ def budget_flag(arg, opts):
 
 def apply_budget(boxes, opts):
     """Runs the opt-in box budget (merge, then trim) and prints the counts; nothing happens with no flag."""
-    if not opts:
+    if not any(k in opts for k in ("merge", "volume", "thickness")):
         return
     before = len(boxes)
     merged = merge_touching(boxes) if opts.get("merge") else 0
     trimmed = drop_trim(boxes, opts.get("volume", 0.0), opts.get("thickness", 0.0))
     print("box budget: %d boxes, merged %d, dropped %d trim, %d left" % (before, merged, trimmed, len(boxes)))
+
+
+def _intervals(boxes, cell):
+    """{(xi, zi): [(lo, hi, box index)]} of the solid boxes over a grid of `cell` metres (a turned box by its bounding square)."""
+    cols = {}
+    for i, b in enumerate(boxes):
+        if not b.get("solid", True):
+            continue
+        hx, hz = b["size"][0] / 2, b["size"][2] / 2
+        if b.get("yaw"):
+            hx = hz = math.hypot(hx, hz)
+        lo, hi = b["at"][1] - b["size"][1] / 2, b["at"][1] + b["size"][1] / 2
+        for xi in range(int((b["at"][0] - hx) // cell), int((b["at"][0] + hx) // cell) + 1):
+            for zi in range(int((b["at"][2] - hz) // cell), int((b["at"][2] + hz) // cell) + 1):
+                if not b.get("yaw") or within(b, (xi + 0.5) * cell, (zi + 0.5) * cell):
+                    cols.setdefault((xi, zi), []).append((lo, hi, i))
+    return cols
+
+
+def _anchors(doc):
+    """The points that need ground under them: every spawn, prop and light, as (x, y, z)."""
+    pts = [tuple(s["at"]) for lst in doc.get("spawns", {}).values() for s in lst]
+    pts += [tuple(q["at"]) for q in doc.get("props", [])]
+    pts += [tuple(q["at"]) for q in doc.get("lights", [])]
+    return pts
+
+
+def cap_protected(doc, grid=2.0):
+    """Indices of the boxes --max-boxes never cuts: a floor or stair, a door's frame, the ground under an anchor.
+
+    A floor or stair is a box with a walkable top (footprint 0.25 m2 or more, no side under 0.3 m) and
+    headroom over it; a door's frame is any box within 0.15 m of a door's leaf; the ground under a
+    spawn, prop or light is the highest top within 0.35 m above its feet."""
+    boxes = doc["boxes"]
+    keep = set()
+    cols = {}
+    for i, b in enumerate(boxes):
+        if not b.get("solid", True):
+            continue
+        for xi in range(int((b["at"][0] - b["size"][0] / 2) // grid) - 1, int((b["at"][0] + b["size"][0] / 2) // grid) + 2):
+            for zi in range(int((b["at"][2] - b["size"][2] / 2) // grid) - 1, int((b["at"][2] + b["size"][2] / 2) // grid) + 2):
+                cols.setdefault((xi, zi), []).append(i)
+
+    def near(x0, x1, z0, z1):
+        seen = set()
+        for xi in range(int(x0 // grid), int(x1 // grid) + 1):
+            for zi in range(int(z0 // grid), int(z1 // grid) + 1):
+                seen.update(cols.get((xi, zi), ()))
+        return seen
+
+    for i, b in enumerate(boxes):
+        if not b.get("solid", True):
+            continue
+        sx, sy, sz = b["size"]
+        if sx * sz < 0.25 or min(sx, sz) < 0.3 or b.get("yaw"):
+            continue
+        top = b["at"][1] + sy / 2
+        x, z = b["at"][0], b["at"][2]
+        covered = False
+        for j in near(x - sx / 2, x + sx / 2, z - sz / 2, z + sz / 2):
+            o = boxes[j]
+            if j == i or o.get("yaw") or o["at"][1] - o["size"][1] / 2 >= top + 1.8 or o["at"][1] + o["size"][1] / 2 <= top + 0.05:
+                continue
+            if o["at"][1] - o["size"][1] / 2 < top + 1.8 and abs(o["at"][0] - x) < (o["size"][0] + sx) / 2 - 0.05 and abs(o["at"][2] - z) < (o["size"][2] + sz) / 2 - 0.05:
+                covered = True
+                break
+        if not covered:
+            keep.add(i)
+    for d in doc.get("doors", []):
+        dx, dy, dz = d["at"]
+        hx, hy, hz = d["size"][0] / 2 + 0.15, d["size"][1] / 2 + 0.15, d["size"][2] / 2 + 0.15
+        for j in near(dx - hx, dx + hx, dz - hz, dz + hz):
+            o = boxes[j]
+            if abs(o["at"][0] - dx) <= hx + o["size"][0] / 2 and abs(o["at"][1] - dy) <= hy + o["size"][1] / 2 and abs(o["at"][2] - dz) <= hz + o["size"][2] / 2:
+                keep.add(j)
+    for x, y, z in _anchors(doc):
+        best, under = None, []
+        for j in near(x, x, z, z):
+            o = boxes[j]
+            top = o["at"][1] + o["size"][1] / 2
+            if top <= y + 0.35 and within(o, x, z):
+                under.append((top, j))
+        if under:
+            best = max(t for t, _ in under)
+            keep.update(j for t, j in under if t >= best - 0.05)
+    return keep
+
+
+def reach_report(doc, boxes=None, cell=0.25, step=0.45, head=1.7):
+    """Which spawns a body could walk to from the first one, over the document's boxes (or `boxes`).
+
+    A multi-storey flood on a `cell` grid: a column's standing places are the tops of its solid boxes with
+    `head` metres clear above, and two neighbouring places join when their tops differ by `step` or less.
+    Props and body radius are left out (prune_pockets owns those): this is for comparing a document
+    before and after boxes are cut. Returns (reached, total, unreached spawn indices in list order)."""
+    boxes = doc["boxes"] if boxes is None else boxes
+    spawns = [s["at"] for lst in doc.get("spawns", {}).values() for s in lst]
+    if not spawns:
+        return 0, 0, []
+    cols = _intervals(boxes, cell)
+    places = {}
+    for k, iv in cols.items():
+        iv.sort()
+        merged = []
+        for lo, hi, _ in iv:
+            if merged and lo <= merged[-1][1] + 0.02:
+                merged[-1][1] = max(merged[-1][1], hi)
+            else:
+                merged.append([lo, hi])
+        tops = [m[1] for n, m in enumerate(merged) if n + 1 == len(merged) or merged[n + 1][0] - m[1] >= head]
+        places[k] = tops
+
+    def find(p):
+        xi, zi = int(p[0] // cell), int(p[2] // cell)
+        best = None
+        for dx in (0, -1, 1):
+            for dz in (0, -1, 1):
+                for t in places.get((xi + dx, zi + dz), ()):
+                    if t <= p[1] + 0.5 and (best is None or t > best[2]):
+                        best = (xi + dx, zi + dz, t)
+        return best
+
+    start = find(spawns[0])
+    if start is None:
+        return 0, len(spawns), list(range(len(spawns)))
+    seen = {(start[0], start[1], round(start[2], 3))}
+    stack = [start]
+    while stack:
+        xi, zi, t = stack.pop()
+        for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            for t2 in places.get((xi + dx, zi + dz), ()):
+                key = (xi + dx, zi + dz, round(t2, 3))
+                if abs(t2 - t) <= step and key not in seen:
+                    seen.add(key)
+                    stack.append((xi + dx, zi + dz, t2))
+    lost = []
+    for n, p in enumerate(spawns):
+        f = find(p)
+        if f is None or (f[0], f[1], round(f[2], 3)) not in seen:
+            lost.append(n)
+    return len(spawns) - len(lost), len(spawns), lost
+
+
+def cap_boxes(doc, limit, log=print):
+    """Cuts the least important boxes until `limit` or fewer are left (--max-boxes); returns how many were cut.
+
+    Smallest volume first, never a box cap_protected names. The spawns' reach is measured before and
+    after (reach_report) and a loss is logged. A document already at or under `limit` is not touched."""
+    boxes = doc["boxes"]
+    if len(boxes) <= limit:
+        return 0
+    before = len(boxes)
+    reach0 = reach_report(doc)
+    keep = cap_protected(doc)
+    order = sorted((i for i in range(len(boxes)) if i not in keep), key=lambda i: (boxes[i]["size"][0] * boxes[i]["size"][1] * boxes[i]["size"][2], i))
+    cut = order[:max(0, before - limit)]
+    gone = set(cut)
+    biggest = max((boxes[i] for i in cut), key=lambda b: b["size"][0] * b["size"][1] * b["size"][2], default=None)
+    doc["boxes"][:] = [b for i, b in enumerate(boxes) if i not in gone]
+    msg = "box cap: %d boxes over --max-boxes=%d, cut %d, %d left (%d protected)" % (before, limit, len(cut), len(doc["boxes"]), len(keep))
+    if biggest is not None:
+        s = biggest["size"]
+        msg += "; largest cut %.2f m3 at (%.1f, %.1f, %.1f) size %.2f x %.2f x %.2f" % (s[0] * s[1] * s[2], *biggest["at"], *s)
+    log(msg)
+    if len(doc["boxes"]) > limit:
+        log("box cap: STILL OVER by %d: the rest are floors, stairs, door frames or the ground under a spawn, prop or light" % (len(doc["boxes"]) - limit))
+    reach1 = reach_report(doc)
+    log("box cap: spawns reachable from the first: %d of %d before, %d of %d after" % (reach0[0], reach0[1], reach1[0], reach1[1]))
+    newly = sorted(set(reach1[2]) - set(reach0[2]))
+    if newly:
+        log("box cap: REACH LOST for spawn(s) %s: the cap cut a way to them" % newly)
+    return len(cut)
+
+
+def apply_cap(doc, opts, log=print):
+    """Runs the opt-in --max-boxes cap, last of the passes that add or remove boxes; nothing happens without the flag."""
+    if "max" in opts:
+        cap_boxes(doc, opts["max"], log)
 
 
 def lend_starts(spawns, src, dst, want=3):
