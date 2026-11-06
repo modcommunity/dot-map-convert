@@ -683,6 +683,33 @@ def restart_on_largest_island(doc, size_of, footprint, props_wanted=8, hunters_w
     return moved
 
 
+def drop_other_terrain(doc, material="grass", min_cells=2000, log=print):
+    """Drops ground slabs of a big floor island no spawn stands on (--start-island).
+
+    A terrace below a cliff is a pit: the bots drop into it, nothing climbs out, and the nav query
+    for any goal beyond fails. Only `material` slabs go, and only when their island is larger than
+    `min_cells`, so a roof or a small platform stays. Props left standing on nothing are dropped
+    by the audit that follows. Returns the number of slabs dropped."""
+    islands, state_of, _grid = floor_islands(doc["boxes"])
+    own = {s[0] for side in doc["spawns"].values() for sp in side
+           for s in [state_of(sp["at"][0], sp["at"][2], sp["at"][1] - 0.05)] if s is not None}
+    if not own:
+        return 0
+    big = {n for n, (cells, _m) in enumerate(islands) if cells >= min_cells and n not in own}
+    keep = []
+    for b in doc["boxes"]:
+        if b.get("mat") == material and b.get("solid", True):
+            s = state_of(b["at"][0], b["at"][2], b["at"][1] + b["size"][1] / 2)
+            if s is not None and s[0] in big:
+                continue
+        keep.append(b)
+    gone = len(doc["boxes"]) - len(keep)
+    doc["boxes"][:] = keep
+    if gone and log:
+        log("dropped %d ground slabs of islands no spawn stands on" % gone)
+    return gone
+
+
 def budget_flag(arg, opts):
     """Reads --merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> into opts; True when arg was one."""
     if arg == "--merge-boxes":

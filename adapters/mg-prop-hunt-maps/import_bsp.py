@@ -1326,6 +1326,57 @@ def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0, inside=None):
             j2 += 1
             done.add((i, e, ht, j2))
         out.append(((x0 + i * cell, x0 + (e + 1) * cell), (ht - depth, ht), (y0 + j * cell, y0 + (j2 + 1) * cell), "grass"))
+    for (xs, ys, zs) in terrace_stairs(h, x0, y0, cell, depth, 0.35 / S, 0.8 / S, 3.0 / S):
+        out.append((xs, ys, zs, "grass"))
+    return out
+
+
+def terrace_stairs(h, x0, y0, cell, depth, riser, tread, tallest):
+    """Stair strips that join the terraces of a stepped field, one flight per join, and no more.
+
+    Neighbouring slabs differ by more than the bots' climb (1.2 m at the coarse cell), so the
+    field was terraces a bot dropped between and could never leave: its goals were then
+    unreachable and the nav query failed. The cells are grouped by climbable neighbours; the
+    smallest drops that would join two groups (a spanning tree, about a flight per group, not per
+    edge) get a flight of strips in the lower slab, two metres wide, the highest against the edge.
+    Drops over `tallest` are left as cliffs. Yields (xs, ys, zs) in source units."""
+    parent = {k: k for k in h}
+
+    def find(k):
+        while parent[k] != k:
+            parent[k] = parent[parent[k]]
+            k = parent[k]
+        return k
+
+    edges = []
+    for (i, j), v in h.items():
+        for k in ((i + 1, j), (i, j + 1)):
+            if k in h:
+                d = abs(h[k] - v)
+                if d <= riser + 1e-6:
+                    parent[find(k)] = find((i, j))
+                elif d <= tallest:
+                    edges.append((d, (i, j), k))
+    out = []
+    for d, a, b in sorted(edges):
+        if find(a) == find(b):
+            continue
+        parent[find(a)] = find(b)
+        lo, hi = (a, b) if h[a] < h[b] else (b, a)
+        n = int(math.ceil(d / riser)) - 1
+        for m in range(1, n + 1):
+            top = h[lo] + m * d / (n + 1)
+            back = (n + 1 - m) * tread
+            if lo[0] != hi[0]:
+                edge = x0 + (max(lo[0], hi[0])) * cell
+                mid = y0 + (lo[1] + 0.5) * cell
+                xs = (edge - back, edge) if hi[0] > lo[0] else (edge, edge + back)
+                out.append((xs, (top - depth, top), (mid - 52.0, mid + 52.0)))
+            else:
+                edge = y0 + (max(lo[1], hi[1])) * cell
+                mid = x0 + (lo[0] + 0.5) * cell
+                zs = (edge - back, edge) if hi[1] > lo[1] else (edge, edge + back)
+                out.append(((mid - 52.0, mid + 52.0), (top - depth, top), zs))
     return out
 
 
@@ -1776,6 +1827,7 @@ def main(argv):
     if start_island:
         moved = docboxes.restart_on_largest_island(doc, build_maps.size_of, build_maps.footprint)
         print("start island: %s spawns moved onto the largest connected floor" % moved)
+        docboxes.drop_other_terrain(doc)
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % prune_pockets(doc, levels=levels, margin=margin, floor_lo=-1.0 if terrain else -0.05))
     # Spots are found beside props, so taking the prop away takes the spot: for a place the
