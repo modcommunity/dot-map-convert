@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt or hide-and-seek .bsp (VBSP 19/20) into a hide-n-seek map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--no-doors] [--terrain] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--slide-doors] [--scale=k] [--drop-door=x,z] [--cover=N] [--cover-gap=m] [--lobby=r,gap] [--cover-seed=N] [--seekers-at=x,z] [--anchor=N] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--no-doors] [--terrain] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--slide-doors] [--scale=k] [--drop-door=x,z] [--cover=N] [--cover-gap=m] [--lobby=r,gap] [--cover-seed=N] [--seekers-at=x,z] [--anchor=N] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N]
 
 --merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> shrink a trim-heavy map under the 6000-box limit: touching
 same-material boxes join, then detail boxes below that size go (a panel a metre long stays). Off by default; counts are printed.
+--max-boxes=N is a hard budget, run last: the smallest boxes go until N are left, keeping floors, stairs, door frames and the ground under a spawn, prop or light; the count cut, the largest cut and the spawns' reach before and after are printed. Off by default.
 
 --field=<name>=<number> sets a document number the map's own band wants (round_seconds, hide_seconds), found by headless_bots, so a rerun of the importer keeps it.
 
@@ -766,6 +767,7 @@ def main(argv):
         raise SystemExit("the document no longer shares the map's lists: settle the spawns from the document")
     if terrain:
         swap_terrain(doc, tris, "grass", TERRAIN_TINT, budget)
+    docboxes.apply_cap(doc, box_budget)
     # The frame a world pack regenerated at this scale is drawn in (tools/worlds.tsv, regen_worlds.sh): the shift above, undone.
     doc["world"] = {"pack": "hs_world_" + mid, "metres_per_unit": round(S, 6), "offset": [round(-ox, 5), round(-oy, 5), round(-oz, 5)]}
     out_path = out_path or os.path.join(build_maps.ROOT, "maps", mid + ".json")

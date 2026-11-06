@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt .bsp (VBSP 19/20) into a mg-prop-hunt map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--start-island] [--dress=N] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--bounds=x0,y0,z0,x1,y1,z1]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--start-island] [--dress=N] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--bounds=x0,y0,z0,x1,y1,z1]
 
 --field=<name>=<number> sets a document number the map's own band wants (players_per_hunter, round_seconds,
 hide_seconds), found by headless_bots, so a rerun of the importer keeps it.
@@ -25,6 +25,7 @@ ground boxes; without it a map whose yard is terrain has no floor.
 --merge-boxes joins touching same-material boxes with one cross-section; --min-box-volume=<m3> and
 --min-box-thickness=<m> then drop detail boxes below that size (a box a metre long or a walkable surface such as a stair or floor stays), so a
 trim-heavy map fits the 6000-box limit. All three are off by default and are reported before and after.
+--max-boxes=N is a hard budget, run last: the smallest boxes go until N are left, keeping floors, stairs, door frames and the ground under a spawn, prop or light; the count cut, the largest cut and the spawns' reach before and after are printed. Off by default.
 
 --start-island moves the start and hunter spawns onto the largest connected floor (walked at 0.25 m, any height, doors
 as widened) and tops them up there: for a map whose author starts include an isolated platform.
@@ -1846,6 +1847,7 @@ def main(argv):
     # A sliver brush can come out with a zero or negative side; the game refuses the whole document for one.
     doc["boxes"] = [b for b in doc["boxes"] if min(b["size"]) > 0.005]
     print("audit: dropped %d props sunk in a wall or standing on nothing" % audit_props(doc))
+    docboxes.apply_cap(doc, box_budget)
     out_path = out_path or os.path.join(build_maps.ROOT, "maps", mid + ".json")
     with open(out_path, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")
