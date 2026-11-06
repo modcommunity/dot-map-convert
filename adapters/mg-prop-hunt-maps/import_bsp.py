@@ -1659,14 +1659,15 @@ def main(argv):
     # The author gave six starts; a prop hunt wants six hiding starts and three hunter ones.
     # More are taken from the clearest open floor, at least 3 m from any other start.
     have = [(sp["at"][0], sp["at"][2]) for side in m.spawns.values() for sp in side]
-    for size, x, z in m.spots(step=1.5, top=60):
+    # With one author start the level it stands on (a raised terrace) is the level to look on, not zero.
+    floor_y = round(m.spawns["props"][0]["at"][1] - 0.05, 3) if m.spawns["props"] and not m.spawns["hunters"] else 0.0
+    for size, x, z in m.spots(y=floor_y, step=1.5, top=60):
         if len(m.spawns["props"]) >= 8:
             break
         if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
-            m.spawn("props", x, z, yaw=0.0)
+            m.spawn("props", x, z, yaw=0.0, y=floor_y + 0.05)
             have.append((x, z))
     # One author start deals nothing to the hunters: top them up to the game's three the same way.
-    floor_y = round(m.spawns["props"][0]["at"][1] - 0.05, 3) if m.spawns["props"] and not m.spawns["hunters"] else 0.0
     for size, x, z in m.spots(y=floor_y, step=1.5, top=60):
         if len(m.spawns["hunters"]) >= 3:
             break
