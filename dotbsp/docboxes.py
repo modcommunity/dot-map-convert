@@ -536,7 +536,7 @@ def drop_trim(boxes, min_volume=0.0, min_thickness=0.0, panel=1.0, walkable=0.25
 
 
 def budget_flag(arg, opts):
-    """Reads --merge-boxes, --min-box-volume=<m3>, --min-box-thickness=<m> and --max-boxes=<n> into opts; True when arg was one."""
+    """Reads --merge-boxes, --min-box-volume=<m3>, --min-box-thickness=<m>, --max-boxes=<n>, --drop-sky-slab and --keep-reach into opts; True when arg was one."""
     if arg == "--merge-boxes":
         opts["merge"] = True
     elif arg.startswith("--min-box-volume="):
@@ -545,19 +545,108 @@ def budget_flag(arg, opts):
         opts["thickness"] = float(arg.split("=", 1)[1])
     elif arg.startswith("--max-boxes="):
         opts["max"] = int(arg.split("=", 1)[1])
+    elif arg == "--drop-sky-slab":
+        opts["sky"] = True
+    elif arg == "--keep-reach":
+        opts["keep_reach"] = True
     else:
         return False
     return True
 
 
-def apply_budget(boxes, opts):
-    """Runs the opt-in box budget (merge, then trim) and prints the counts; nothing happens with no flag."""
-    if not any(k in opts for k in ("merge", "volume", "thickness")):
+def apply_budget(boxes, opts, doc=None):
+    """Runs the opt-in box budget (sky slab, merge, trim) and prints the counts; nothing happens with no flag.
+
+    --drop-sky-slab needs `doc` (it looks at the spawns, props and lights). --keep-reach (needs `doc` too)
+    measures where the spawns can walk before and after, and puts back the trimmed boxes a lost route needs."""
+    if not any(k in opts for k in ("merge", "volume", "thickness", "sky")):
         return
     before = len(boxes)
+    sky = drop_sky_slab(doc, boxes) if opts.get("sky") and doc is not None else 0
+    snapshot = list(boxes) if opts.get("keep_reach") and doc is not None else None
     merged = merge_touching(boxes) if opts.get("merge") else 0
     trimmed = drop_trim(boxes, opts.get("volume", 0.0), opts.get("thickness", 0.0))
-    print("box budget: %d boxes, merged %d, dropped %d trim, %d left" % (before, merged, trimmed, len(boxes)))
+    print("box budget: %d boxes, sky slab %d, merged %d, dropped %d trim, %d left" % (before, sky, merged, trimmed, len(boxes)))
+    if snapshot is not None and (merged or trimmed):
+        keep_reach(doc, boxes, snapshot)
+
+
+def drop_sky_slab(doc, boxes=None, thick=1.0, share=0.25, clear=1.8):
+    """Drops the author's sky ceiling: an unseen (visible false) solid slab, thin, covering `share` of the map's
+    footprint, whose underside is `clear` metres over every spawn, prop and light. It is one big box the physics
+    and the bots' mesh carry, over a map whose walls already close it. Unseen side walls stay.
+    Returns how many went."""
+    boxes = doc["boxes"] if boxes is None else boxes
+    solid = [b for b in boxes if b.get("solid", True)]
+    if not solid:
+        return 0
+    x0 = min(b["at"][0] - b["size"][0] / 2 for b in solid)
+    x1 = max(b["at"][0] + b["size"][0] / 2 for b in solid)
+    z0 = min(b["at"][2] - b["size"][2] / 2 for b in solid)
+    z1 = max(b["at"][2] + b["size"][2] / 2 for b in solid)
+    area = max((x1 - x0) * (z1 - z0), 1e-6)
+    top = max([a[1] for a in _anchors(doc)] or [-1e9])
+
+    def sky(b):
+        return (b.get("visible", True) is False and b.get("solid", True) and not b.get("yaw")
+                and b["size"][1] <= thick and b["size"][0] * b["size"][2] >= share * area
+                and b["at"][1] - b["size"][1] / 2 >= top + clear)
+    n = len(boxes)
+    boxes[:] = [b for b in boxes if not sky(b)]
+    return n - len(boxes)
+
+
+def keep_reach(doc, boxes, original, log=print):
+    """After a trim, restores the boxes the trim cut that a walkable route needs (largest first, the fewest).
+
+    A place the first seeker start could walk to before (a coarse metre cell and floor height) that is no longer
+    reached is a lost route: a spiral stair's thin steps that the trim took, leaving the top floor joined to
+    nothing. `boxes` is the trimmed list (edited in place), `original` what it was; only boxes that are not in
+    `boxes` by identity are candidates (a merge makes new ones). Returns how many came back."""
+    start = _first_start(doc)
+    if start is None:
+        return 0
+    have = {id(b) for b in boxes}
+    cut = [b for b in original if id(b) not in have]
+    if not cut:
+        return 0
+    want = _reach_keys(original, start)
+
+    def lacks(extra):
+        return want - _reach_keys(boxes + extra, start)
+
+    if not lacks([]):
+        return 0
+    cut.sort(key=lambda b: -(b["size"][0] * b["size"][1] * b["size"][2]))
+    if lacks(cut):
+        log("keep reach: %d places lost to the merge could not be restored (merge changes shapes)" % len(lacks(cut)))
+        return 0
+    lo, hi = 1, len(cut)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if lacks(cut[:mid]):
+            lo = mid + 1
+        else:
+            hi = mid
+    boxes.extend(cut[:lo])
+    log("keep reach: restored %d trimmed boxes that join %d places" % (lo, len(want)))
+    return lo
+
+
+def _first_start(doc):
+    """The seekers' first start (the walk's origin), else the first start of any team."""
+    sp = doc.get("spawns", {})
+    for key in ("seekers", *sp):
+        if sp.get(key):
+            return tuple(sp[key][0]["at"])
+    return None
+
+
+def _reach_keys(boxes, start):
+    """{(x metre, z metre, floor metre)} of the places a body walking from `start` reaches: a coarse key, so a
+    box swapped for a near neighbour does not read as a lost place."""
+    _, seen, _ = _flood(boxes, start, 0.25, 0.45, 1.7)
+    return {(int(xi * 0.25 // 1), int(zi * 0.25 // 1), int(t // 1)) for xi, zi, t in seen}
 
 
 def _intervals(boxes, cell):
@@ -687,17 +776,9 @@ def cap_protected(doc, grid=2.0):
     return keep
 
 
-def reach_report(doc, boxes=None, cell=0.25, step=0.45, head=1.7):
-    """Which spawns a body could walk to from the first one, over the document's boxes (or `boxes`).
-
-    A multi-storey flood on a `cell` grid: a column's standing places are the tops of its solid boxes with
-    `head` metres clear above, and two neighbouring places join when their tops differ by `step` or less.
-    Props and body radius are left out (prune_pockets owns those): this is for comparing a document
-    before and after boxes are cut. Returns (reached, total, unreached spawn indices in list order)."""
-    boxes = doc["boxes"] if boxes is None else boxes
-    spawns = [s["at"] for lst in doc.get("spawns", {}).values() for s in lst]
-    if not spawns:
-        return 0, 0, []
+def _flood(boxes, start_pt, cell, step, head):
+    """(places, seen, find): the standing places per grid column, the set of (xi, zi, top) reached from
+    `start_pt`, and find(point) -> the (xi, zi, top) a point stands on or None."""
     cols = _intervals(boxes, cell)
     places = {}
     for k, iv in cols.items():
@@ -708,8 +789,7 @@ def reach_report(doc, boxes=None, cell=0.25, step=0.45, head=1.7):
                 merged[-1][1] = max(merged[-1][1], hi)
             else:
                 merged.append([lo, hi])
-        tops = [m[1] for n, m in enumerate(merged) if n + 1 == len(merged) or merged[n + 1][0] - m[1] >= head]
-        places[k] = tops
+        places[k] = [m[1] for n, m in enumerate(merged) if n + 1 == len(merged) or merged[n + 1][0] - m[1] >= head]
 
     def find(p):
         xi, zi = int(p[0] // cell), int(p[2] // cell)
@@ -721,19 +801,36 @@ def reach_report(doc, boxes=None, cell=0.25, step=0.45, head=1.7):
                         best = (xi + dx, zi + dz, t)
         return best
 
-    start = find(spawns[0])
-    if start is None:
+    start = find(start_pt)
+    seen = set()
+    if start is not None:
+        seen.add((start[0], start[1], round(start[2], 3)))
+        stack = [start]
+        while stack:
+            xi, zi, t = stack.pop()
+            for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                for t2 in places.get((xi + dx, zi + dz), ()):
+                    key = (xi + dx, zi + dz, round(t2, 3))
+                    if abs(t2 - t) <= step and key not in seen:
+                        seen.add(key)
+                        stack.append((xi + dx, zi + dz, t2))
+    return places, seen, find
+
+
+def reach_report(doc, boxes=None, cell=0.25, step=0.45, head=1.7):
+    """Which spawns a body could walk to from the first one, over the document's boxes (or `boxes`).
+
+    A multi-storey flood on a `cell` grid: a column's standing places are the tops of its solid boxes with
+    `head` metres clear above, and two neighbouring places join when their tops differ by `step` or less.
+    Props and body radius are left out (prune_pockets owns those): this is for comparing a document
+    before and after boxes are cut. Returns (reached, total, unreached spawn indices in list order)."""
+    boxes = doc["boxes"] if boxes is None else boxes
+    spawns = [s["at"] for lst in doc.get("spawns", {}).values() for s in lst]
+    if not spawns:
+        return 0, 0, []
+    places, seen, find = _flood(boxes, spawns[0], cell, step, head)
+    if find(spawns[0]) is None:
         return 0, len(spawns), list(range(len(spawns)))
-    seen = {(start[0], start[1], round(start[2], 3))}
-    stack = [start]
-    while stack:
-        xi, zi, t = stack.pop()
-        for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            for t2 in places.get((xi + dx, zi + dz), ()):
-                key = (xi + dx, zi + dz, round(t2, 3))
-                if abs(t2 - t) <= step and key not in seen:
-                    seen.add(key)
-                    stack.append((xi + dx, zi + dz, t2))
     lost = []
     for n, p in enumerate(spawns):
         f = find(p)
@@ -791,6 +888,72 @@ def cap_boxes(doc, limit, log=print):
     reach1 = reach_report(doc)
     log("box cap: spawns reachable from the first: %d of %d before, %d of %d after" % (reach0[0], reach0[1], reach1[0], reach1[1]))
     return len(gone)
+
+
+def place_hiders(doc, per_level=4, spacing=3.0, seeker_gap=4.0, min_area=4.0, log=print):
+    """Puts the hiders on floor the seekers can walk to, a few on every storey.
+
+    The flood runs from the first seeker start over the document's boxes (reach_report's rules). A hider start the
+    seekers cannot reach is dropped; a storey is a floor height (to 0.1 m) with `min_area` m2 or more of reachable floor, and
+    each is topped up to `per_level` hiders on open floor (a half metre of reachable floor all round) `spacing` m
+    from the other hiders and `seeker_gap` m from the seekers. Returns {floor height: hiders on it}, empty with no
+    seeker start or nothing reachable (the document is then not touched)."""
+    start = _first_start(doc)
+    if start is None or not doc.get("spawns", {}).get("seekers"):
+        return {}
+    cell = 0.25
+    _, seen, find = _flood(doc["boxes"], start, cell, 0.45, 1.7)
+    if not seen:
+        return {}
+    bins = {}
+    for xi, zi, t in seen:
+        bins.setdefault(round(t / 0.1), []).append((xi, zi, t))
+    levels = []
+    for k in sorted(bins):
+        if len(bins[k]) * cell * cell < min_area:
+            continue        # a stair's treads or a ledge: too little floor at one height to be a storey
+        if levels and k - levels[-1][0] <= 3:
+            levels[-1][1].extend(bins[k])
+            levels[-1][0] = k
+        else:
+            levels.append([k, list(bins[k])])
+    levels = [cells for _, cells in levels]
+    hiders = doc["spawns"].setdefault("hiders", [])
+    kept = []
+    for h in hiders:
+        f = find(h["at"])
+        if f is not None and (f[0], f[1], round(f[2], 3)) in seen:
+            kept.append(h)
+    if len(kept) != len(hiders):
+        log("hiders: %d of %d starts were not walkable from the seekers, dropped" % (len(hiders) - len(kept), len(hiders)))
+    hiders[:] = kept
+    seekers = [s["at"] for s in doc["spawns"]["seekers"]]
+    out = {}
+    for cells in levels:
+        ts = sorted(t for _, _, t in cells)
+        floor = ts[len(ts) // 2]
+        have = [h for h in hiders if abs(h["at"][1] - 0.05 - floor) < 0.8]
+        out[round(floor, 2)] = len(have)
+        flat = {(xi, zi) for xi, zi, t in cells if abs(t - floor) <= 0.3}
+        want = per_level - len(have)
+        if want <= 0:
+            continue
+        pts = [h["at"] for h in hiders]
+        for xi, zi in sorted(flat, key=lambda c: (c[0] * 7919 + c[1] * 104729) % 1009):
+            if want <= 0:
+                break
+            if not all((xi + dx, zi + dz) in flat for dx in (-2, 0, 2) for dz in (-2, 0, 2)):
+                continue
+            x, z = (xi + 0.5) * cell, (zi + 0.5) * cell
+            if any((x - q[0]) ** 2 + (z - q[2]) ** 2 < seeker_gap ** 2 for q in seekers) \
+                    or any((x - q[0]) ** 2 + (z - q[2]) ** 2 < spacing ** 2 and abs(q[1] - floor - 0.05) < 1.0 for q in pts):
+                continue
+            hiders.append({"at": [round(x, 3), round(floor + 0.05, 3), round(z, 3)], "yaw": 0.0})
+            pts.append(hiders[-1]["at"])
+            out[round(floor, 2)] += 1
+            want -= 1
+    log("hiders: %d storeys, starts per storey %s" % (len(levels), sorted(out.items())))
+    return out
 
 
 def apply_cap(doc, opts, log=print):
