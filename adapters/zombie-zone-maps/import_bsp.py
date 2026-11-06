@@ -944,6 +944,47 @@ def reseat_spawns(doc):
     return doc
 
 
+def drop_dead_links(doc, extra=None, fixed=()):
+    """Drops the nav links the game's builder cannot place, in `doc` (and the nav [param extra] dict): an end finds no point, both ends find one point, a repeat of an earlier link, or an edge through an obstacle between ground the other edges already join.
+
+    Mirrors DotNpcNavBuilder._step_links with `links_check_obstacles`: the builder drops these anyway, so the graph is unchanged and the
+    build stops counting them as misses. The spec's `extra_links` ([param fixed]) stay. Returns the number dropped."""
+    import nav_emulate
+    nav = doc["nav"]
+    xb = extra["boxes"] if extra else []
+    sizes = json.load(open(os.path.join(HERE, "prop_sizes.json")))["props"]
+    G = nav_emulate.Graph(list(doc["boxes"]) + list(xb), doc.get("props", []), sizes, nav["floors"] + (extra["floors"] if extra else []), spacing=float(nav.get("spacing", 1.0)), clearance=float(nav.get("clearance", 0.35)), terrain_pts=TERRAIN_PTS, under_feet=nav.get("under_feet"), solid_props=doc.get("solid_props", []))
+    reach = float(nav.get("spacing", 1.0)) * 2.0
+    fixed_ = {tuple(l) for l in fixed}
+    lists = [nav["links"]] + ([extra["links"]] if extra else [])
+    drop = set()
+    seen = set()
+    deferred = []
+    for ls in lists:
+        for l in ls:
+            i, j = G.nearest(l[0], l[1], l[2], reach), G.nearest(l[3], l[4], l[5], reach)
+            if tuple(l) in fixed_:
+                if i >= 0 and j >= 0 and i != j:
+                    G.union(i, j)
+                continue
+            if i < 0 or j < 0 or i == j or (min(i, j), max(i, j)) in seen:
+                drop.add(id(l))
+            elif G.crosses(G.pts[i], G.pts[j]):
+                deferred.append((l, i, j))
+            else:
+                seen.add((min(i, j), max(i, j)))
+                G.union(i, j)
+    for l, i, j in deferred:
+        if G.find(i) == G.find(j):
+            drop.add(id(l))
+        else:
+            G.union(i, j)
+    if drop:
+        for ls in lists:
+            ls[:] = [l for l in ls if id(l) not in drop]
+    return len(drop)
+
+
 def cut_blocked_links(doc, fixed):
     """`doc` with the nav links the game's physics world blocks cut out (see [LinkSolids]); run on the finished document, so the boxes are the ones the game builds."""
     n, _m, stuck = cut_blocked(doc, None, fixed)
@@ -2759,6 +2800,10 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
                 doc["world_collision"]["band"] = list(spec["clip_y"])
             print("  world_collision: %d models from the world pack's hulls" % len(doc["world_collision"]["models"]))
     doc = cut_blocked_links(doc, spec.get("extra_links", []))
+    if not spec.get("keep_dead_links"):
+        dead = drop_dead_links(doc, None, spec.get("extra_links", []))
+        if dead:
+            print("  dead links: %d dropped (no point at an end, one point, a repeat, or an obstacle the ground joins round)" % dead)
     doc = reseat_spawns(doc)
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, spec["id"] + ".json")
