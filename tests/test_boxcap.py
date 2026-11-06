@@ -141,8 +141,64 @@ class Reach(unittest.TestCase):
         d = doc_of([a, link, b], spawns={"players": [{"at": [1, 1, 2.1], "yaw": 0}, {"at": [9, 1, 2.1], "yaw": 0}]})
         self.assertEqual(D.reach_report(d)[:2], (2, 2))
         _, out = quiet(D.cap_boxes, d, 2)
-        self.assertEqual(len(d["boxes"]), 2)
-        self.assertTrue(any("REACH LOST for spawn(s) [1]" in m for m in out), out)
+        self.assertEqual(len(d["boxes"]), 3)
+        self.assertEqual(D.reach_report(d)[:2], (2, 2))
+        self.assertTrue(any("restored 1 of 1" in m for m in out), out)
+        self.assertTrue(any("STILL OVER by 1" in m for m in out), out)
+
+    def test_restores_the_fewest_largest_first(self):
+        a = box(0, 5, -0.2, 0, 0, 5)
+        links = [box(5, 6, -0.2, 0, 2 + 0.01 * i, 2.2) for i in range(2)]
+        b = box(6, 10, -0.2, 0, 0, 5)
+        junk = trim(3)
+        d = doc_of([a, b] + links + junk, spawns={"players": [{"at": [1, 1, 2.1], "yaw": 0}, {"at": [9, 1, 2.1], "yaw": 0}]})
+        quiet(D.cap_boxes, d, 2)
+        self.assertEqual(D.reach_report(d)[:2], (2, 2))
+        self.assertEqual(len(d["boxes"]), 3)
+        self.assertIn(links[0], d["boxes"])
+
+
+class Gaps(unittest.TestCase):
+    def test_slab_with_a_crate_is_still_a_floor(self):
+        slab = box(0, 10, -0.2, 0, 0, 10)
+        crate = box(4, 5, 0, 1, 4, 5)
+        d = doc_of([slab, crate], spawns={"players": []})
+        self.assertIn(0, D.cap_protected(d))
+
+    def test_slab_replaced_by_a_bigger_one_is_not(self):
+        d = doc_of([box(0, 4, 0, 0.3, 0, 4), box(0, 4, 0.2, 1.0, 0, 4)], spawns={"players": []})
+        self.assertNotIn(0, D.cap_protected(d))
+
+    def test_turned_floor_kept(self):
+        f = box(0, 4, -0.2, 0, 0, 4, yaw=30.0)
+        d = doc_of([f] + trim(3), spawns={"players": []})
+        quiet(D.cap_boxes, d, 0)
+        self.assertEqual(d["boxes"], [f])
+
+    def test_shallow_treads_kept_in_a_chain_but_not_alone(self):
+        treads = [box(0, 1.0, 0, 0.15 * (i + 1), 0.2 * i, 0.2 * (i + 1), "concrete") for i in range(5)]
+        d = doc_of(treads + [box(30, 31, 0, 0.2, 30, 30.2)], spawns={"players": []})
+        self.assertEqual(D.cap_protected(d), {0, 1, 2, 3, 4})
+
+    def test_turned_stair_run_kept(self):
+        treads = [box(0, 1.0, 0, 0.15 * (i + 1), 0.2 * i, 0.2 * (i + 1), "concrete", yaw=45.0) for i in range(5)]
+        d = doc_of(treads, spawns={"players": []})
+        self.assertEqual(D.cap_protected(d), {0, 1, 2, 3, 4})
+
+    def test_door_in_a_z_wall_keeps_its_jambs(self):
+        jamb = box(0, 0.2, 0, 2.2, 3.25, 3.45)
+        far = box(0, 0.2, 0, 2.2, 0.0, 0.2)
+        d = doc_of([jamb, far], doors=[{"at": [0.1, 1.0, 2.5], "size": [1.4, 2.0, 0.06], "yaw": 90.0}], spawns={"players": []})
+        quiet(D.cap_boxes, d, 0)
+        self.assertEqual(d["boxes"], [jamb])
+
+    def test_kerb_keeps_the_ground_one_step_down(self):
+        slab = box(-5, 5, -0.2, 0, -5, 5)
+        kerb = box(-0.3, 0.3, 0, 0.2, -0.3, 0.3)
+        tile = box(0.5, 1.0, -0.2, 0.0, -0.2, 0.2)
+        d = doc_of([kerb, tile, slab] + trim(3), spawns={"players": [{"at": [0.0, 0.2, 0.0], "yaw": 0}]})
+        keep = D.cap_protected(d)
+        self.assertTrue({0, 1, 2} <= keep, keep)
 
 
 class Adapters(unittest.TestCase):

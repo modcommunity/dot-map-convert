@@ -608,41 +608,82 @@ def cap_protected(doc, grid=2.0):
                 seen.update(cols.get((xi, zi), ()))
         return seen
 
+    def reach_of(b):
+        hx, hz = b["size"][0] / 2, b["size"][2] / 2
+        return (math.hypot(hx, hz),) * 2 if b.get("yaw") else (hx, hz)
+
+    def walkable(i):
+        """True when nothing that replaces box i's top lies within head height above it."""
+        b = boxes[i]
+        hx, hz = reach_of(b)
+        top = b["at"][1] + b["size"][1] / 2
+        x, z = b["at"][0], b["at"][2]
+        area = 4 * hx * hz
+        over = 0.0
+        for j in near(x - hx, x + hx, z - hz, z + hz):
+            o = boxes[j]
+            if j == i or o.get("yaw") or o["at"][1] - o["size"][1] / 2 >= top + 1.8 or o["at"][1] + o["size"][1] / 2 <= top + 0.05:
+                continue
+            w = min(x + hx, o["at"][0] + o["size"][0] / 2) - max(x - hx, o["at"][0] - o["size"][0] / 2)
+            d = min(z + hz, o["at"][2] + o["size"][2] / 2) - max(z - hz, o["at"][2] - o["size"][2] / 2)
+            if w > 0.05 and d > 0.05:
+                over += w * d
+        return over < 0.5 * area
+
+    steps = []      # shallow or turned treads, kept only when they chain to a neighbouring height
     for i, b in enumerate(boxes):
         if not b.get("solid", True):
             continue
         sx, sy, sz = b["size"]
-        if sx * sz < 0.25 or min(sx, sz) < 0.3 or b.get("yaw"):
+        if sx * sz < 0.25 or min(sx, sz) < 0.3:
+            if sx * sz >= 0.05 and min(sx, sz) >= 0.15 and walkable(i):
+                steps.append(i)
             continue
-        top = b["at"][1] + sy / 2
-        x, z = b["at"][0], b["at"][2]
-        covered = False
-        for j in near(x - sx / 2, x + sx / 2, z - sz / 2, z + sz / 2):
-            o = boxes[j]
-            if j == i or o.get("yaw") or o["at"][1] - o["size"][1] / 2 >= top + 1.8 or o["at"][1] + o["size"][1] / 2 <= top + 0.05:
-                continue
-            if o["at"][1] - o["size"][1] / 2 < top + 1.8 and abs(o["at"][0] - x) < (o["size"][0] + sx) / 2 - 0.05 and abs(o["at"][2] - z) < (o["size"][2] + sz) / 2 - 0.05:
-                covered = True
-                break
-        if not covered:
+        if walkable(i):
             keep.add(i)
+    for i in steps:
+        b = boxes[i]
+        hx, hz = reach_of(b)
+        r = math.hypot(hx, hz)
+        top = b["at"][1] + b["size"][1] / 2
+        for j in near(b["at"][0] - r - 0.1, b["at"][0] + r + 0.1, b["at"][2] - r - 0.1, b["at"][2] + r + 0.1):
+            o = boxes[j]
+            if j == i or not o.get("solid", True) or min(o["size"][0], o["size"][2]) < 0.15:
+                continue
+            ot = o["at"][1] + o["size"][1] / 2
+            ro = math.hypot(o["size"][0] / 2, o["size"][2] / 2)
+            if 0.03 <= abs(ot - top) <= 0.5 and math.hypot(o["at"][0] - b["at"][0], o["at"][2] - b["at"][2]) <= r + ro + 0.1:
+                keep.add(i)
+                break
     for d in doc.get("doors", []):
         dx, dy, dz = d["at"]
         hx, hy, hz = d["size"][0] / 2 + 0.15, d["size"][1] / 2 + 0.15, d["size"][2] / 2 + 0.15
+        if abs(math.sin(math.radians(d.get("yaw", 0.0)))) > 0.7071:
+            hx, hz = hz, hx         # a door in a z wall is turned: its width runs along z
         for j in near(dx - hx, dx + hx, dz - hz, dz + hz):
             o = boxes[j]
             if abs(o["at"][0] - dx) <= hx + o["size"][0] / 2 and abs(o["at"][1] - dy) <= hy + o["size"][1] / 2 and abs(o["at"][2] - dz) <= hz + o["size"][2] / 2:
                 keep.add(j)
+    def hold(x, y, z):
+        """Keeps the ground at (x, z) for feet at y: the highest top at or under y + 0.35 and the support one step below it."""
+        under = sorted(((o["at"][1] + o["size"][1] / 2, j) for j in near(x, x, z, z) for o in (boxes[j],)
+                        if o["at"][1] + o["size"][1] / 2 <= y + 0.35 and within(o, x, z)), reverse=True)
+        if not under:
+            return
+        best = under[0][0]
+        keep.update(j for t, j in under if t >= best - 0.05)
+        lower = [(t, j) for t, j in under if best - 0.5 <= t < best - 0.05]
+        if lower:
+            nxt = lower[0][0]
+            keep.update(j for t, j in lower if t >= nxt - 0.05)
+
     for x, y, z in _anchors(doc):
-        best, under = None, []
-        for j in near(x, x, z, z):
-            o = boxes[j]
-            top = o["at"][1] + o["size"][1] / 2
-            if top <= y + 0.35 and within(o, x, z):
-                under.append((top, j))
-        if under:
-            best = max(t for t, _ in under)
-            keep.update(j for t, j in under if t >= best - 0.05)
+        hold(x, y, z)
+    for lst in doc.get("spawns", {}).values():
+        for sp in lst:
+            x, y, z = sp["at"]
+            for ox, oz in ((0.75, 0), (-0.75, 0), (0, 0.75), (0, -0.75)):
+                hold(x + ox, y, z + oz)
     return keep
 
 
@@ -705,7 +746,7 @@ def cap_boxes(doc, limit, log=print):
     """Cuts the least important boxes until `limit` or fewer are left (--max-boxes); returns how many were cut.
 
     Smallest volume first, never a box cap_protected names. The spawns' reach is measured before and
-    after (reach_report) and a loss is logged. A document already at or under `limit` is not touched."""
+    after (reach_report); a loss restores the cut boxes needed to reconnect, or exits non-zero. A document already at or under `limit` is not touched."""
     boxes = doc["boxes"]
     if len(boxes) <= limit:
         return 0
@@ -714,22 +755,42 @@ def cap_boxes(doc, limit, log=print):
     keep = cap_protected(doc)
     order = sorted((i for i in range(len(boxes)) if i not in keep), key=lambda i: (boxes[i]["size"][0] * boxes[i]["size"][1] * boxes[i]["size"][2], i))
     cut = order[:max(0, before - limit)]
-    gone = set(cut)
-    biggest = max((boxes[i] for i in cut), key=lambda b: b["size"][0] * b["size"][1] * b["size"][2], default=None)
+    vol = lambda i: boxes[i]["size"][0] * boxes[i]["size"][1] * boxes[i]["size"][2]
+    lost0 = set(reach0[2])
+
+    def lost_after(restored):
+        gone = set(cut) - set(restored)
+        return set(reach_report(doc, [b for i, b in enumerate(boxes) if i not in gone])[2]) - lost0
+
+    restored = []
+    if lost_after([]):
+        # Restore the fewest cut boxes, largest first: the smallest prefix of that order that
+        # brings every spawn back (binary search; the full set is the document as it was).
+        big = sorted(cut, key=lambda i: (-vol(i), i))
+        lo, hi = 1, len(big)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if lost_after(big[:mid]):
+                lo = mid + 1
+            else:
+                hi = mid
+        restored = big[:lo]
+        if lost_after(restored):
+            raise SystemExit("box cap: reach dropped and restoring every cut box did not bring it back")
+        log("box cap: cutting lost reach, restored %d of %d cut boxes (largest first)" % (len(restored), len(cut)))
+    gone = set(cut) - set(restored)
+    biggest = max((boxes[i] for i in gone), key=lambda b: b["size"][0] * b["size"][1] * b["size"][2], default=None)
     doc["boxes"][:] = [b for i, b in enumerate(boxes) if i not in gone]
-    msg = "box cap: %d boxes over --max-boxes=%d, cut %d, %d left (%d protected)" % (before, limit, len(cut), len(doc["boxes"]), len(keep))
+    msg = "box cap: %d boxes over --max-boxes=%d, cut %d, %d left (%d protected)" % (before, limit, len(gone), len(doc["boxes"]), len(keep))
     if biggest is not None:
         s = biggest["size"]
         msg += "; largest cut %.2f m3 at (%.1f, %.1f, %.1f) size %.2f x %.2f x %.2f" % (s[0] * s[1] * s[2], *biggest["at"], *s)
     log(msg)
     if len(doc["boxes"]) > limit:
-        log("box cap: STILL OVER by %d: the rest are floors, stairs, door frames or the ground under a spawn, prop or light" % (len(doc["boxes"]) - limit))
+        log("box cap: STILL OVER by %d: the rest are floors, stairs, door frames, the ground under a spawn, prop or light, or boxes a route needs" % (len(doc["boxes"]) - limit))
     reach1 = reach_report(doc)
     log("box cap: spawns reachable from the first: %d of %d before, %d of %d after" % (reach0[0], reach0[1], reach1[0], reach1[1]))
-    newly = sorted(set(reach1[2]) - set(reach0[2]))
-    if newly:
-        log("box cap: REACH LOST for spawn(s) %s: the cap cut a way to them" % newly)
-    return len(cut)
+    return len(gone)
 
 
 def apply_cap(doc, opts, log=print):
