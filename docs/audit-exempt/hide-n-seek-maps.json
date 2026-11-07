@@ -1,0 +1,7 @@
+{
+  "hs_restaurant": {
+    "brush_loss": 0.022, "floor_loss": 0.014,
+    "passes": ["prune_far_scenery"],
+    "why": "26 brushes of scenery 44 m or more from the play space (180 boxes, 1841 m3; 0 of 22 207 floor cells reachable from a spawn); the same source map as ph_restaurant_os"
+  }
+}

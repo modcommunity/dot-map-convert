@@ -126,5 +126,37 @@ class Frame(unittest.TestCase):
         self.assertEqual([(a, b) for a, b, *_ in t], [("x", self.bsp)])
 
 
+class Exemptions(unittest.TestCase):
+    """A recorded exemption is a ceiling per map with the importer passes and a reason, never a looser global limit."""
+
+    def result(self, bl, fl, max_loss=0.002):
+        return {"ok": bl <= max_loss and fl <= max_loss, "brush_loss": bl, "floor_loss": fl}
+
+    def test_within_the_ceiling_passes_and_above_it_fails(self):
+        t = tool()
+        ex = {"brush_loss": 0.01, "floor_loss": 0.005, "passes": ["prune_far_scenery"], "why": "scenery across a void"}
+        self.assertEqual(t.apply_exempt(self.result(0.0001, 0.001), ex, 0.002), "ok")
+        r = self.result(0.009, 0.004)
+        self.assertEqual(t.apply_exempt(r, ex, 0.002), "exempt")
+        self.assertTrue(r["ok"])
+        self.assertEqual(t.apply_exempt(self.result(0.011, 0.004), ex, 0.002), "LOSS")        # a new loss still fails
+        self.assertEqual(t.apply_exempt(self.result(0.009, 0.006), ex, 0.002), "LOSS")
+        self.assertEqual(t.apply_exempt(self.result(0.009, 0.004), None, 0.002), "LOSS")      # no row, no exemption
+
+    def test_a_row_needs_its_passes_and_a_reason(self):
+        t = tool()
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "audit_exempt.json")
+            self.assertEqual(t.load_exempt(p), {})
+            for row in ({"brush_loss": 0.01, "passes": ["drop_buried"]}, {"brush_loss": 0.01, "why": "x"}, {"why": " ", "passes": ["a"]}):
+                with open(p, "w") as f:
+                    json.dump({"m": row}, f)
+                with self.assertRaises(SystemExit):
+                    t.load_exempt(p)
+            with open(p, "w") as f:
+                json.dump({"m": {"brush_loss": 0.01, "passes": ["drop_buried"], "why": "sea bed"}}, f)
+            self.assertEqual(t.load_exempt(p)["m"]["why"], "sea bed")
+
+
 if __name__ == "__main__":
     unittest.main()

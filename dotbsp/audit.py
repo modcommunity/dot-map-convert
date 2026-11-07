@@ -152,10 +152,12 @@ def solid_brushes(bsp, solid_classes=None):
     return out
 
 
-def floors(bsp, grid=GRID, solid_classes=None, max_samples=200000, seed=1):
+def floors(bsp, grid=GRID, solid_classes=None, max_samples=200000, seed=1, skip_entity=None):
     """[(point in map units, classname, kind, material)] on every exposed standable top."""
     from . import mesh as _mesh
     items = solid_brushes(bsp, solid_classes)
+    if skip_entity is not None:
+        items = [it for it in items if it[3] is None or not skip_entity(bsp.entities[it[3]])]
     bg = _BrushGrid(bsp, [(bi, off) for bi, off, *_ in items])
     sky = _mesh.skybox_of(bsp)
     room = sky[2] if sky is not None else None
@@ -270,10 +272,11 @@ def brush_points(bsp, bi, off, n=5):
     return [(q[0] + off[0], q[1] + off[1], q[2] + off[2]) for q in out if bsp.point_in_brush(bi, q, -0.25)]
 
 
-def brushes(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, keep=None, skip_kinds=()):
+def brushes(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, keep=None, skip_kinds=(), skip_entity=None):
     """{(class, kind): [brushes, collidable expected, collided]}: every brush the map's models reach, and
     of the player-solid ones whose owner should collide, how many the output holds (a point well inside
-    each, in the output's solid). `classes_of(cls)` says whether a brush entity class should collide."""
+    each, in the output's solid). `classes_of(cls)` says whether a brush entity class should collide; `skip_entity(entity)`
+    leaves out the brushes of an entity the output is not owed (one that starts not solid)."""
     from . import mesh as _mesh
     classes_of = classes_of or (lambda c: c == "worldspawn" or c in _mesh.SOLID_BRUSH_ENTITIES)
     sky = _mesh.skybox_of(bsp)
@@ -285,6 +288,8 @@ def brushes(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, keep=None, s
         row = table[(cls, kind)]
         row[0] += 1
         if kind not in COLLIDES or kind in skip_kinds or not classes_of(cls) or not bsp.brushes[bi][2] & reader.MASK_PLAYERSOLID:
+            continue
+        if skip_entity is not None and ei is not None and skip_entity(bsp.entities[ei]):
             continue
         off = tuple(reader.entity_vec(bsp.entities[ei])) if ei is not None else (0.0, 0.0, 0.0)
         qs = brush_points(bsp, bi, off)
@@ -430,16 +435,16 @@ class Union:
         return any(p.ground(x, y, z, depth) for p in self.parts)
 
 
-def audit(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, grid=GRID, keep=None, skip_kinds=()):
+def audit(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, grid=GRID, keep=None, skip_kinds=(), skip_entity=None):
     """The whole report of one output: the brush table, the floor misses, and totals; `keep(game point)`
     limits both to where the output means to be whole, and `skip_kinds` (contents kinds, e.g. `ladder`) leaves out
     what the output cannot express and a body does not stop at."""
-    table, lost = brushes(bsp, out, scale, y0, classes_of, keep, skip_kinds)
+    table, lost = brushes(bsp, out, scale, y0, classes_of, keep, skip_kinds, skip_entity)
     from . import mesh as _mesh
     solid = None
     if classes_of is not None:
         solid = {cls for (cls, _k) in table if cls != "worldspawn" and classes_of(cls)}
-    samples = floors(bsp, grid=grid, solid_classes=solid if solid is not None else _mesh.SOLID_BRUSH_ENTITIES)
+    samples = floors(bsp, grid=grid, solid_classes=solid if solid is not None else _mesh.SOLID_BRUSH_ENTITIES, skip_entity=skip_entity)
     if keep is not None:
         samples = [x for x in samples if keep(to_game(x[0], scale, y0))]
     if skip_kinds:

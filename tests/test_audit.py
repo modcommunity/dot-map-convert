@@ -114,6 +114,16 @@ class Audit(unittest.TestCase):
         r = audit.audit(bsp, audit.Boxes([box_of(self.BOXES[0])]), classes_of=lambda c: c == "worldspawn")
         self.assertEqual(r["brushes_expected"], 1)
 
+    def test_entity_that_starts_hidden_is_not_owed(self):
+        from dotbsp import docboxes
+        for keys, owed in (({"Solidity": "1"}, 0), ({"StartDisabled": "1"}, 0), (None, 1)):
+            bsp = load(boxes=self.BOXES[:1], entity_box=(0, 0, 0, 32, 32, 32), entity_origin=(100, 100, 16),
+                       entity_class="func_brush", entity_keys=keys)
+            r = audit.audit(bsp, audit.Boxes([box_of(self.BOXES[0])]), classes_of=lambda c: c in ("worldspawn", "func_brush"),
+                            skip_entity=docboxes.entity_starts_hidden)
+            self.assertEqual(r["brushes_expected"], 1 + owed, keys)
+            self.assertEqual(r["brushes_collided"], 1, keys)
+
 
 if __name__ == "__main__":
     unittest.main()

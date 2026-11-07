@@ -22,6 +22,7 @@ import math
 import random
 import re
 
+from . import passledger
 from . import audit as _audit, classes as _classes, flood as _flood_mod, reader, terrain as _terrain
 
 # Dev-grid surface palette, the one three importers shared (RGB 0..1).
@@ -170,6 +171,7 @@ def suburban_surface(at, size, palette=SUBURBAN_PALETTE):
 
 
 
+@passledger.tracked("widen_doors", lambda boxes, *a, **k: boxes)
 def widen_doors(boxes, want=1.4, doors=()):
     """Widens the doorways a flat's author made about a metre wide (--widen-doors).
 
@@ -227,6 +229,7 @@ def widen_doors(boxes, want=1.4, doors=()):
 
 
 
+@passledger.tracked("drop_door_leaves", lambda boxes, *a, **k: boxes)
 def drop_door_leaves(boxes):
     """Remove door leaves the author left standing ajar in a doorway.
 
@@ -248,6 +251,7 @@ def drop_door_leaves(boxes):
 
 
 
+@passledger.tracked("drop_small", lambda boxes, *a, **k: boxes)
 def drop_small(boxes, min_size):
     """Drops boxes whose longest side is under `min_size` metres (trim, rails, clutter) and returns how many; a map over the game's wire limit shrinks most here."""
     keep = [b for b in boxes if max(b["size"]) >= min_size]
@@ -276,46 +280,63 @@ def pad_spawns(doc, sides, mat="concrete", pad=2.5, reach=0.4):
     return len(cells)
 
 
-def prune_far_scenery(boxes, starts, reach=12.0, log=print):
+@passledger.tracked("prune_far_scenery", lambda boxes, *a, **k: boxes)
+def prune_far_scenery(boxes, starts, reach=12.0, log=print, join=3.0):
     """Drops the boxes of every cluster that is out of reach of the starts. A community map keeps
     its 3D skybox scenery (a distant city, a crane) in the same world as the play space, and the
     overview camera frames all of it, so the real map shrank to a corner of the frame. Boxes are
     grouped by touching (a quarter metre of slack); a group is kept when one of its boxes comes
     within `reach` metres of a start; the author's sky-box walls that bound the play space are
-    big enough to pass, and a second, sealed sky cell holding the scenery is dropped with it."""
+    big enough to pass, and a second, sealed sky cell holding the scenery is dropped with it.
+
+    [b]A cluster within `join` metres of what is kept stays.[/b] A room of the building that touches nothing
+    by the quarter metre (ph_wolfsmanor's upstairs parquet hall stood 2.2 m from the rest) was dropped as
+    scenery, though it sits inside the house. Real scenery is separated from the play space by more than that
+    (measured with tools/audit_passes.py: the nearest pruned cluster of ph_westerncity is 14 m off, of
+    ph_restaurant_os 44 m, and none of their floor can be walked to from a spawn). `join` 0 is the old rule."""
     if not starts:
         return 0
     n = len(boxes)
-    parent = list(range(n))
 
-    def find(i):
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
-
-    def box_range(b):
+    def box_range(b, slack):
         h = [b["size"][0] / 2, b["size"][1] / 2, b["size"][2] / 2]
         if b.get("yaw"):
             # The turned box's own bounds, so its slack is not the box's corner sticking out.
             c, sn = abs(math.cos(math.radians(b["yaw"]))), abs(math.sin(math.radians(b["yaw"])))
             h = [h[0] * c + h[2] * sn, h[1], h[0] * sn + h[2] * c]
-        return [(b["at"][i] - h[i] - 0.25, b["at"][i] + h[i] + 0.25) for i in range(3)]
+        return [(b["at"][i] - h[i] - slack, b["at"][i] + h[i] + slack) for i in range(3)]
 
-    rng = [box_range(b) for b in boxes]
-    order = sorted(range(n), key=lambda i: rng[i][0][0])
-    for ai, a in enumerate(order):
-        for b in order[ai + 1:]:
-            if rng[b][0][0] > rng[a][0][1]:
-                break
-            if all(rng[a][k][0] <= rng[b][k][1] and rng[b][k][0] <= rng[a][k][1] for k in (1, 2)):
-                parent[find(a)] = find(b)
+    def groups(slack):
+        parent = list(range(n))
+
+        def find(i):
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+
+        rng = [box_range(b, slack) for b in boxes]
+        order = sorted(range(n), key=lambda i: rng[i][0][0])
+        for ai, a in enumerate(order):
+            for b in order[ai + 1:]:
+                if rng[b][0][0] > rng[a][0][1]:
+                    break
+                if all(rng[a][k][0] <= rng[b][k][1] and rng[b][k][0] <= rng[a][k][1] for k in (1, 2)):
+                    parent[find(a)] = find(b)
+        return find, rng
+
+    find, rng = groups(0.25)
     keep = set()
     for i, b in enumerate(boxes):
         near = any(rng[i][0][0] - reach <= sx <= rng[i][0][1] + reach and rng[i][2][0] - reach <= sz <= rng[i][2][1] + reach
                    for sx, _sy, sz in starts)
         if near:
             keep.add(find(i))
+    if join:
+        # The groups within `join` metres of a kept group, and what those are within `join` of in turn.
+        find2, _ = groups(join / 2)
+        keep2 = {find2(i) for i in range(n) if find(i) in keep}
+        keep |= {find(i) for i in range(n) if find2(i) in keep2}
     before = len(boxes)
     boxes[:] = [b for i, b in enumerate(boxes) if find(i) in keep]
     if len(boxes) != before and log:
@@ -623,6 +644,7 @@ def add_doors(m, doc, entities, shift, slide=False, scale=0.01905, skip=(), log=
     return hung
 
 
+@passledger.tracked("merge_touching", lambda boxes, *a, **k: boxes)
 def merge_touching(boxes, tol=0.002):
     """Merges axis-aligned boxes of one material that touch face to face with the same cross-section.
 
@@ -665,6 +687,7 @@ def merge_touching(boxes, tol=0.002):
     return start - len(boxes)
 
 
+@passledger.tracked("drop_trim", lambda boxes, *a, **k: boxes)
 def drop_trim(boxes, min_volume=0.0, min_thickness=0.0, panel=1.0, walkable=0.25):
     """Drops detail boxes below a volume or thinner than a thickness (a moulding, a skirting, a frame).
 
@@ -762,6 +785,7 @@ def floor_islands(boxes, cell=0.25, step=0.4, head=1.4):
     return [(len(m), m) for m in ranked], state_of, (x0, z0, cell)
 
 
+@passledger.tracked("start_island", lambda doc, *a, **k: doc["boxes"])
 def restart_on_largest_island(doc, size_of, footprint, props_wanted=8, hunters_wanted=3, spacing=3.0, log=print):
     """Puts the start and hunter spawns on the largest connected floor island (--start-island).
 
@@ -834,6 +858,7 @@ def restart_on_largest_island(doc, size_of, footprint, props_wanted=8, hunters_w
     return moved
 
 
+@passledger.tracked("drop_other_terrain", lambda doc, *a, **k: doc["boxes"])
 def drop_other_terrain(doc, material="grass", min_cells=2000, log=print):
     """Drops ground slabs of a big floor island no spawn stands on (--start-island).
 
@@ -897,6 +922,7 @@ def apply_budget(boxes, opts, doc=None):
         keep_reach(doc, boxes, snapshot)
 
 
+@passledger.tracked("drop_sky_slab", lambda doc, boxes=None, **k: doc["boxes"] if boxes is None else boxes)
 def drop_sky_slab(doc, boxes=None, thick=1.0, share=0.25, clear=1.8):
     """Drops the author's sky ceiling: an unseen (visible false) solid slab, thin, covering `share` of the map's
     footprint, whose underside is `clear` metres over every spawn, prop and light. It is one big box the physics
@@ -922,6 +948,7 @@ def drop_sky_slab(doc, boxes=None, thick=1.0, share=0.25, clear=1.8):
     return n - len(boxes)
 
 
+@passledger.tracked("keep_reach", lambda doc, boxes, *a, **k: boxes)
 def keep_reach(doc, boxes, original, log=print):
     """After a trim, restores the boxes the trim cut that a walkable route needs (largest first, the fewest).
 
@@ -1165,6 +1192,7 @@ def reach_report(doc, boxes=None, cell=0.25, step=0.45, head=1.7):
     return len(spawns) - len(lost), len(spawns), lost
 
 
+@passledger.tracked("box_cap", lambda doc, *a, **k: doc["boxes"])
 def cap_boxes(doc, limit, log=print):
     """Cuts the least important boxes until `limit` or fewer are left (--max-boxes); returns how many were cut.
 

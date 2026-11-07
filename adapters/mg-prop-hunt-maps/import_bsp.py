@@ -66,7 +66,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402  (a shim over dot-map's shared reader; it puts dotbsp on sys.path)
-from dotbsp import boxes as dboxes, docboxes  # noqa: E402  (the shared passes over a document's boxes)
+from dotbsp import boxes as dboxes, docboxes, passledger  # noqa: E402  (the shared passes over a document's boxes)
 from dotbsp import models as bsp_models  # noqa: E402  (the models a map packs in its pakfile)
 from dotbsp import standins  # noqa: E402
 from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the origin shift and bounds, for the audit)
@@ -849,6 +849,7 @@ def brush_boxes(bsp, index):
     return [(p["x"], p["y"], p["z"], p["phi"]) for p in parts], cut
 
 
+@passledger.tracked("widen_doors", lambda boxes, *a, **k: boxes)
 def widen_doors(boxes, want=1.4, thick=0.4, narrowest=0.8):
     """Widens the doorways a flat's author made about a metre wide (--widen-doors).
 
@@ -902,6 +903,7 @@ def widen_doors(boxes, want=1.4, thick=0.4, narrowest=0.8):
     return done
 
 
+@passledger.tracked("drop_trim_posts", lambda boxes, *a, **k: boxes)
 def drop_trim_posts(boxes):
     """Drops the door-frame trim posts: tall boxes under 16 cm either way (--widen-thick-doors).
 
@@ -916,6 +918,7 @@ def drop_trim_posts(boxes):
     return len(gone)
 
 
+@passledger.tracked("widen_sliced_doors", lambda boxes, *a, **k: boxes)
 def widen_sliced_doors(boxes, want=1.4, thick=1.3):
     """Widens a doorway cut through a thick wall that the importer sliced into stacked boxes (--widen-thick-doors).
 
@@ -1378,6 +1381,7 @@ def main(argv):
             t = a[14:].split(",")
             drops.append((float(t[0]), float(t[1]), t[2] if len(t) > 2 else ""))
     bsp_path, mid, name, author, url = args[:5]
+    passledger.reset()
     bsp = bsp_read.Bsp(bsp_path).load()
     m = build_maps.Map(
         mid, name, "Converted from %s by %s (%s)." % (os.path.basename(bsp_path), author, url),
@@ -1402,6 +1406,7 @@ def main(argv):
                 mt, invisible = ("flat", None), True
             else:
                 skipped += 1
+                passledger.note("tool_only_brush", 1, "a brush with no solid contents the importer skips (trigger, hint, areaportal)")
                 continue
         boxes, was_sliced = brush_boxes(bsp, bi)
         sliced += was_sliced
@@ -1410,12 +1415,14 @@ def main(argv):
                 lx, ly = (x0 + x1) / 2, (y0 + y1) / 2
                 c, sn = math.cos(math.radians(phi)), math.sin(math.radians(phi))
                 if not inside((lx * c - ly * sn + ox, lx * sn + ly * c + oy, (z0 + z1) / 2 + oz)):
+                    passledger.note("bounds_crop", 1, "a box centred outside --bounds")
                     continue
             if phi:
                 # A turned box: its centre back out of the turned frame, its sides as measured,
                 # its yaw the same angle (Source turns counter-clockwise seen from above, and so
                 # does godot about +y once y is flipped to -z).
                 if x1 - x0 < 0.05 or y1 - y0 < 0.05 or z1 - z0 < 0.05:
+                    passledger.note("turned_sliver", 1, "a turned box under 5 cm on a side")
                     continue
                 c, sn = math.cos(math.radians(phi)), math.sin(math.radians(phi))
                 lx, ly = (x0 + x1) / 2, (y0 + y1) / 2
@@ -1442,7 +1449,9 @@ def main(argv):
         # The document's box limit is 6000 (PhMapDoc.MAX_BOXES): coarsen the field until the walls and the ground fit.
         # Boxes the ground covers are dropped first: a coarse field steps more than a body can climb.
         if not terrain_args and len(m.boxes) + len(field) > 5600:
+            was = list(m.boxes)
             m.boxes[:] = drop_buried(m.boxes, field)
+            passledger.diff("drop_buried", was, m.boxes)
         for cell in (120.0, 160.0, 240.0):
             if terrain_args or len(m.boxes) + len(field) <= 5600:
                 break
@@ -1683,6 +1692,7 @@ def main(argv):
                     shift(v)
         for key in ("boxes", "props", "lights", "spawns", "toys"):
             shift(doc.get(key))
+        passledger.rebase(-ox, -oy, -oz)
     if widen:
         n_doors = widen_doors(doc["boxes"])
         if thick_doors:
@@ -1711,11 +1721,14 @@ def main(argv):
             doc["props"].remove(near[0])
             print("dropped %s at %s beside (%.1f, %.1f)" % (near[0]["id"], near[0]["at"], dx, dz))
     # A sliver brush can come out with a zero or negative side; the game refuses the whole document for one.
+    was = list(doc["boxes"])
     doc["boxes"] = [b for b in doc["boxes"] if min(b["size"]) > 0.005]
+    passledger.diff("zero_side", was, doc["boxes"])
     print("audit: dropped %d props sunk in a wall or standing on nothing" % audit_props(doc))
     docboxes.apply_cap(doc, box_budget)
     sourceframe.record(doc, bsp_path, S, (ox, oy + FLOOR, oz), bounds)
     out_path = out_path or os.path.join(build_maps.ROOT, "maps", mid + ".json")
+    passledger.finish(out_path=out_path)
     with open(out_path, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")
     print("wrote", out_path)

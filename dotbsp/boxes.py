@@ -263,9 +263,14 @@ def _z_range(planes, x, y):
 def decompose_axis(planes, pts, slab=SLAB):
     """prop-hunt-maps' original cut, for an adapter whose output must not change: `decompose` with
     the corner test of a box (a wedge passes it), any-plan prisms (`prism_box(fill=None)`), the
-    upright-side test at 1e-4, and slabs cut across the longer horizontal axis, each as tall as the
-    planes are at the slab's middle, dropped when under 0.5 high (never grown). Same box dicts; a
-    slab's kind is "slab"."""
+    upright-side test at 1e-4, and slabs, each as tall as the planes are at the slab's middle, dropped
+    when under 0.5 high (never grown). Same box dicts; a slab's kind is "slab".
+
+    [b]The cut runs across the axis the slope climbs.[/b] It was always the longer horizontal axis, so a pitched
+    roof 1300 long and 500 wide that climbs across its width was cut along its length: every slab was as tall
+    as the roof at its middle line and the two halves of the pitch were 200 units off the box (ph_wolfsmanor's
+    roof, 2283 floor samples). The axis is now the one whose uncut side leaves the smaller error (slope times
+    extent); a brush whose planes tilt equally, or not at all, is cut along the longer axis as before."""
     if len(pts) < 4:
         return []
     ranges = box_in_frame(pts, 0.0, 0.5, solid=False)
@@ -289,13 +294,25 @@ def decompose_axis(planes, pts, slab=SLAB):
         return [{"x": bx, "y": by, "z": bz, "phi": phi, "kind": "prism"}]
     (x0, x1), (y0, y1), (z0, z1) = _bounds(pts)
     out = []
-    along_x = x1 - x0 >= y1 - y0
+    # Slope of the planes the slabs follow (rise per run, either side of the brush), per horizontal axis.
+    tx = max([abs(nx / nz) for nx, _ny, nz, _d in planes if abs(nz) > 0.05] or [0.0])
+    ty = max([abs(ny / nz) for _nx, ny, nz, _d in planes if abs(nz) > 0.05] or [0.0])
+    err_x, err_y = tx * (x1 - x0), ty * (y1 - y0)       # the rise across each axis; the uncut one is what a slab cannot follow
+    along_x = (err_y < err_x) if abs(err_x - err_y) > 1e-6 else x1 - x0 >= y1 - y0
     lo, hi = (x0, x1) if along_x else (y0, y1)
     n = max(1, math.ceil((hi - lo) / slab))
     for i in range(n):
         a, b = lo + (hi - lo) * i / n, lo + (hi - lo) * (i + 1) / n
-        zlo, zhi = _z_range(planes, (a + b) / 2, (y0 + y1) / 2) if along_x else _z_range(planes, (x0 + x1) / 2, (a + b) / 2)
-        zlo, zhi = max(zlo, z0), min(zhi, z1)
+        # The planes at the slab's middle; a thin pane turned across the cut can miss that one line (the middle is outside
+        # its footprint), so it was dropped whole: look along the slab at a few other places before giving it up.
+        for f in (0.5, 0.25, 0.75, 0.1, 0.9):
+            if along_x:
+                zlo, zhi = _z_range(planes, (a + b) / 2, y0 + (y1 - y0) * f)
+            else:
+                zlo, zhi = _z_range(planes, x0 + (x1 - x0) * f, (a + b) / 2)
+            zlo, zhi = max(zlo, z0), min(zhi, z1)
+            if zhi - zlo > 0.5:
+                break
         if zhi - zlo > 0.5:
             out.append({"x": (a, b), "y": (y0, y1), "z": (zlo, zhi), "phi": 0.0, "kind": "slab"} if along_x
                        else {"x": (x0, x1), "y": (a, b), "z": (zlo, zhi), "phi": 0.0, "kind": "slab"})
