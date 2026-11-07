@@ -9,7 +9,10 @@ summarised: lost brush share, lost floor share, the worst class/kind and the wor
 Read-only: nothing is written but the optional --json.
 
 Box documents (hide-n-seek, prop-hunt, murder-mystery, game-playground) were shifted by the importer so the
-map's origin stands on open ground, and the shift is not recorded in the document. `register()` recovers it:
+map's origin stands on open ground. A document imported since 2026-11-07 records the shift, the --bounds crop and the
+source map's name and hash in `source_frame` (dotbsp/sourceframe.py): the audit then uses that exact frame
+(`frame=recorded`), audits only inside the crop, and does no registration. An older document, or one whose recorded
+hash is not the .bsp found, falls back to `register()`, which recovers the shift:
 an FFT correlation of the source's solid footprints with the boxes' (x, z), a histogram of top heights (y),
 then a hill-climb on the brushes collided. The offset found is printed (`at=`): the game-metre vector to ADD
 to the document's coordinates to land on the source's. World packs (`worlds/<id>/<id>`, the global
@@ -27,7 +30,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, ".."))
 import numpy as np  # noqa: E402
-from dotbsp import audit, classes, mesh, reader, terrain, units  # noqa: E402
+from dotbsp import audit, classes, mesh, reader, sourceframe, terrain, units  # noqa: E402
 
 CELL = 0.5       # metres per raster cell for the footprint correlation
 SRC_ROOTS = ["~/projects/mapsrc", "~/godot/inspirations"]
@@ -208,24 +211,52 @@ def summary(r, max_loss):
             "ok": bl <= max_loss and fl <= max_loss}
 
 
+def recorded_frame(doc, bsp_path):
+    """The document's `source_frame` when it describes this .bsp (same hash, when it records one), else None."""
+    sf = sourceframe.read(doc)
+    if sf is None:
+        return None
+    if sf.get("sha256") and sf["sha256"] != sourceframe.file_sha256(bsp_path):
+        return None
+    return sf
+
+
+def keep_of(sf):
+    """The audit's region for a recorded crop (--within/--band), or None for the whole map."""
+    if not sf or not (sf.get("crop") or sf.get("crop_band")):
+        return None
+    return audit.region(",".join(map(str, sf["crop"])) if sf.get("crop") else None,
+                        ",".join(map(str, sf["crop_band"])) if sf.get("crop_band") else None)
+
+
 def run_doc(bsp_path, doc_path, scale, max_loss, passable=()):
     bsp = load_bsp(bsp_path)
     with open(doc_path) as f:
         doc = json.load(f)
     field = terrain.Heightfield.decode(doc["terrain"])[0] if doc.get("terrain") else None
-    off = register(bsp, doc, scale)
-    if not off:
-        return {"error": "no boxes or no source brushes"}
-    best = None
-    for cand in off:
-        o, h = refine(bsp, doc, cand, scale, field)
-        if best is None or h > best[1]:
-            best = (o, h)
-    off, hit = best
+    sf = recorded_frame(doc, bsp_path)
+    keep = None
+    if sf:
+        # the importer's own shift: exact, so nothing is searched and the fit is only reported
+        scale = sf.get("scale") or scale
+        off = [float(v) for v in sf["offset"]]
+        cand = solid_brushes(bsp)
+        hit = brush_hits(bsp, doc.get("boxes", []), off, scale, cand[::max(1, len(cand) // 250)], field)
+        keep = keep_of(sf)
+    else:
+        off = register(bsp, doc, scale)
+        if not off:
+            return {"error": "no boxes or no source brushes"}
+        best = None
+        for cand in off:
+            o, h = refine(bsp, doc, cand, scale, field)
+            if best is None or h > best[1]:
+                best = (o, h)
+        off, hit = best
     out = audit.Boxes(shift_boxes(doc.get("boxes", []), off), terrain=Shifted(field, off) if field else None)
     cl = lambda c: c == "worldspawn" or (classes.treatment(c)[0] == "world" and c not in passable)  # noqa: E731
-    s = summary(audit.audit(bsp, out, scale, 0.0, cl), max_loss)
-    s.update(offset=off, fit=hit)
+    s = summary(audit.audit(bsp, out, scale, 0.0, cl, keep=keep), max_loss)
+    s.update(offset=off, fit=hit, frame="recorded" if sf else "registered", cropped=keep is not None)
     return s
 
 
@@ -279,7 +310,15 @@ def targets(repo, idx, only):
             if m:
                 fname = m.group(1) + ".bsp"
                 path_bsp = find(fname)
+        sf = sourceframe.read(doc)
+        if sf and sf.get("map"):
+            cands = [p for p in idx.get(sf["map"].lower(), []) if os.path.exists(p)]
+            hashed = [p for p in cands if sf.get("sha256") and sourceframe.file_sha256(p) == sf["sha256"]]
+            path_bsp = (hashed or ([path_bsp] if path_bsp else []) or cands or [None])[0]
+            fname = fname or sf["map"]
         path_bsp = path_bsp or by_source(doc, mid)
+        # last: a .bsp named for the map itself (ph_abandoned_church) or for it without its game prefix (mm_mu_hotel: mu_hotel)
+        path_bsp = path_bsp or find(mid + ".bsp") or (find(mid.split("_", 1)[1] + ".bsp") if "_" in mid else None)
         out.append((mid, path_bsp, "doc", d, "" if (fname or doc.get("source")) else "hand-built (no source map)"))
     return out
 
@@ -309,8 +348,13 @@ def main(argv):
         if "error" in r:
             print("%-28s ERROR %s" % (mid, r["error"]), flush=True)
             continue
-        fit = "" if r.get("fit") is None else " fit=%.2f at=%s%s" % (
-            r["fit"], r["offset"], "  FRAME? (a crop, or a registration miss: not trusted)" if r["fit"] < 0.8 else "")
+        if r.get("fit") is None:
+            fit = ""
+        elif r.get("frame") == "recorded":
+            fit = " fit=%.2f at=%s frame=recorded%s" % (r["fit"], r["offset"], " cropped" if r.get("cropped") else "")
+        else:
+            fit = " fit=%.2f at=%s%s" % (
+                r["fit"], r["offset"], "  FRAME? (a crop, or a registration miss: not trusted)" if r["fit"] < 0.8 else "")
         print("%-28s %s brushes %.4f (%d/%d) floor %.4f (%d/%d)%s" % (
             mid, "ok  " if r["ok"] else "LOSS", r["brush_loss"], *r["brushes"], r["floor_loss"], *r["floors"], fit), flush=True)
         if not r["ok"]:

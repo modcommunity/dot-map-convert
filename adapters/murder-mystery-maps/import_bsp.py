@@ -57,6 +57,7 @@ sys.path.insert(1, _dotbsp_path())
 from dotbsp import reader as bsp_read  # noqa: E402  (the family's one reader)
 from dotbsp import boxes as dboxes, docboxes, lights as dlights, texturemap  # noqa: E402  (the shared passes over a document's boxes)
 from dotbsp import terrain as dterrain  # noqa: E402
+from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the origin shift and bounds, for the audit)
 import build_maps  # noqa: E402
 
 S = 0.01905
@@ -1209,6 +1210,7 @@ def main(argv):
     if terrain:
         swap_terrain(doc, tris, terrain, TERRAIN_TINT if terrain == "grass" else None, budget)
     docboxes.apply_cap(doc, box_budget)
+    sourceframe.record(doc, bsp_path, S, (ox, oy + FLOOR, oz), None)
     out_path = out_path or os.path.join(build_maps.ROOT, "maps", mid + ".json")
     with open(out_path, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")
