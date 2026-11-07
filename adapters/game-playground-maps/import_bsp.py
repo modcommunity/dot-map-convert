@@ -35,6 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402  (also puts dot-map-convert on sys.path)
 from dotbsp import boxes as boxes_lib, docboxes, texturemap  # noqa: E402  (the passes and the texture list the map repositories share)
+from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the ground shift, for the audit)
 
 S = 0.01905
 SLAB = 28.0     # source units: ~0.53 m, a slope's riser
@@ -251,6 +252,7 @@ def build(bsp_path, name):
         "spawn_yaw": round(sp_yaw - 90.0, 1),
         "boxes": boxes, "declared": cfg.get("declared", []),
     }
+    sourceframe.record(doc, bsp_path, S, (0.0, y_off, 0.0))
     print("%s: %d boxes (%d brushes cut into slabs, %d tool brushes dropped)" % (cfg["id"], len(boxes), slabbed, dropped))
     return doc
 

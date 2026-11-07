@@ -107,6 +107,7 @@ sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402  (a shim over dot-map's shared reader; it puts dotbsp on sys.path)
 from dotbsp import boxes as dboxes, docboxes  # noqa: E402  (the shared passes over a document's boxes)
 from dotbsp import terrain as dterrain  # noqa: E402
+from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the origin shift and bounds, for the audit)
 from dotbsp import lights as dlights  # noqa: E402
 import build_maps  # noqa: E402
 
@@ -825,6 +826,7 @@ def main(argv):
     docboxes.apply_cap(doc, box_budget)
     # The frame a world pack regenerated at this scale is drawn in (tools/worlds.tsv, regen_worlds.sh): the shift above, undone.
     doc["world"] = {"pack": "hs_world_" + mid, "metres_per_unit": round(S, 6), "offset": [round(-ox, 5), round(-oy, 5), round(-oz, 5)]}
+    sourceframe.record(doc, bsp_path, S, (ox, oy + FLOOR, oz), None)
     out_path = out_path or os.path.join(build_maps.ROOT, "maps", mid + ".json")
     with open(out_path, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")

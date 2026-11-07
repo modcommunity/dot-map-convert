@@ -69,6 +69,7 @@ import bsp_read  # noqa: E402  (a shim over dot-map's shared reader; it puts dot
 from dotbsp import boxes as dboxes, docboxes  # noqa: E402  (the shared passes over a document's boxes)
 from dotbsp import models as bsp_models  # noqa: E402  (the models a map packs in its pakfile)
 from dotbsp import standins  # noqa: E402
+from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the origin shift and bounds, for the audit)
 import build_maps  # noqa: E402
 
 S = 0.01905
@@ -1665,6 +1666,7 @@ def main(argv):
         oy = round(ys[len(ys) // 2] - 0.05, 3)
         ground = [b for b in doc["boxes"] if b.get("solid", True) and abs(b["at"][1] + b["size"][1] / 2 - oy) < 0.05
                   and b["size"][0] > 4.0 and b["size"][2] > 4.0]
+    ox = oz = 0.0
     if ground and doc["spawns"]["hunters"]:
         cx = sum(sp["at"][0] for sp in doc["spawns"]["hunters"]) / len(doc["spawns"]["hunters"])
         cz = sum(sp["at"][2] for sp in doc["spawns"]["hunters"]) / len(doc["spawns"]["hunters"])
@@ -1712,6 +1714,7 @@ def main(argv):
     doc["boxes"] = [b for b in doc["boxes"] if min(b["size"]) > 0.005]
     print("audit: dropped %d props sunk in a wall or standing on nothing" % audit_props(doc))
     docboxes.apply_cap(doc, box_budget)
+    sourceframe.record(doc, bsp_path, S, (ox, oy + FLOOR, oz), bounds)
     out_path = out_path or os.path.join(build_maps.ROOT, "maps", mid + ".json")
     with open(out_path, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")
