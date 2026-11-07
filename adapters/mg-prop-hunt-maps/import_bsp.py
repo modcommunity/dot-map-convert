@@ -1261,6 +1261,13 @@ def starts_unfloored(bsp, boxes, inside=None):
     return n
 
 
+def wants_terrain(bsp, boxes, inside=None):
+    """Whether the ground is sculpted: most of the author's starts have no box under their feet and the map has displacements
+    (Bikini Bottom's sea bed). Without --terrain every start of such a map is dropped unfloored and the import stops."""
+    starts = start_entities(bsp, inside)
+    return bool(starts) and starts_unfloored(bsp, boxes, inside) * 2 > len(starts) and any(f[6] >= 0 for f in bsp.model_faces(0))
+
+
 def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0, inside=None):
     """The map's displacement ground as a stepped field of boxes (--terrain).
 
@@ -1581,7 +1588,7 @@ def main(argv):
                     bx["tint"] = list(tint)
                 else:
                     bx.pop("tint", None)
-    if not terrain and starts_unfloored(bsp, m.boxes, inside) * 2 > len(start_entities(bsp, inside)) and any(f[6] >= 0 for f in bsp.model_faces(0)):
+    if not terrain and wants_terrain(bsp, m.boxes, inside):
         # The ground is sculpted (Bikini Bottom's sea bed), so the box pass found none under the starts.
         terrain = True
         print("starts stand on nothing and the map has displacements: --terrain")
