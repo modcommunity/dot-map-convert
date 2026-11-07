@@ -3153,6 +3153,11 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
                 spot["team"] = side
             spawns.append(spot)
 
+    # A map with sides keeps only the spawns that have one: its lone `info_player_start` and
+    # deathmatch spot are editor leftovers, and one of them stood outside the playable area.
+    if any("team" in sp for sp in spawns):
+        spawns = [sp for sp in spawns if "team" in sp]
+
     label_zones(z, doc.get("ignore_labels"))
     resolve_overrides(z, doc)
     # After the overrides, which may name a filtered teleport on purpose -- bhop_pit's
