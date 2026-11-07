@@ -22,7 +22,7 @@ import math
 import random
 import re
 
-from . import flood as _flood_mod, reader, terrain as _terrain
+from . import audit as _audit, classes as _classes, flood as _flood_mod, reader, terrain as _terrain
 
 # Dev-grid surface palette, the one three importers shared (RGB 0..1).
 SUBURBAN_PALETTE = {
@@ -86,6 +86,52 @@ def majority_material(names, table, default=None, classify=classify_material):
         if key in best:
             return mat, tint
     return default
+
+
+# Contents kinds (`audit.contents_kind`) of a brush made only of tool textures that still stops a body: the skybox
+# wall, clip and playerclip, and a nodraw or invisible solid. Nodraw is a render flag (the compiler hides the face), not a
+# reason to drop what is solid; a clip brush is the author's invisible wall.
+TOOL_SOLIDS = frozenset(("sky", "clip", "playerclip", "invisible", "nodraw", "tool"))
+
+
+def stops_player(bsp, index, names=None):
+    """Whether a brush with no real material (`majority_material` is None) is still solid to a player, so a document
+    carries it as a box that is not drawn (the importers set `visible: false`)."""
+    names = brush_material_names(bsp, index) if names is None else names
+    if any("TOOLSSKYBOX" in n for n in names):
+        return True
+    contents = bsp.brushes[index][2]
+    return bool(contents & reader.MASK_PLAYERSOLID) and _audit.contents_kind(contents, names) in TOOL_SOLIDS
+
+
+def entity_starts_hidden(e):
+    """Whether a brush entity starts not solid or not there: `rendermode 10`, StartDisabled, a func_brush with
+    Solidity 1 (never solid), or a func_wall_toggle that starts off (spawnflag 1)."""
+    def flag(k):
+        return str(e.get(k, "0")).strip()
+    cls = e.get("classname")
+    return (flag("rendermode") == "10" or flag("StartDisabled") == "1"
+            or (cls == "func_brush" and flag("Solidity") == "1")
+            or (cls == "func_wall_toggle" and flag("spawnflags").isdigit() and int(flag("spawnflags")) & 1 == 1))
+
+
+def world_brushes(bsp):
+    """[(brush index, (x, y, z) offset in map units)] to turn into boxes: the world's own (offset 0, func_detail
+    merged in) and then every brush of an entity the class table treats as `world` (func_wall, func_brush, func_breakable,
+    func_physbox...: drawn and solid where they stand), shifted by the entity's origin. Doors, lifts and other movers
+    are the importers' own; an entity that starts hidden is left out."""
+    out = [(bi, (0.0, 0.0, 0.0)) for bi in sorted(bsp.model_brushes(0))]
+    seen = set(bi for bi, _o in out)
+    for mi, e in sorted((int(str(e["model"])[1:]), e) for e in bsp.entities
+                        if str(e.get("model", "")).startswith("*") and str(e["model"])[1:].isdigit()):
+        if mi == 0 or mi >= len(bsp.models) or _classes.treatment(e.get("classname", ""))[0] != "world" or entity_starts_hidden(e):
+            continue
+        off = tuple(reader.entity_vec(e))
+        for bi in sorted(bsp.model_brushes(mi)):
+            if bi not in seen:
+                seen.add(bi)
+                out.append((bi, off))
+    return out
 
 
 def within(b, x, z, slack=0.0):

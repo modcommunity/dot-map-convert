@@ -53,7 +53,7 @@ What it does, and why each choice:
 - prop_physics become catalogue props by PROP_MAP (the author's HL2 models have no licence we can
   ship; the catalogue is Kenney, CC0). A model with no entry is dropped and counted.
 - info_player_start entries are shared out between the two teams; `light` entities become omni lights.
-- Tool brushes (skybox, clip, trigger, hint, nodraw-only) are dropped.
+- Tool brushes that stop a player (skybox, clip, playerclip, nodraw and invisible solids) are kept as boxes that are not drawn; trigger, hint, skip, npcclip and the like are dropped.
 
 The output goes through build_maps.Map.build(), so spawns are settled and checked there.
 """
@@ -1391,13 +1391,13 @@ def main(argv):
         return bounds is None or all(bounds[i] <= p[i] <= bounds[i + 3] for i in range(3))
 
     sliced = skipped = 0
-    for bi in sorted(bsp.model_brushes(0)):
+    for bi, (ox, oy, oz) in docboxes.world_brushes(bsp):
         names = docboxes.brush_material_names(bsp, bi)
         mt = docboxes.majority_material(names, TEXTURE_MAP, default=("flat", None))
         invisible = False
         if mt is None:
-            # The author's sky box is the map's wall: solid to a player, drawn as nothing.
-            if any("TOOLSSKYBOX" in n for n in names):
+            # The author's sky box, clip, playerclip and nodraw solids are walls to a player: solid, drawn as nothing.
+            if docboxes.stops_player(bsp, bi, names):
                 mt, invisible = ("flat", None), True
             else:
                 skipped += 1
@@ -1408,7 +1408,7 @@ def main(argv):
             if bounds is not None:
                 lx, ly = (x0 + x1) / 2, (y0 + y1) / 2
                 c, sn = math.cos(math.radians(phi)), math.sin(math.radians(phi))
-                if not inside((lx * c - ly * sn, lx * sn + ly * c, (z0 + z1) / 2)):
+                if not inside((lx * c - ly * sn + ox, lx * sn + ly * c + oy, (z0 + z1) / 2 + oz)):
                     continue
             if phi:
                 # A turned box: its centre back out of the turned frame, its sides as measured,
@@ -1418,11 +1418,11 @@ def main(argv):
                     continue
                 c, sn = math.cos(math.radians(phi)), math.sin(math.radians(phi))
                 lx, ly = (x0 + x1) / 2, (y0 + y1) / 2
-                gx, gy, gz = gd((lx * c - ly * sn, lx * sn + ly * c, (z0 + z1) / 2))
+                gx, gy, gz = gd((lx * c - ly * sn + ox, lx * sn + ly * c + oy, (z0 + z1) / 2 + oz))
                 bx = m.box((gx, gy, gz), ((x1 - x0) * S, (z1 - z0) * S, (y1 - y0) * S), mt[0], mt[1], yaw=phi)
             else:
                 # Source y is godot -z: the box's range flips.
-                bx = m.span(x0 * S, x1 * S, z0 * S - FLOOR, z1 * S - FLOOR, -y1 * S, -y0 * S, mt[0], mt[1])
+                bx = m.span((x0 + ox) * S, (x1 + ox) * S, (z0 + oz) * S - FLOOR, (z1 + oz) * S - FLOOR, -(y1 + oy) * S, -(y0 + oy) * S, mt[0], mt[1])
             if invisible and bx is not None:
                 bx["visible"] = False
             elif bx is not None and mt[0] == "flat" and style == "yard":

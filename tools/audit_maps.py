@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The shared audit runner: `bsp.py audit` over a map repository's converted maps, one line per map.
 
-    python3 -I tools/audit_maps.py REPO [id ...] [--max-loss 0.002] [--json OUT] [--src DIR ...]
+    python3 -I tools/audit_maps.py REPO [id ...] [--max-loss 0.002] [--json OUT] [--src DIR ...] [--passable-kind K] [--passable-class C]
 
 REPO is a map repository (a path, or a name under --godot, default ~/godot). Each map is found its source
 .bsp (the repository's `tools/ports.txt`, or a document's `attribution`, or the world's name), audited, and
@@ -18,6 +18,7 @@ importer's mesh) carry their own y0 and are audited with --mesh.
 import argparse
 import collections
 import glob
+import itertools
 import json
 import math
 import os
@@ -31,6 +32,9 @@ from dotbsp import audit, classes, mesh, reader, terrain, units  # noqa: E402
 
 CELL = 0.5       # metres per raster cell for the footprint correlation
 SRC_ROOTS = ["~/projects/mapsrc", "~/godot/inspirations"]
+# Contents kinds a box document cannot express and a body does not stop at: a ladder is a climbable volume (the document has
+# no ladder; the games' bots reach a level by its stairs), not a solid, so its brush and the "floor" on its top are not owed.
+DOC_PASSABLE_KINDS = ("ladder",)
 
 
 def bsp_index(roots):
@@ -179,22 +183,44 @@ def brush_hits(bsp, boxes, off, scale, sample, terrain_field=None):
     return hit / n if n else 0.0
 
 
-def refine(bsp, doc, off, scale, field):
+def _scorer(bsp, doc, scale, field):
     cand = solid_brushes(bsp)
     sample = cand[::max(1, len(cand) // 250)]
-    best = brush_hits(bsp, doc["boxes"], off, scale, sample, field)
-    for step in (0.25, 0.1, 0.03, 0.01):
+    return lambda t: brush_hits(bsp, doc["boxes"], t, scale, sample, field)
+
+
+def grid(score, off):
+    """The candidate's best neighbour on a grid over x and z (the FFT cell is half a metre and a wall is 0.3 m thick)."""
+    best, pick = -1.0, list(off)
+    for dx in range(-6, 7):
+        for dz in range(-6, 7):
+            t = [off[0] + dx * 0.1, off[1], off[2] + dz * 0.1]
+            v = score(t)
+            if v > best + 1e-9:
+                best, pick = v, t
+    return pick, best
+
+
+def climb(score, off, best):
+    """A hill-climb that also moves diagonally, so it does not stop on a ridge where one axis alone loses hits."""
+    moves = [m for m in itertools.product((-1, 0, 1), repeat=3) if any(m)]
+    for step in (0.1, 0.03, 0.01):
         moved = True
         while moved:
             moved = False
-            for ax in (0, 1, 2):
-                for sgn in (1, -1):
-                    t = list(off)
-                    t[ax] += sgn * step
-                    v = brush_hits(bsp, doc["boxes"], t, scale, sample, field)
-                    if v > best + 1e-9:
-                        off, best, moved = t, v, True
+            for m in moves:
+                t = [off[k] + m[k] * step for k in range(3)]
+                v = score(t)
+                if v > best + 1e-9:
+                    off, best, moved = t, v, True
     return [round(float(v), 3) for v in off], float(best)
+
+
+def refine(bsp, doc, cands, scale, field, keep=3):
+    """(offset, hit share) of the best of the FFT candidates: all gridded, the best `keep` climbed."""
+    score = _scorer(bsp, doc, scale, field)
+    ranked = sorted((grid(score, c) for c in cands), key=lambda t: -t[1])[:keep]
+    return max((climb(score, o, h) for o, h in ranked), key=lambda t: t[1])
 
 
 def summary(r, max_loss):
@@ -208,23 +234,22 @@ def summary(r, max_loss):
             "ok": bl <= max_loss and fl <= max_loss}
 
 
-def run_doc(bsp_path, doc_path, scale, max_loss, passable=()):
+def run_doc(bsp_path, doc_path, scale, max_loss, passable=(), skip_kinds=DOC_PASSABLE_KINDS, offset=None):
     bsp = load_bsp(bsp_path)
     with open(doc_path) as f:
         doc = json.load(f)
     field = terrain.Heightfield.decode(doc["terrain"])[0] if doc.get("terrain") else None
-    off = register(bsp, doc, scale)
-    if not off:
-        return {"error": "no boxes or no source brushes"}
-    best = None
-    for cand in off:
-        o, h = refine(bsp, doc, cand, scale, field)
-        if best is None or h > best[1]:
-            best = (o, h)
-    off, hit = best
+    if offset is not None:      # a document written unshifted: the frame is known, not searched for
+        off = list(offset)
+        hit = brush_hits(bsp, doc["boxes"], off, scale, solid_brushes(bsp)[::7], field)
+    else:
+        cands = register(bsp, doc, scale)
+        if not cands:
+            return {"error": "no boxes or no source brushes"}
+        off, hit = refine(bsp, doc, cands, scale, field)
     out = audit.Boxes(shift_boxes(doc.get("boxes", []), off), terrain=Shifted(field, off) if field else None)
     cl = lambda c: c == "worldspawn" or (classes.treatment(c)[0] == "world" and c not in passable)  # noqa: E731
-    s = summary(audit.audit(bsp, out, scale, 0.0, cl), max_loss)
+    s = summary(audit.audit(bsp, out, scale, 0.0, cl, skip_kinds=skip_kinds), max_loss)
     s.update(offset=off, fit=hit)
     return s
 
@@ -291,6 +316,11 @@ def main(argv):
     ap.add_argument("--godot", default=os.path.expanduser("~/godot"))
     ap.add_argument("--max-loss", type=float, default=0.002)
     ap.add_argument("--src", action="append", default=[])
+    ap.add_argument("--passable-kind", action="append", default=None, metavar="KIND",
+                    help="contents kind not owed to a box document (repeatable; default %s)" % ", ".join(DOC_PASSABLE_KINDS))
+    ap.add_argument("--passable-class", action="append", default=[], metavar="CLASS",
+                    help="brush entity class not owed to a box document (repeatable)")
+    ap.add_argument("--offset", help="x,y,z game metres to add to the documents' coordinates, when the frame is known (skips the search)")
     ap.add_argument("--json")
     a = ap.parse_args(argv)
     repo = a.repo if os.path.isdir(a.repo) else os.path.join(a.godot, a.repo)
@@ -302,7 +332,8 @@ def main(argv):
             print("%-28s SKIP  %s" % (mid, rows[mid]["skip"]), flush=True)
             continue
         try:
-            r = run_doc(bsp, path, units.VISUAL, a.max_loss) if kind == "doc" else run_mesh(bsp, path, a.max_loss)
+            r = run_doc(bsp, path, units.VISUAL, a.max_loss, a.passable_class, tuple(a.passable_kind or DOC_PASSABLE_KINDS),
+                         [float(v) for v in a.offset.split(",")] if a.offset else None) if kind == "doc" else run_mesh(bsp, path, a.max_loss)
         except Exception as e:    # one bad map never stops the run
             r = {"error": "%s: %s" % (type(e).__name__, e)}
         rows[mid] = r

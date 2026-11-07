@@ -270,7 +270,7 @@ def brush_points(bsp, bi, off, n=5):
     return [(q[0] + off[0], q[1] + off[1], q[2] + off[2]) for q in out if bsp.point_in_brush(bi, q, -0.25)]
 
 
-def brushes(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, keep=None):
+def brushes(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, keep=None, skip_kinds=()):
     """{(class, kind): [brushes, collidable expected, collided]}: every brush the map's models reach, and
     of the player-solid ones whose owner should collide, how many the output holds (a point well inside
     each, in the output's solid). `classes_of(cls)` says whether a brush entity class should collide."""
@@ -284,7 +284,7 @@ def brushes(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, keep=None):
         kind = contents_kind(bsp.brushes[bi][2], _names(bsp, bi))
         row = table[(cls, kind)]
         row[0] += 1
-        if kind not in COLLIDES or not classes_of(cls) or not bsp.brushes[bi][2] & reader.MASK_PLAYERSOLID:
+        if kind not in COLLIDES or kind in skip_kinds or not classes_of(cls) or not bsp.brushes[bi][2] & reader.MASK_PLAYERSOLID:
             continue
         off = tuple(reader.entity_vec(bsp.entities[ei])) if ei is not None else (0.0, 0.0, 0.0)
         qs = brush_points(bsp, bi, off)
@@ -430,10 +430,11 @@ class Union:
         return any(p.ground(x, y, z, depth) for p in self.parts)
 
 
-def audit(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, grid=GRID, keep=None):
+def audit(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, grid=GRID, keep=None, skip_kinds=()):
     """The whole report of one output: the brush table, the floor misses, and totals; `keep(game point)`
-    limits both to where the output means to be whole."""
-    table, lost = brushes(bsp, out, scale, y0, classes_of, keep)
+    limits both to where the output means to be whole, and `skip_kinds` (contents kinds, e.g. `ladder`) leaves out
+    what the output cannot express and a body does not stop at."""
+    table, lost = brushes(bsp, out, scale, y0, classes_of, keep, skip_kinds)
     from . import mesh as _mesh
     solid = None
     if classes_of is not None:
@@ -441,6 +442,8 @@ def audit(bsp, out, scale=_units.VISUAL, y0=0.0, classes_of=None, grid=GRID, kee
     samples = floors(bsp, grid=grid, solid_classes=solid if solid is not None else _mesh.SOLID_BRUSH_ENTITIES)
     if keep is not None:
         samples = [x for x in samples if keep(to_game(x[0], scale, y0))]
+    if skip_kinds:
+        samples = [x for x in samples if x[2] not in skip_kinds]
     fl, missed = check(samples, out, scale, y0)
     exp = sum(r[1] for r in table.values())
     got = sum(r[2] for r in table.values())
