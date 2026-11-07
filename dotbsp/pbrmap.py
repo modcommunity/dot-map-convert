@@ -282,8 +282,11 @@ def tier_for(share):
 def ship_shared(generic, store, tier, library=None):
     """Write the set `generic` at `tier` to `<store>/<id>/<tier>/{albedo,normal,roughness,ao}.webp`, once:
     a set already there is shared by every map that names it. The store is the delivered unit (by id and tier)."""
-    from PIL import Image
     sid = generic[len(GENERIC):]
+    held = os.path.join(store, sid, tier)
+    if all(os.path.isfile(os.path.join(held, n + ".webp")) for n in ("albedo", "normal", "roughness")):
+        return held        # the store already holds the set (the source library need not be on this machine)
+    from PIL import Image
     lib = _cache.get(library)
     if lib is None:
         lib = _cache[library] = load_library(library)
