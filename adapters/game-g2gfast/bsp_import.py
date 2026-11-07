@@ -3093,6 +3093,37 @@ def floor_boxes(bsp, solids, props):
     return out
 
 
+# (class, TeamNum) to the arena team tag: TeamNum 2 is the first side and 3 the second.
+SPAWN_TEAMS = {("info_player_teamspawn", "2"): "red", ("info_player_teamspawn", "3"): "blue"}
+
+
+def objective_markers(bsp, doc):
+    """Control points, resupply volumes and flag spawns, in Godot axes.
+
+    Control points and resupply come from the map's own entities; flag spawns are authored
+    in the map's zones file (`flag_spawns`: team, origin_src, optional yaw_src), because a
+    capture-the-flag layout is a choice the original map never made.
+    """
+    points = []
+    for e in bsp.entities:
+        if e.get("classname") == "team_control_point" and "origin" in e:
+            owner = SPAWN_TEAMS.get(("info_player_teamspawn", str(e.get("point_default_owner", "")))) or ""
+            points.append({"index": int(float(e.get("point_index", 0) or 0)), "name": e.get("point_printname", ""),
+                           "origin": list(to_godot(entity_origin(e))), "owner": owner})
+    resupply = []
+    for e in bsp.entities:
+        if e.get("classname") == "func_regenerate":
+            box = brush_box(bsp, e)
+            if box is not None:
+                resupply.append({"min": list(to_godot(box[0])), "max": list(to_godot(box[1]))})
+    flags = []
+    for f in doc.get("flag_spawns", []):
+        src = [float(x) for x in f["origin_src"]]
+        flags.append({"team": f["team"], "origin": list(to_godot(src)),
+                      "yaw": yaw_to_godot(float(f.get("yaw_src", 0.0)))})
+    return sorted(points, key=lambda p: p["index"]), resupply, flags
+
+
 def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None, floors=None):
     """Spawns, and every volume a timer cares about.
 
@@ -3108,13 +3139,24 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
     for e in bsp.entities:
         cls = e.get("classname", "")
         if cls in ("info_player_terrorist", "info_player_counterterrorist",
-                   "info_player_start") and "origin" in e:
+                   "info_player_start", "info_player_teamspawn",
+                   "info_player_deathmatch") and "origin" in e:
             src = entity_origin(e)
             # `yaw` is stored converted, like every position beside it: the manifest
             # is Godot axes throughout, and a field that were half-converted is the
             # kind nobody notices until a player spawns facing a wall.
-            spawns.append({"origin_src": src, "origin": list(to_godot(src)),
-                           "yaw": yaw_to_godot(entity_yaw(e)), "yaw_src": entity_yaw(e)})
+            spot = {"origin_src": src, "origin": list(to_godot(src)),
+                    "yaw": yaw_to_godot(entity_yaw(e)), "yaw_src": entity_yaw(e)}
+            side = SPAWN_TEAMS.get((cls, str(e.get("TeamNum", "")).strip()))
+            # Only a spawn the mapper gave a side carries one; the rest stay a shared pool.
+            if side:
+                spot["team"] = side
+            spawns.append(spot)
+
+    # A map with sides keeps only the spawns that have one: its lone `info_player_start` and
+    # deathmatch spot are editor leftovers, and one of them stood outside the playable area.
+    if any("team" in sp for sp in spawns):
+        spawns = [sp for sp in spawns if "team" in sp]
 
     label_zones(z, doc.get("ignore_labels"))
     resolve_overrides(z, doc)
@@ -4009,6 +4051,15 @@ def main(argv=None):
         "push_volumes": mech["push"],
         "trigger_volumes": other,
     }
+    points, resupply, flags = objective_markers(bsp, doc)
+    if points:
+        manifest["control_points"] = points
+    if resupply:
+        manifest["resupply"] = resupply
+    if flags:
+        manifest["flag_spawns"] = flags
+    if "modes" in doc:
+        manifest["modes"] = doc["modes"]
     movers = train_movers(bsp)
     if movers:
         manifest["train_movers"] = movers
