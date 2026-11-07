@@ -148,8 +148,14 @@ def load_index(path):
         return Index(json.load(f)["models"])
 
 
-def measure(bsp, notes=None):
-    """An `Index` of the packed models' sizes, built in memory from the bsp's pakfile."""
+def measure(bsp, notes=None, raw=None):
+    """An `Index` of the packed models' sizes. With `raw` (the map's raw import directory, or its `models.json`) and
+    a stored index that has a record for every model the map places, that index is read back and the pakfile (a
+    gigabyte on some maps) is not opened; otherwise it is built in memory from the bsp's pakfile."""
+    if raw:
+        stored = load_index(raw)
+        if len(stored) and all(k in stored.models for k in placed(bsp)):
+            return stored
     return Index(extract(bsp, None, notes))
 
 
