@@ -2920,6 +2920,27 @@ def dead_teleports(z):
     return dropped + noclient
 
 
+def targetless_teleports(z):
+    """Drop the teleports with no `target` at all. Not opt-in: a fact.
+
+    A `trigger_teleport` whose `target` is empty sends nobody anywhere in the compiled
+    map. surf_spectrum's `xSpawn*` and `xStage1..5TimerTele` are such: logic gives them a
+    target at run time (an `AddOutput target ...` from the winner), which this game does
+    not run. Imported, each one fell through to "no destination means the spawn" and
+    became a pit over a whole stage. Dropped and listed instead, so the note names them.
+    A teleport an override or an earlier rule already claimed is not asked.
+    """
+    dropped = []
+    for i, e in list(z.entities("trigger_teleport")):
+        if not e.get("target", "").strip():
+            z.claimed.add(i)
+            dropped.append(e.get("targetname", "") or "#%d" % i)
+    if dropped:
+        shown = ", ".join(dropped[:12]) + (", ..." if len(dropped) > 12 else "")
+        z.notes.append("%d teleports dropped that have no target (%s)" % (len(dropped), shown))
+    return len(dropped)
+
+
 def sealed_teleports(z, rule):
     """Drop the teleports aimed at a destination that is a room with no way out.
 
@@ -3035,6 +3056,7 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
     # After the overrides, which may name a filtered teleport on purpose -- bhop_pit's
     # finish is the one only a player who reached the last checkpoint is sent through.
     dead_teleports(z)
+    targetless_teleports(z)
     if "conditional_teleports" in doc:
         conditional_teleports(z, doc["conditional_teleports"])
     if "round_teleports" in doc:
