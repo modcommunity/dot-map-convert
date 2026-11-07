@@ -167,6 +167,24 @@ class Boxes(unittest.TestCase):
         out = boxes.decompose(planes, pts, tilt=True)
         self.assertTrue(any(b["kind"] == "ramp" for b in out), [b["kind"] for b in out])
 
+    def test_axis_cut_is_prop_hunts_original(self):
+        # the old corner test: a level-ended wedge is a block (the shared cut slices it)
+        wedge = [(0, 0, 0), (64, 0, 0), (0, 256, 0), (64, 256, 0), (0, 256, 128), (64, 256, 128)]
+        planes = [(0, 0, -1, 0), (-1, 0, 0, 0), (1, 0, 0, 64), (0, 1, 0, 256), (0, -0.4472, 0.8944, 0)]
+        self.assertEqual([b["kind"] for b in boxes.decompose_axis(planes, wedge)], ["box"])
+        # a triangular column is its turned rectangle, not slabs
+        tri = [(0, 0), (100, 0), (0, 100)]
+        pts = [(x, y, z) for x, y in tri for z in (0, 50)]
+        tplanes = [(0, -1, 0, 0), (-1, 0, 0, 0), (0.7071, 0.7071, 0, 70.71), (0, 0, 1, 50), (0, 0, -1, 0)]
+        self.assertEqual([b["kind"] for b in boxes.decompose_axis(tplanes, pts)], ["box"])
+        # a roof cut across its longer axis, each slab as tall as the planes at its middle, none grown
+        roof = [(0, 0, 0), (256, 0, 0), (0, 64, 0), (256, 64, 0), (128, 0, 128), (128, 64, 128)]
+        rplanes = [(0, 0, -1, 0), (0, -1, 0, 0), (0, 1, 0, 64), (-0.7071, 0, 0.7071, 0), (0.7071, 0, 0.7071, 181.019)]
+        out = boxes.decompose_axis(rplanes, roof, slab=64)
+        self.assertEqual([b["kind"] for b in out], ["slab"] * 4)
+        self.assertEqual([round(b["z"][1], 1) for b in out], [32.0, 96.0, 96.0, 32.0])
+        self.assertEqual(boxes.decompose_axis(planes, wedge[:3]), [])
+
 
 class Intermediate(unittest.TestCase):
     def doc(self, **kw):
@@ -656,6 +674,22 @@ class LightsEquivalence(unittest.TestCase):
             self.assertEqual([d["at"] for d in kept], [list(p[:3]) for p in self.original(pts, cap)[0]])
             self.assertEqual(gap, self.original(pts, cap)[1])
         self.assertEqual(lights.thin_by_gap([], 5), ([], 0.0))
+
+    def test_thin_by_gap_first_is_hide_n_seeks_loop(self):
+        import random
+        rng = random.Random(5)
+        for n in (400, 900):
+            lamps = [{"at": [rng.uniform(0, 40), rng.uniform(0, 6), rng.uniform(0, 40)]} for _ in range(n)]
+            radius = 0.5                    # hide-n-seek-maps' loop as it was written
+            while True:
+                kept = []
+                for lt in lamps:
+                    if all(sum((a - b) ** 2 for a, b in zip(lt["at"], k["at"])) >= radius ** 2 for k in kept):
+                        kept.append(lt)
+                if len(kept) <= 128:
+                    break
+                radius += 0.25
+            self.assertEqual(lights.thin_by_gap(lamps, 128, step=0.25, first=0.5), (kept, radius))
 
     def test_thin_by_gap_on_murder_mystery_lights(self):
         mod = repo_importer("murder-mystery-maps")

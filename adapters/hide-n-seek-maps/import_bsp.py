@@ -103,6 +103,7 @@ sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402  (a shim over dot-map's shared reader; it puts dotbsp on sys.path)
 from dotbsp import boxes as dboxes, docboxes  # noqa: E402  (the shared passes over a document's boxes)
 from dotbsp import terrain as dterrain  # noqa: E402
+from dotbsp import lights as dlights  # noqa: E402
 import build_maps  # noqa: E402
 
 S = 0.01905
@@ -677,15 +678,8 @@ def main(argv):
     if len(m.lights) > 128:
         # The document takes 128 lights at most (HsMapDoc.MAX_LIGHTS). Keep the lights greedily, dropping any within a radius of one
         # already kept, and widen the radius until they fit: a lamp-per-ceiling-tile map keeps an even spread, not its first 128.
-        before, radius = len(m.lights), 0.5
-        while True:
-            kept = []
-            for lt in m.lights:
-                if all((lt["at"][0] - k["at"][0]) ** 2 + (lt["at"][1] - k["at"][1]) ** 2 + (lt["at"][2] - k["at"][2]) ** 2 >= radius ** 2 for k in kept):
-                    kept.append(lt)
-            if len(kept) <= 128:
-                break
-            radius += 0.25
+        before = len(m.lights)
+        kept, radius = dlights.thin_by_gap(m.lights, 128, step=0.25, first=0.5)
         m.lights[:] = kept
         print("lights thinned from %d to %d (radius %.2f m)" % (before, len(kept), radius))
     print("props %d  lights %d  spawns %d  dropped models %s" % (len(m.props), len(m.lights), len(starts), dropped))

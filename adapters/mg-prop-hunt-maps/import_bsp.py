@@ -66,7 +66,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402  (a shim over dot-map's shared reader; it puts dotbsp on sys.path)
-from dotbsp import docboxes  # noqa: E402  (the shared passes over a document's boxes)
+from dotbsp import boxes as dboxes, docboxes  # noqa: E402  (the shared passes over a document's boxes)
 from dotbsp import models as bsp_models  # noqa: E402  (the models a map packs in its pakfile)
 from dotbsp import standins  # noqa: E402
 import build_maps  # noqa: E402
@@ -834,127 +834,16 @@ def vec(s):
     return [float(x) for x in s.split()]
 
 
-def planes_of(bsp, index):
-    first, count, _ = bsp.brushes[index]
-    return [bsp.planes[s[0]][:4] for s in bsp.brushsides[first:first + count] if not s[3]]
-
-
-def z_range(planes, x, y):
-    lo, hi = -1e9, 1e9
-    for nx, ny, nz, d in planes:
-        if abs(nz) < 1e-6:
-            continue
-        z = (d - nx * x - ny * y) / nz
-        if nz > 0:
-            hi = min(hi, z)
-        else:
-            lo = max(lo, z)
-    return lo, hi
-
-
-def box_in_frame(pts, phi, tol):
-    """The hull's extents in a frame turned phi degrees about z, or None when some corner is not
-    a corner of that bounding box. (x0, x1), (y0, y1), (z0, z1), in the turned frame."""
-    c, sn = math.cos(math.radians(phi)), math.sin(math.radians(phi))
-    q = [(p[0] * c + p[1] * sn, -p[0] * sn + p[1] * c, p[2]) for p in pts]
-    x0, x1 = min(p[0] for p in q), max(p[0] for p in q)
-    y0, y1 = min(p[1] for p in q), max(p[1] for p in q)
-    z0, z1 = min(p[2] for p in q), max(p[2] for p in q)
-    for p in q:
-        if not ((abs(p[0] - x0) < tol or abs(p[0] - x1) < tol) and (abs(p[1] - y0) < tol or abs(p[1] - y1) < tol)
-                and (abs(p[2] - z0) < tol or abs(p[2] - z1) < tol)):
-            return None
-    return (x0, x1), (y0, y1), (z0, z1)
-
-
-def turned_box(bsp, index, pts):
-    """(box, phi) when the brush is a box turned about the vertical axis, else None. The author's
-    building is not always on the grid (a room at thirty degrees to the rest), and cutting such a
-    wall into axis-aligned slabs gives a saw-tooth the players catch on. The angle is each upright
-    side's direction modulo 90, tried in turn; the document's boxes carry a yaw."""
-    first, count, _ = bsp.brushes[index]
-    tried = set()
-    for sd in bsp.brushsides[first:first + count]:
-        if sd[3]:
-            continue
-        nx, ny, nz, _d = bsp.planes[sd[0]][:4]
-        if abs(nz) > 1e-4:
-            continue
-        phi = round(math.degrees(math.atan2(ny, nx)) % 90.0, 2)
-        if phi in tried or phi < 0.05 or phi > 89.95:
-            continue
-        tried.add(phi)
-        # Four-decimal planes at 1000 units leave a unit of slack in the corners.
-        box = box_in_frame(pts, phi, 1.5)
-        if box is not None:
-            return box, phi
-    return None
-
-
-def prism_box(pts):
-    """(box, phi) for a brush that is a vertical prism of any plan shape: the smallest turned
-    rectangle round its plan. A curved wall is a run of such wedges and a column of a round room
-    is one; the box overhangs the wedge by a sliver, where cutting it into axis-aligned slabs (a
-    slope's treatment, wrong for a plan shape) bit chunks out of the room. None for a brush whose
-    top or bottom is not flat and level."""
-    zs = sorted({round(p[2], 1) for p in pts})
-    if len(zs) != 2:
-        return None
-    low = {(round(p[0], 1), round(p[1], 1)) for p in pts if abs(p[2] - zs[0]) < 0.15}
-    high = {(round(p[0], 1), round(p[1], 1)) for p in pts if abs(p[2] - zs[1]) < 0.15}
-    if low != high or len(low) < 3:
-        return None
-    plan = [(x, y, zs[0]) for x, y in low]
-    best = None
-    for (ax, ay), (bx_, by) in ((p, q) for p in low for q in low if p != q):
-        phi = math.degrees(math.atan2(by - ay, bx_ - ax)) % 90.0
-        box = box_in_frame(plan, phi, 1e9)
-        area = (box[0][1] - box[0][0]) * (box[1][1] - box[1][0])
-        if best is None or area < best[0] - 1e-6:
-            best = (area, phi, box)
-    _a, phi, box = best
-    return (box[0], box[1], (zs[0], zs[1])), phi
-
-
 def brush_boxes(bsp, index):
     """[((x range), (y range), (z range), phi)] in Source units, the ranges in a frame turned phi
-    degrees (0 for most), and whether the brush had to be cut into slabs."""
+    degrees (0 for most), and whether the brush had to be cut into slabs. dot-map-convert's
+    boxes.decompose_axis, which is this importer's own cut as it was."""
+    first, count, _ = bsp.brushes[index]
+    planes = [bsp.planes[s[0]][:4] for s in bsp.brushsides[first:first + count] if not s[3]]
     pts = bsp.brush_hull(index)
-    if len(pts) < 4:
-        return [], 0
-    x0, x1 = min(p[0] for p in pts), max(p[0] for p in pts)
-    y0, y1 = min(p[1] for p in pts), max(p[1] for p in pts)
-    z0, z1 = min(p[2] for p in pts), max(p[2] for p in pts)
-    box_vol = (x1 - x0) * (y1 - y0) * (z1 - z0)
-    # Hull volume from the corner points: a brush is a box when every corner is a box corner.
-    corners = sum(1 for p in pts if (abs(p[0] - x0) < 0.5 or abs(p[0] - x1) < 0.5) and (abs(p[1] - y0) < 0.5 or abs(p[1] - y1) < 0.5) and (abs(p[2] - z0) < 0.5 or abs(p[2] - z1) < 0.5))
-    if corners == len(pts):
-        return [((x0, x1), (y0, y1), (z0, z1), 0.0)], 0
-    tb = turned_box(bsp, index, pts)
-    if tb is not None:
-        return [tb[0] + (tb[1],)], 0
-    pb = prism_box(pts)
-    if pb is not None:
-        return [pb[0] + (pb[1],)], 0
-    pl = planes_of(bsp, index)
-    out = []
-    if x1 - x0 >= y1 - y0:
-        n = max(1, math.ceil((x1 - x0) / SLAB))
-        for i in range(n):
-            a, b = x0 + (x1 - x0) * i / n, x0 + (x1 - x0) * (i + 1) / n
-            lo, hi = z_range(pl, (a + b) / 2, (y0 + y1) / 2)
-            lo, hi = max(lo, z0), min(hi, z1)
-            if hi - lo > 0.5:
-                out.append(((a, b), (y0, y1), (lo, hi), 0.0))
-    else:
-        n = max(1, math.ceil((y1 - y0) / SLAB))
-        for i in range(n):
-            a, b = y0 + (y1 - y0) * i / n, y0 + (y1 - y0) * (i + 1) / n
-            lo, hi = z_range(pl, (x0 + x1) / 2, (a + b) / 2)
-            lo, hi = max(lo, z0), min(hi, z1)
-            if hi - lo > 0.5:
-                out.append(((x0, x1), (a, b), (lo, hi), 0.0))
-    return out, 1
+    parts = dboxes.decompose_axis(planes, pts, slab=SLAB)
+    cut = 1 if len(pts) >= 4 and not (parts and parts[0]["kind"] != "slab") else 0
+    return [(p["x"], p["y"], p["z"], p["phi"]) for p in parts], cut
 
 
 def widen_doors(boxes, want=1.4, thick=0.4, narrowest=0.8):
@@ -1269,16 +1158,9 @@ def wants_terrain(bsp, boxes, inside=None):
 
 
 def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0, inside=None):
-    """The map's displacement ground as a stepped field of boxes (--terrain).
-
-    A displacement is a heightmap the mapper sculpted over a quad, not a brush, so the box
-    pass above finds no ground at all in a map whose yard is terrain (the church's spawns
-    stood on nothing). The surfaces are sampled at the middle of cells of `cell` source units
-    (about 1.5 m, nine sub-samples averaged so a cell half under a wall still has a height),
-    the height rounded to `quant` units (about 0.1 m) and equal neighbours merged: a long
-    flat yard is a few boxes, not a thousand, and the document's box limit is shared with the
-    walls. Yields ((x0, x1), (y0, y1), (z0, z1), material) in source units.
-    """
+    """The map's displacement ground as a stepped field of boxes (--terrain), dboxes.terrain_cells over the
+    displacement triangles, plus the stair strips between its terraces. Yields ((x0, x1), (z0, z1), (y0, y1),
+    material) in source units, the second range the height (this list's axes are the document's, not the map's)."""
     tris = []
     for f in bsp.model_faces(0):
         if f[6] >= 0:
@@ -1286,54 +1168,8 @@ def terrain_boxes(bsp, cell=80.0, quant=5.0, depth=52.0, inside=None):
     if inside is not None:
         # --bounds: a triangle belongs to the field when its middle is inside, like a brush box.
         tris = [t for t in tris if inside(tuple(sum(p[i] for p in t) / 3 for i in range(3)))]
-    if not tris:
-        return []
-    x0 = min(p[0] for t in tris for p in t)
-    y0 = min(p[1] for t in tris for p in t)
-    nx = int((max(p[0] for t in tris for p in t) - x0) // cell) + 1
-    ny = int((max(p[1] for t in tris for p in t) - y0) // cell) + 1
-    acc = {}
-    sub = (0.17, 0.5, 0.83)
-    for a, b, c in tris:
-        mnx, mxx = min(q[0] for q in (a, b, c)), max(q[0] for q in (a, b, c))
-        mny, mxy = min(q[1] for q in (a, b, c)), max(q[1] for q in (a, b, c))
-        d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1])
-        if abs(d) < 1e-9:
-            continue
-        for i in range(int((mnx - x0) // cell), int((mxx - x0) // cell) + 1):
-            for j in range(int((mny - y0) // cell), int((mxy - y0) // cell) + 1):
-                for fx in sub:
-                    for fy in sub:
-                        px, py = x0 + (i + fx) * cell, y0 + (j + fy) * cell
-                        l1 = ((b[1] - c[1]) * (px - c[0]) + (c[0] - b[0]) * (py - c[1])) / d
-                        l2 = ((c[1] - a[1]) * (px - c[0]) + (a[0] - c[0]) * (py - c[1])) / d
-                        l3 = 1 - l1 - l2
-                        if min(l1, l2, l3) >= -1e-6:
-                            acc.setdefault((i, j), []).append(l1 * a[2] + l2 * b[2] + l3 * c[2])
-    h = {k: round(sum(v) / len(v) / quant) * quant for k, v in acc.items()}
-    # Runs along x of one height, then runs of identical runs along y.
-    runs = {}
-    for j in range(ny):
-        i = 0
-        while i < nx:
-            if (i, j) not in h:
-                i += 1
-                continue
-            e = i
-            while (e + 1, j) in h and h[(e + 1, j)] == h[(i, j)]:
-                e += 1
-            runs[(i, e, h[(i, j)], j)] = j
-            i = e + 1
-    out = []
-    done = set()
-    for (i, e, ht, j) in sorted(runs, key=lambda k: (k[3], k[0])):
-        if (i, e, ht, j) in done:
-            continue
-        j2 = j
-        while (i, e, ht, j2 + 1) in runs:
-            j2 += 1
-            done.add((i, e, ht, j2))
-        out.append(((x0 + i * cell, x0 + (e + 1) * cell), (ht - depth, ht), (y0 + j * cell, y0 + (j2 + 1) * cell), "grass"))
+    h, x0, y0, nx, ny = dboxes.terrain_heights(tris, cell, quant)
+    out = [(c["x"], c["z"], c["y"], "grass") for c in dboxes.terrain_runs(h, x0, y0, nx, ny, cell, depth)]
     for (xs, ys, zs) in terrace_stairs(h, x0, y0, cell, depth, 0.35 / S, 0.8 / S, 3.0 / S):
         out.append((xs, ys, zs, "grass"))
     return out

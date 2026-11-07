@@ -9,8 +9,8 @@ runner follows. Everything else is read from the bsp.
 
 What it does, and why:
 
-- The world's brushes become BOXES (a course document has no meshes). `brush_boxes` and its
-  helpers are copied from mg-prop-hunt-maps/tools/import_bsp.py: a brush that is not a box is
+- The world's brushes become BOXES (a course document has no meshes). `brush_boxes` is
+  dotbsp.boxes.decompose: a brush that is not a box is
   a turned box, a vertical prism, or cut into slabs. Boxes that touch end to end are then
   merged, because a document is capped at MAX_PIECES (2400) and a ceiling is a hundred slats.
 - Scale: 1 unit = 0.0254 m (a true inch, a 72 unit player is 1.83 m), not the 0.01905 of the
@@ -64,6 +64,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402
+from dotbsp import boxes as dboxes  # noqa: E402
 
 S = 0.0254
 PLAYER_H = 1.8  # the game's standing capsule (DrCourse.PLAYER_HEIGHT), for push_reach
@@ -91,117 +92,14 @@ def vec(s):
     return [float(x) for x in s.split()]
 
 
-# ---- brushes -> boxes (copied from mg-prop-hunt-maps/tools/import_bsp.py) ---------------------
-
-def planes_of(bsp, index):
-    first, count, _ = bsp.brushes[index]
-    return [bsp.planes[s[0]][:4] for s in bsp.brushsides[first:first + count] if not s[3]]
-
-
-def z_range(planes, x, y):
-    lo, hi = -1e9, 1e9
-    for nx, ny, nz, d in planes:
-        if abs(nz) < 1e-6:
-            continue
-        z = (d - nx * x - ny * y) / nz
-        if nz > 0:
-            hi = min(hi, z)
-        else:
-            lo = max(lo, z)
-    return lo, hi
-
-
-def box_in_frame(pts, phi, tol):
-    c, sn = math.cos(math.radians(phi)), math.sin(math.radians(phi))
-    q = [(p[0] * c + p[1] * sn, -p[0] * sn + p[1] * c, p[2]) for p in pts]
-    x0, x1 = min(p[0] for p in q), max(p[0] for p in q)
-    y0, y1 = min(p[1] for p in q), max(p[1] for p in q)
-    z0, z1 = min(p[2] for p in q), max(p[2] for p in q)
-    for p in q:
-        if not ((abs(p[0] - x0) < tol or abs(p[0] - x1) < tol) and (abs(p[1] - y0) < tol or abs(p[1] - y1) < tol)
-                and (abs(p[2] - z0) < tol or abs(p[2] - z1) < tol)):
-            return None
-    return (x0, x1), (y0, y1), (z0, z1)
-
-
-def turned_box(bsp, index, pts):
-    first, count, _ = bsp.brushes[index]
-    tried = set()
-    for sd in bsp.brushsides[first:first + count]:
-        if sd[3]:
-            continue
-        nx, ny, nz, _d = bsp.planes[sd[0]][:4]
-        if abs(nz) > 1e-4:
-            continue
-        phi = round(math.degrees(math.atan2(ny, nx)) % 90.0, 2)
-        if phi in tried or phi < 0.05 or phi > 89.95:
-            continue
-        tried.add(phi)
-        box = box_in_frame(pts, phi, 1.5)
-        if box is not None:
-            return box, phi
-    return None
-
-
-def prism_box(pts):
-    zs = sorted({round(p[2], 1) for p in pts})
-    if len(zs) != 2:
-        return None
-    low = {(round(p[0], 1), round(p[1], 1)) for p in pts if abs(p[2] - zs[0]) < 0.15}
-    high = {(round(p[0], 1), round(p[1], 1)) for p in pts if abs(p[2] - zs[1]) < 0.15}
-    if low != high or len(low) < 3:
-        return None
-    plan = [(x, y, zs[0]) for x, y in low]
-    best = None
-    for (ax, ay), (bx_, by) in ((p, q) for p in low for q in low if p != q):
-        phi = math.degrees(math.atan2(by - ay, bx_ - ax)) % 90.0
-        box = box_in_frame(plan, phi, 1e9)
-        area = (box[0][1] - box[0][0]) * (box[1][1] - box[1][0])
-        if best is None or area < best[0] - 1e-6:
-            best = (area, phi, box)
-    _a, phi, box = best
-    return (box[0], box[1], (zs[0], zs[1])), phi
-
+# ---- brushes -> boxes (dotbsp.boxes.decompose) ---------------------------------------------
 
 def brush_boxes(bsp, index):
     """[((x range), (y range), (z range), phi)] in Source units, and whether it was sliced."""
-    pts = bsp.brush_hull(index)
-    if len(pts) < 4:
-        return [], 0
-    x0, x1 = min(p[0] for p in pts), max(p[0] for p in pts)
-    y0, y1 = min(p[1] for p in pts), max(p[1] for p in pts)
-    z0, z1 = min(p[2] for p in pts), max(p[2] for p in pts)
-    corners = sum(1 for p in pts if (abs(p[0] - x0) < 0.5 or abs(p[0] - x1) < 0.5)
-                  and (abs(p[1] - y0) < 0.5 or abs(p[1] - y1) < 0.5)
-                  and (abs(p[2] - z0) < 0.5 or abs(p[2] - z1) < 0.5))
-    # a wedge's six corners are all box corners: only eight make a box, or a ramp becomes a block
-    if corners == len(pts) and len(pts) >= 8:
-        return [((x0, x1), (y0, y1), (z0, z1), 0.0)], 0
-    tb = turned_box(bsp, index, pts)
-    if tb is not None:
-        return [tb[0] + (tb[1],)], 0
-    pb = prism_box(pts)
-    if pb is not None:
-        return [pb[0] + (pb[1],)], 0
-    pl = planes_of(bsp, index)
-    out = []
-    if x1 - x0 >= y1 - y0:
-        n = max(1, math.ceil((x1 - x0) / SLAB))
-        for i in range(n):
-            a, b = x0 + (x1 - x0) * i / n, x0 + (x1 - x0) * (i + 1) / n
-            lo, hi = z_range(pl, (a + b) / 2, (y0 + y1) / 2)
-            lo, hi = max(lo, z0), min(hi, z1)
-            if hi - lo > 0.5:
-                out.append(((a, b), (y0, y1), (lo, hi), 0.0))
-    else:
-        n = max(1, math.ceil((y1 - y0) / SLAB))
-        for i in range(n):
-            a, b = y0 + (y1 - y0) * i / n, y0 + (y1 - y0) * (i + 1) / n
-            lo, hi = z_range(pl, (x0 + x1) / 2, (a + b) / 2)
-            lo, hi = max(lo, z0), min(hi, z1)
-            if hi - lo > 0.5:
-                out.append(((x0, x1), (a, b), (lo, hi), 0.0))
-    return out, 1
+    first, count, _ = bsp.brushes[index]
+    planes = [bsp.planes[s[0]][:4] for s in bsp.brushsides[first:first + count] if not s[3]]
+    parts = dboxes.decompose(planes, bsp.brush_hull(index), slab=SLAB)
+    return [(p["x"], p["y"], p["z"], p["phi"]) for p in parts], 1 if parts and parts[0]["kind"] == "slab" else 0
 
 
 # ---- the conversion ------------------------------------------------------------------------
