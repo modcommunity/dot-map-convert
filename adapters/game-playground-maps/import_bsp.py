@@ -67,7 +67,7 @@ GAME_MATERIAL = {
     "ceiling": ("concrete", "#8d8b86"),
     "wood_planks": ("wood", None), "door_wood": ("wood", None), "wood_floor": ("wood", None), "parquet": ("wood", None),
     "roof_tiles": ("concrete", None), "tile_floor": ("concrete", None), "carpet": ("concrete", None), "flat": ("concrete", None),
-    "mud": ("mud", None), "snow": ("snow", None),
+    "mud": ("mud", None), "snow": ("snow", None), "grate": ("metal", None),
 }
 
 # Per map. "overrides" is (substring of the classified texture name, material, colour or None), first match
@@ -105,6 +105,24 @@ CONFIGS = {
         "declared": [
             {"min": [-12.4, 5.0, -12.4], "max": [12.4, 5.4, 12.4], "why": "tops of the upper brick walls"},
         ],
+    },
+    "mountain_resort": {
+        "id": "pgc_mountain_resort",
+        "name": "Mountain Resort",
+        "blurb": "A snowbound mountain lodge for building and wiring: a small corner of the resort (terraces and the lodge front) around the author spawn, cut from a much larger valley.",
+        "author": "prvec",
+        "source": "gm_mountainresort, https://steamcommunity.com/sharedfiles/filedetails/?id=2312309380",
+        "spawn_at": 24,
+        "spawn_pad": True,
+        # The valley is far larger than a sandbox needs and the document must stay small.
+        "region": ((-81.0, -56.0), (-12.0, 30.0), (-92.0, -52.0)),
+        "min_size": 1.0,
+        # The lodge (stairs, galleries, a cellar), two ponds made of hundreds of slivers, and a wall of two thin
+        # layers: cracks narrower than a player and floors no walk reaches.
+        "exclude": [((-81.0, -64.0), (-76.0, -52.0)), ((-64.5, -57.5), (-72.5, -63.5)),
+                    ((-64.0, -57.0), (-85.0, -81.0)), ((-75.0, -52.0), (-82.0, -81.0)),
+                    ((-81.0, -69.0), (-83.0, -75.0)), ((-63.5, -58.5), (-92.5, -88.5)),
+                    ((-62.5, -59.0), (-74.3, -73.1)), ((-62.2, -58.9), (-60.0, -58.8)), ((-63.8, -62.8), (-58.0, -55.3))],
     },
 }
 
@@ -217,7 +235,12 @@ def build(bsp_path, name):
         rb = (xs[0] / S, xs[1] / S, -zs[1] / S, -zs[0] / S, (ys[0] + y_off) / S, (ys[1] + y_off) / S,
               (ys[0] - 0.4 + y_off) / S, math.degrees(math.atan((ys[1] - ys[0]) / (xs[1] - xs[0]))), "x", 1)
         boxes.append(ramp_document_box(rb, "concrete", "#b9b4aa", y_off))
+    for (x0, x1), (z0, z1) in cfg.get("exclude", []):
+        boxes = [b for b in boxes if not (x0 <= b["at"][0] <= x1 and z0 <= b["at"][2] <= z1)]
     boxes = [snap(b) for b in boxes]
+    if cfg.get("spawn_pad"):
+        # The author's start stood on displacement terrain this converter leaves out.
+        boxes.append({"at": [round(sp[0] * S, 3), -0.15, round(-sp[1] * S, 3)], "size": [4.0, 0.3, 4.0], "material": "concrete", "colour": "#b9b4aa"})
     doc = {
         "format": 1, "kind": "playground_map", "id": cfg["id"], "name": cfg["name"],
         "blurb": cfg["blurb"], "map_kind": "sandbox", "tier": 1, "author": cfg["author"],

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt or hide-and-seek .bsp (VBSP 19/20) into a hide-n-seek map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--no-doors] [--terrain] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--slide-doors] [--scale=k] [--drop-door=x,z] [--cover=N] [--cover-gap=m] [--lobby=r,gap] [--cover-seed=N] [--seekers-at=x,z] [--anchor=N] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--drop-sky-slab] [--keep-reach] [--reach-hiders[=N]]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--no-doors] [--floor=m] [--min-size=m] [--terrain] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--slide-doors] [--scale=k] [--drop-door=x,z] [--cover=N] [--cover-gap=m] [--lobby=r,gap] [--cover-seed=N] [--seekers-at=x,z] [--anchor=N] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--drop-sky-slab] [--keep-reach] [--reach-hiders[=N]]
 
 --merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> shrink a trim-heavy map under the 6000-box limit: touching
 same-material boxes join, then detail boxes below that size go (a panel a metre long stays). Off by default; counts are printed.
@@ -39,7 +39,8 @@ author's hand-sized clutter (68 table lamps in a yard) is no cover, and a seeker
 there is to look behind grows with it, so a lone seeker could not search a yard of 280 props in a round.
 
 --cover=N adds N pieces of furniture (beds, wardrobes, sofas) on the clearest open floor, seeded, for a
-map whose author left it bare; the bot suite finds a hider's places by cover.
+map whose author left it bare; the bot suite finds a hider's places by cover. What the seekers' floor
+level has no room for goes on any other ground they walk to (terrain slopes, terraces, other storeys).
 
 --lobby=r,gap keeps only the hider starts within r metres of the author's seeker start (the lobby everybody arrives in) and keeps
 --cover's furniture `gap` metres clear of them: with the author's starts in every room and furniture beside each, a hider hid
@@ -88,6 +89,8 @@ What it does, and why each choice:
   person crouches behind and drops what is hand-sized (bottles, mugs, cartons, cans).
 - Each prop_door_rotating becomes a real door (`add_doors`): the doorway beside its hinge is
   measured from the finished boxes, and a door that does not find one is reported, not guessed.
+- Every hider start is one the seekers can walk to from their own (terrain by slope, `walk_flood`); the
+  others are dropped and the dozen made up from walked ground.
 - info_player_start entries are shared out between the two teams; `light` entities become omni lights.
 - Tool brushes (skybox, clip, trigger, hint, nodraw-only) are dropped.
 
@@ -96,6 +99,7 @@ The output goes through build_maps.Map.build(), so spawns are settled and checke
 import json
 import math
 import os
+import random
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -107,6 +111,8 @@ from dotbsp import lights as dlights  # noqa: E402
 import build_maps  # noqa: E402
 
 S = 0.01905
+FLOOR = 0.0   # --floor=m: the author's ground, in metres of the finished map; subtracted so it stands at y = 0
+MIN_SIZE = 0.0   # --min-size=m: boxes with a longest side under this are dropped
 
 
 TERRAIN_TINT = (0.85, 0.9, 0.78)
@@ -341,7 +347,7 @@ START_CLASSES = ("info_player_start", "info_player_terrorist", "info_player_coun
 
 
 def gd(p):
-    return (p[0] * S, p[2] * S, -p[1] * S)
+    return (p[0] * S, p[2] * S - FLOOR, -p[1] * S)
 
 
 def kv(e, k, default=None):
@@ -368,7 +374,7 @@ COVER_INDOOR = ("furniture_bed_single", "furniture_bookcase_closed_wide", "furni
 
 
 def main(argv):
-    global S
+    global S, FLOOR, MIN_SIZE
     args = [a for a in argv[1:] if not a.startswith("--")]
     out_path = None
     style = ""
@@ -435,6 +441,10 @@ def main(argv):
             drop_doors.append(tuple(float(t) for t in a[12:].split(",")))
         elif a.startswith("--scale="):
             S = 0.01905 * float(a[8:])
+        elif a.startswith("--floor="):
+            FLOOR = float(a[8:])
+        elif a.startswith("--min-size="):
+            MIN_SIZE = float(a[11:])
         elif a == "--terrain":
             terrain = True
         elif a.startswith("--graft-terrain="):
@@ -504,7 +514,7 @@ def main(argv):
                 bx = m.box((gx, gy, gz), ((x1 - x0) * S, (z1 - z0) * S, (y1 - y0) * S), mt[0], mt[1], yaw=phi)
             else:
                 # Source y is godot -z: the box's range flips.
-                bx = m.span(x0 * S, x1 * S, z0 * S, z1 * S, -y1 * S, -y0 * S, mt[0], mt[1])
+                bx = m.span(x0 * S, x1 * S, z0 * S - FLOOR, z1 * S - FLOOR, -y1 * S, -y0 * S, mt[0], mt[1])
             if invisible and bx is not None:
                 bx["visible"] = False
             elif bx is not None and mt[0] == "flat" and style == "yard":
@@ -520,13 +530,15 @@ def main(argv):
         for c in dboxes.terrain_cells(tris):
             # terrain_cells names the axes as the map does (z is height); this loop's y is the height, z the map's y.
             (x0, x1), (y0, y1), (z0, z1), mat = c["x"], c["z"], c["y"], "grass"
-            m.span(x0 * S, x1 * S, y0 * S, y1 * S, -z1 * S, -z0 * S, mat, (0.85, 0.9, 0.78))
+            m.span(x0 * S, x1 * S, y0 * S - FLOOR, y1 * S - FLOOR, -z1 * S, -z0 * S, mat, (0.85, 0.9, 0.78))
             n += 1
         print("terrain: %d ground boxes from the displacements" % n)
     print("brushes %d  tool-only %d  sliced %d  boxes %d" % (len(bsp.model_brushes(0)), skipped, sliced, len(m.boxes)))
 
     docboxes.drop_door_leaves(m.boxes)
     docboxes.prune_far_scenery(m.boxes, [gd(vec(e["origin"])) for e in bsp.entities if e.get("classname") in START_CLASSES])
+    if MIN_SIZE:
+        print("small boxes dropped: %d" % docboxes.drop_small(m.boxes, MIN_SIZE))
 
     # Props: sit on the highest solid box under the footprint when one is within reach of the
     # source height, else at the source height (a lamp on a table the author placed as a prop).
@@ -624,12 +636,27 @@ def main(argv):
     eox, eoz = early[0], early[2]
     if hiders_at:
         hiders_at = (hiders_at[0] + eox, hiders_at[1] + eoz, hiders_at[2])
+    # Where a body walks from the first seeker start, terrain by slope: hider starts are kept and found
+    # there, and cover the level-floor scatter cannot place goes there (slopes, terraces, other storeys).
+    first = (seekers_at[0] + eox, floor_y + 0.05, seekers_at[1] + eoz) if seekers_at else gstarts[min(seek)]
+    walk = docboxes.walk_flood(m.boxes, first, tris if terrain else None, "grass", TERRAIN_TINT, budget, scale=S)
+
+    def rest(x, z, h):
+        # A box's top only: support's 0.0 when nothing is under it is the air over the heightfield here.
+        tops = [b["at"][1] + b["size"][1] / 2 for b in m.boxes if b.get("solid", True) and docboxes.within(b, x, z, 0.001)]
+        y = max([t for t in tops if t <= h + 0.6], default=None)
+        return y if y is not None and abs(y - h) <= 0.6 else None
     if cover:
         away = [(gstarts[i][0], gstarts[i][2], cover_away[1]) for i in seek] if not seekers_at else [(seekers_at[0] + eox, seekers_at[1] + eoz, cover_away[1])]
         if hiders_at:
             away.append((hiders_at[0], hiders_at[1], cover_away[0]))
         avoid = [(g0[i][0], g0[i][2], lobby[1]) for i in keep_hiders] if keep_hiders else []
-        print("cover furniture: %d placed" % docboxes.scatter_cover(m, cover, cover_seed, COVER_INDOOR, spacing=cover_gap, avoid=avoid + away, clear=cover_clear, floor_y=floor_y))
+        n = docboxes.scatter_cover(m, cover, cover_seed, COVER_INDOOR, spacing=cover_gap, avoid=avoid + away, clear=cover_clear, floor_y=floor_y)
+        print("cover furniture: %d placed" % n)
+        if n < cover and walk is not None:
+            more = docboxes.scatter_walked(m, docboxes.walked_spots(walk), cover - n, cover_seed, COVER_INDOOR, spacing=cover_gap,
+                                           avoid=avoid + away, rest=rest, ground=walk.ground)
+            print("cover furniture off the level floor (slopes, terraces): %d placed" % more)
     # Seekers count together at one end: the starts nearest the first one. Everybody else hides,
     # from wherever the author put them, spread out as the author spread them.
     for i, e in enumerate(starts):
@@ -655,6 +682,30 @@ def main(argv):
         if all((x - a) ** 2 + (z - b) ** 2 >= (1.5 if hiders_at else 9.0) for a, b in have):
             m.spawn("hiders", x, z, yaw=0.0, y=floor_y + 0.05 if hiders_at else 0.0)
             have.append((x, z))
+    if walk is not None:
+        # A hider start the seekers cannot walk to survives every round; drop it, and take the dozen from walked ground.
+        cut = [sp for sp in m.spawns["hiders"] if walk.reachable(*sp["at"]) is None]
+        if cut:
+            m.spawns["hiders"][:] = [sp for sp in m.spawns["hiders"] if sp not in cut]
+            have = [(sp["at"][0], sp["at"][2]) for side in m.spawns.values() for sp in side]
+            print("hider starts the seekers cannot walk to, dropped: %d" % len(cut))
+        if len(m.spawns["hiders"]) < 12:
+            gap = 1.5 if hiders_at else 3.0
+            spots = docboxes.walked_spots(walk, margin=1)
+            random.Random(cover_seed).shuffle(spots)
+            added = 0
+            for x, h, z in spots:
+                if len(m.spawns["hiders"]) >= 12:
+                    break
+                if hiders_at and (x - hiders_at[0]) ** 2 + (z - hiders_at[1]) ** 2 > hiders_at[2] ** 2:
+                    continue
+                # A body's capsule on a slope steeper than about 20 degrees is in the hill.
+                y = rest(x, z, h) if docboxes.level_on(walk.ground, x, z, 0.5, 0.35) else None
+                if y is not None and all((x - a) ** 2 + (z - b) ** 2 >= gap ** 2 for a, b in have):
+                    m.spawn("hiders", x, z, yaw=0.0, y=y + 0.05)
+                    have.append((x, z))
+                    added += 1
+            print("hider starts added on walked ground: %d" % added)
     hy = sorted(sp["at"][1] for sp in m.spawns["seekers"])
     fy = round(hy[len(hy) // 2] - 0.05, 3) if hy else 0.0
     for tid, near in (("football", 5.0), ("barrel", 5.0), ("beach_ball", 5.0), ("tyre", 5.0), ("bell", 5.0), ("horn", 5.0)):
@@ -715,6 +766,7 @@ def main(argv):
                     shift(v)
         for key in ("boxes", "props", "lights", "spawns", "toys", "doors"):
             shift(doc.get(key))
+    print("ground pads under %d spawn groups with no floor" % docboxes.pad_spawns(doc, list(doc["spawns"])))
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % docboxes.prune_pockets(doc, build_maps.size_of, build_maps.footprint))
     # Spots are found beside props, so taking the prop away takes the spot: for a place the
@@ -750,7 +802,7 @@ def main(argv):
             sp["yaw"] = 0.0
         print("seekers moved to (%.1f, %.1f)" % seekers_at)
     if not no_doors:
-        docboxes.add_doors(m, doc, bsp.entities, (ox, oy, oz), slide, scale=S)
+        docboxes.add_doors(m, doc, bsp.entities, (ox, oy + FLOOR, oz), slide, scale=S)
     for dx, dz in drop_doors:
         near = [d for d in doc["doors"] if (d["at"][0] - dx) ** 2 + (d["at"][2] - dz) ** 2 <= 1.5 ** 2]
         for d in near:
