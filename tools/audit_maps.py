@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """The shared audit runner: `bsp.py audit` over a map repository's converted maps, one line per map.
 
-    python3 -I tools/audit_maps.py REPO [id ...] [--max-loss 0.002] [--json OUT] [--src DIR ...] [--passable-kind K] [--passable-class C]
+    python3 -I tools/audit_maps.py REPO [id ...] [--max-loss 0.002] [--json OUT] [--src DIR ...] [--passable-kind K] [--passable-class C] [--exempt FILE]
 
 REPO is a map repository (a path, or a name under --godot, default ~/godot). Each map is found its source
 .bsp (the repository's `tools/ports.txt`, or a document's `attribution`, or the world's name), audited, and
 summarised: lost brush share, lost floor share, the worst class/kind and the worst floor materials.
 Read-only: nothing is written but the optional --json.
+
+A map whose importer drops brushes on purpose (scenery out of reach, ground buried under the sea bed, door leaves the bots cannot pass) is
+recorded in `REPO/tools/audit_exempt.json` (or --exempt FILE), never by raising --max-loss: `{"id": {"brush_loss": 0.004, "floor_loss": 0.003,
+"passes": ["prune_far_scenery"], "why": "..."}}`. The two numbers are ceilings measured with `tools/audit_passes.py`, which names the importer
+pass behind each lost brush; the map passes at or under them, so a new loss still fails. `passes` and `why` are required.
 
 Box documents (hide-n-seek, prop-hunt, murder-mystery, game-playground) were shifted by the importer so the
 map's origin stands on open ground. A document imported since 2026-11-07 records the shift, the --bounds crop and the
@@ -31,7 +36,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, ".."))
 import numpy as np  # noqa: E402
-from dotbsp import audit, classes, mesh, reader, sourceframe, terrain, units  # noqa: E402
+from dotbsp import audit, classes, docboxes, mesh, reader, sourceframe, terrain, units  # noqa: E402
 
 CELL = 0.5       # metres per raster cell for the footprint correlation
 SRC_ROOTS = ["~/projects/mapsrc", "~/godot/inspirations"]
@@ -225,10 +230,37 @@ def refine(bsp, doc, cands, scale, field, keep=3):
     return max((climb(score, o, h) for o, h in ranked), key=lambda t: t[1])
 
 
+def load_exempt(path):
+    """{map id: {brush_loss, floor_loss, passes, why}} from an `audit_exempt.json`; {} when there is none. A row without `why` or `passes` is refused."""
+    if not path or not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        rows = json.load(f)
+    for mid, ex in rows.items():
+        if not str(ex.get("why", "")).strip() or not ex.get("passes"):
+            raise SystemExit("%s: %s is an exemption without a reason: it needs `why` and the importer `passes` behind the loss" % (path, mid))
+        for k in ("brush_loss", "floor_loss"):
+            if not isinstance(ex.get(k, 0.0), (int, float)):
+                raise SystemExit("%s: %s.%s is not a number" % (path, mid, k))
+    return rows
+
+
+def apply_exempt(r, ex, max_loss):
+    """Marks summary `r` as passing when it is within the map's recorded ceilings; returns "ok", "exempt" or "LOSS"."""
+    if "ok" not in r:
+        return "LOSS"
+    if r["ok"]:
+        return "ok"
+    if ex and r["brush_loss"] <= max(max_loss, ex.get("brush_loss", 0.0)) and r["floor_loss"] <= max(max_loss, ex.get("floor_loss", 0.0)):
+        r["ok"], r["exempt"] = True, ex
+        return "exempt"
+    return "LOSS"
+
+
 def summary(r, max_loss):
     bl = 1.0 - r["brushes_collided"] / r["brushes_expected"] if r["brushes_expected"] else 0.0
     fl = r["floor_missed"] / r["floor_samples"] if r["floor_samples"] else 0.0
-    worst = sorted(((v[1] - v[2], k) for k, v in r["brushes"].items() if v[1] and v[2] < v[1]), reverse=True)[:3]
+    worst = sorted(((v[1] - v[2], k) for k, v in r["brushes"].items() if v[1] and v[2] < v[1]), reverse=True)[:6]
     wf = sorted(((v[0], k, v[1]) for k, v in r["floors"].items()), reverse=True)[:3]
     return {"brush_loss": bl, "floor_loss": fl, "brushes": (r["brushes_collided"], r["brushes_expected"]),
             "floors": (r["floor_samples"] - r["floor_missed"], r["floor_samples"]),
@@ -254,7 +286,7 @@ def keep_of(sf):
                         ",".join(map(str, sf["crop_band"])) if sf.get("crop_band") else None)
 
 
-def run_doc(bsp_path, doc_path, scale, max_loss, passable=(), skip_kinds=DOC_PASSABLE_KINDS):
+def run_doc(bsp_path, doc_path, scale, max_loss, passable=(), skip_kinds=DOC_PASSABLE_KINDS, detail=False):
     bsp = load_bsp(bsp_path)
     with open(doc_path) as f:
         doc = json.load(f)
@@ -275,7 +307,13 @@ def run_doc(bsp_path, doc_path, scale, max_loss, passable=(), skip_kinds=DOC_PAS
         off, hit = refine(bsp, doc, cands, scale, field)
     out = audit.Boxes(shift_boxes(doc.get("boxes", []), off), terrain=Shifted(field, off) if field else None)
     cl = lambda c: c == "worldspawn" or (classes.treatment(c)[0] == "world" and c not in passable)  # noqa: E731
-    s = summary(audit.audit(bsp, out, scale, 0.0, cl, keep=keep, skip_kinds=skip_kinds), max_loss)
+    # A brush entity that starts not solid (Solidity 1, StartDisabled, rendermode 10, a toggle that starts off) is left out by every box importer
+    # (docboxes.entity_starts_hidden): a box document has no switch, so it is not owed.
+    res = audit.audit(bsp, out, scale, 0.0, cl, keep=keep, skip_kinds=skip_kinds, skip_entity=docboxes.entity_starts_hidden)
+    s = summary(res, max_loss)
+    if detail:
+        s["lost"] = res["brushes_lost"]
+        s["floor_lost"] = res["floor_missed_points"]
     s.update(offset=off, fit=hit, frame="recorded" if sf else "registered", cropped=keep is not None)
     return s
 
@@ -354,9 +392,11 @@ def main(argv):
                     help="contents kind not owed to a box document (repeatable; default %s)" % ", ".join(DOC_PASSABLE_KINDS))
     ap.add_argument("--passable-class", action="append", default=[], metavar="CLASS",
                     help="brush entity class not owed to a box document (repeatable)")
+    ap.add_argument("--exempt", help="recorded exemptions (default REPO/tools/audit_exempt.json)")
     ap.add_argument("--json")
     a = ap.parse_args(argv)
     repo = a.repo if os.path.isdir(a.repo) else os.path.join(a.godot, a.repo)
+    exempt = load_exempt(a.exempt or os.path.join(repo, "tools", "audit_exempt.json"))
     idx = bsp_index(a.src or SRC_ROOTS)
     rows = {}
     for mid, bsp, kind, path, note in targets(repo, idx, set(a.ids)):
@@ -379,8 +419,14 @@ def main(argv):
         else:
             fit = " fit=%.2f at=%s%s" % (
                 r["fit"], r["offset"], "  FRAME? (a crop, or a registration miss: not trusted)" if r["fit"] < 0.8 else "")
+        verdict = apply_exempt(r, exempt.get(mid), a.max_loss)
         print("%-28s %s brushes %.4f (%d/%d) floor %.4f (%d/%d)%s" % (
-            mid, "ok  " if r["ok"] else "LOSS", r["brush_loss"], *r["brushes"], r["floor_loss"], *r["floors"], fit), flush=True)
+            mid, {"ok": "ok  ", "exempt": "EXMP", "LOSS": "LOSS"}[verdict], r["brush_loss"], *r["brushes"], r["floor_loss"], *r["floors"], fit), flush=True)
+        if verdict == "exempt":
+            ex = exempt[mid]
+            print("      exempt up to brushes %.4f floor %.4f (%s): %s" % (ex.get("brush_loss", 0.0), ex.get("floor_loss", 0.0), ", ".join(ex["passes"]), ex["why"]))
+        elif mid in exempt:
+            print("      exemption no longer needed: under %.4f" % a.max_loss)
         if not r["ok"]:
             for k, n in r["worst_brushes"]:
                 print("      lost brushes %4d  %s" % (n, k.replace("|", " ")))

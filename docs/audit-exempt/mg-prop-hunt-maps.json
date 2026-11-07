@@ -1,0 +1,27 @@
+{
+  "ph_cyber_dinner": {
+    "brush_loss": 0.006, "floor_loss": 0.001,
+    "passes": ["prune_far_scenery"],
+    "why": "10 brushes of the steampunk-city scenery the author built outside the play space (1805 boxes, 3790 m3, nearest cluster 3.5 m from the play space, none of its floor can be walked to from a spawn) and 3 func_brush window panes (rek1) the importer does not place (attributed to no pass, cause open)"
+  },
+  "ph_oceanwaves": {
+    "brush_loss": 0.110, "floor_loss": 0.089,
+    "passes": ["prune_far_scenery"],
+    "why": "525 boxes (15 400 m3) of town scenery across water and voids 3 to 12 m from the play space, 0 of 33 673 floor cells reachable on foot from a spawn, and 4 tools/invisible grates in the 3D sky cell (y -156); pruned so the overview camera frames the map"
+  },
+  "ph_restaurant_os": {
+    "brush_loss": 0.028, "floor_loss": 0.015,
+    "passes": ["prune_far_scenery", "widen_doors", "drop_trim_posts"],
+    "why": "26 brushes of scenery 44 m or more from the play space (0 of 22 117 floor cells reachable from a spawn); 5 door leaves and 2 door-frame posts that the 1.4 m doorway widening removes on purpose (the bots' mesh cannot pass a narrower slot)"
+  },
+  "ph_swimmingpool": {
+    "brush_loss": 0.003, "floor_loss": 0.002,
+    "passes": ["prune_far_scenery"],
+    "why": "7 brushes of scenery 18 m from the play space (8 boxes, 1117 m3; 0 of 10 827 floor cells reachable from a spawn)"
+  },
+  "ph_westerncity": {
+    "brush_loss": 0.003, "floor_loss": 0.001,
+    "passes": ["drop_door_leaves", "drop_buried"],
+    "why": "8 door leaves left standing ajar that drop_door_leaves removes on purpose (a leaf in a doorway closes the bots' route); ground slabs buried under the ground field (27 floor samples that cannot be stood on); 2 nodraw window panes and 2 detail brushes not placed (4 of 3681)"
+  }
+}

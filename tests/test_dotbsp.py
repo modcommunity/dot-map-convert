@@ -185,6 +185,34 @@ class Boxes(unittest.TestCase):
         self.assertEqual([round(b["z"][1], 1) for b in out], [32.0, 96.0, 96.0, 32.0])
         self.assertEqual(boxes.decompose_axis(planes, wedge[:3]), [])
 
+    def test_axis_cut_keeps_a_thin_turned_pane(self):
+        # a window pane 4 units thick, pitched and turned 30 degrees (ph_cyber_dinner's brush 3668): the middle of its
+        # footprint's bounding box is outside the pane, which used to leave no slab at all
+        pts = [(1620.6, 1284.36, -517.063), (1662.16, 1308.36, -517.064), (1618.662, 1287.706, -518.097), (1660.218, 1311.703, -518.098),
+               (1624.483, 1277.636, -546.041), (1666.05, 1301.64, -546.041), (1622.547, 1280.978, -547.076), (1664.11, 1304.98, -547.076)]
+        planes = [(-0.1291, 0.2237, 0.9661, -421.5092), (0.1294, -0.2241, -0.9659, 451.3344), (0.483, -0.8365, 0.2588, -425.3359),
+                  (-0.483, 0.8364, -0.2589, 429.3857), (-0.8654, -0.5011, 0.0003, -2046.1926), (0.8648, 0.5022, -0.0004, 2094.6028)]
+        out = boxes.decompose_axis(planes, pts)
+        self.assertTrue(out and all(b["kind"] == "slab" for b in out), out)
+
+    def test_axis_cut_follows_the_slope(self):
+        # a pitched roof 512 long that climbs across its 128 width: cut across the width (4 slabs), not the length, so the
+        # slabs follow the pitch; cut along the length each slab would be as tall as the roof at its middle line
+        pts = [(0, 0, 0), (512, 0, 0), (0, 128, 0), (512, 128, 0), (0, 64, 64), (512, 64, 64)]
+        planes = [(0, 0, -1, 0), (0, -1, 0, 0), (0, 1, 0, 128), (0, -0.7071, 0.7071, 0), (0, 0.7071, 0.7071, 90.51),
+                  (-1, 0, 0, 0), (1, 0, 0, 512)]
+        out = boxes.decompose_axis(planes, pts, slab=32)
+        self.assertTrue(all(b["kind"] == "slab" for b in out), [b["kind"] for b in out])
+        self.assertEqual(len(out), 4)
+        self.assertTrue(all(b["x"] == (0, 512) for b in out))
+        self.assertEqual([round(b["z"][1], 1) for b in out], [16.0, 48.0, 48.0, 16.0])
+        # the same roof turned to climb along its length keeps the old cut
+        pts2 = [(y, x, z) for x, y, z in pts]
+        planes2 = [(nx, ny, nz, d) for ny, nx, nz, d in planes[:5]] + [(0, -1, 0, 0), (0, 1, 0, 512)]
+        out2 = boxes.decompose_axis(planes2, pts2, slab=32)
+        self.assertEqual(len(out2), 4)
+        self.assertTrue(all(b["y"] == (0, 512) for b in out2))
+
 
 class Intermediate(unittest.TestCase):
     def doc(self, **kw):

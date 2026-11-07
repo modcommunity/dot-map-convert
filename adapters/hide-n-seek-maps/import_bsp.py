@@ -105,7 +105,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402  (a shim over dot-map's shared reader; it puts dotbsp on sys.path)
-from dotbsp import boxes as dboxes, docboxes  # noqa: E402  (the shared passes over a document's boxes)
+from dotbsp import boxes as dboxes, docboxes, passledger  # noqa: E402  (the shared passes over a document's boxes)
 from dotbsp import terrain as dterrain  # noqa: E402
 from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the origin shift and bounds, for the audit)
 from dotbsp import lights as dlights  # noqa: E402
@@ -478,6 +478,7 @@ def main(argv):
         print("wrote", graft)
         return
     bsp_path, mid, name, author, url = args[:5]
+    passledger.reset()
     bsp = bsp_read.Bsp(bsp_path).load()
     m = build_maps.Map(
         mid, name, "Converted from %s by %s (%s)." % (os.path.basename(bsp_path), author, url),
@@ -499,6 +500,7 @@ def main(argv):
                 mt, invisible = ("flat", None), True
             else:
                 skipped += 1
+                passledger.note("tool_only_brush", 1, "a brush with no solid contents the importer skips (trigger, hint, areaportal)")
                 continue
         boxes, was_sliced = brush_boxes(bsp, bi)
         sliced += was_sliced
@@ -767,6 +769,7 @@ def main(argv):
                     shift(v)
         for key in ("boxes", "props", "lights", "spawns", "toys", "doors"):
             shift(doc.get(key))
+        passledger.rebase(-ox, -oy, -oz)
     print("ground pads under %d spawn groups with no floor" % docboxes.pad_spawns(doc, list(doc["spawns"])))
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % docboxes.prune_pockets(doc, build_maps.size_of, build_maps.footprint))
@@ -828,6 +831,7 @@ def main(argv):
     doc["world"] = {"pack": "hs_world_" + mid, "metres_per_unit": round(S, 6), "offset": [round(-ox, 5), round(-oy, 5), round(-oz, 5)]}
     sourceframe.record(doc, bsp_path, S, (ox, oy + FLOOR, oz), None)
     out_path = out_path or os.path.join(build_maps.ROOT, "maps", mid + ".json")
+    passledger.finish(out_path=out_path)
     with open(out_path, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")
     print("wrote", out_path)

@@ -55,7 +55,7 @@ def _dotbsp_path():
 
 sys.path.insert(1, _dotbsp_path())
 from dotbsp import reader as bsp_read  # noqa: E402  (the family's one reader)
-from dotbsp import boxes as dboxes, docboxes, lights as dlights, texturemap  # noqa: E402  (the shared passes over a document's boxes)
+from dotbsp import boxes as dboxes, docboxes, passledger, lights as dlights, texturemap  # noqa: E402  (the shared passes over a document's boxes)
 from dotbsp import terrain as dterrain  # noqa: E402
 from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the origin shift and bounds, for the audit)
 import build_maps  # noqa: E402
@@ -893,6 +893,7 @@ def main(argv):
         print("wrote", graft)
         return
     bsp_path, mid, name, author, url = args[:5]
+    passledger.reset()
     bsp = bsp_read.Bsp(bsp_path).load()
     m = build_maps.Map(
         mid, name, blurb or "Converted from %s by %s (%s)." % (os.path.basename(bsp_path), author, url),
@@ -920,6 +921,7 @@ def main(argv):
                 mt, invisible = ("flat", None), True
             else:
                 skipped += 1
+                passledger.note("tool_only_brush", 1, "a brush with no solid contents the importer skips (trigger, hint, areaportal)")
                 continue
         boxes, was_sliced = brush_boxes(bsp, bi)
         sliced += was_sliced
@@ -1122,6 +1124,7 @@ def main(argv):
                     shift(v)
         for key in ("boxes", "props", "lights", "spawns", "toys", "doors"):
             shift(doc.get(key))
+        passledger.rebase(-ox, -oy, -oz)
     if atmosphere["weather"] is not None:
         doc["weather"] = weather_block(atmosphere["weather"], (ox, oy, oz))
         print("weather: %s over %d volumes" % (atmosphere["weather"]["kind"], len(atmosphere["weather"]["volumes"])))
@@ -1212,6 +1215,7 @@ def main(argv):
     docboxes.apply_cap(doc, box_budget)
     sourceframe.record(doc, bsp_path, S, (ox, oy + FLOOR, oz), None)
     out_path = out_path or os.path.join(build_maps.ROOT, "maps", mid + ".json")
+    passledger.finish(out_path=out_path)
     with open(out_path, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")
     print("wrote", out_path)
