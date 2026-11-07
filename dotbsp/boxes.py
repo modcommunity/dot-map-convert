@@ -100,9 +100,12 @@ def turned_box(planes, pts):
     return None
 
 
-def prism_box(pts):
+def prism_box(pts, fill=PRISM_FILL, ordered=True):
     """(ranges, phi) for a vertical prism of any plan shape: the smallest turned rectangle
-    round its plan. None for a brush whose top or bottom is not flat and level."""
+    round its plan. None for a brush whose top or bottom is not flat and level.
+
+    `fill=None` is prop-hunt-maps' original: any plan, however thin, and the corners are tried in set
+    order (`ordered=False`), which settles a tie between equal rectangles the way that copy did."""
     zs = sorted({round(p[2], 1) for p in pts})
     if len(zs) != 2:
         return None
@@ -112,14 +115,14 @@ def prism_box(pts):
         return None
     plan = [(x, y, zs[0]) for x, y in low]
     best = None
-    for (ax, ay), (bx_, by) in ((p, q) for p in sorted(low) for q in sorted(low) if p != q):
+    for (ax, ay), (bx_, by) in ((p, q) for p in (sorted(low) if ordered else low) for q in (sorted(low) if ordered else low) if p != q):
         phi = math.degrees(math.atan2(by - ay, bx_ - ax)) % 90.0
         box = box_in_frame(plan, phi, 1e9, solid=False)
         area = (box[0][1] - box[0][0]) * (box[1][1] - box[1][0])
         if best is None or area < best[0] - 1e-6:
             best = (area, phi, box)
     _a, phi, box = best
-    if best[0] <= 0 or _plan_area(sorted(low)) < PRISM_FILL * best[0]:
+    if fill is not None and (best[0] <= 0 or _plan_area(sorted(low)) < fill * best[0]):
         return None
     return (box[0], box[1], (zs[0], zs[1])), phi
 
@@ -242,6 +245,61 @@ def decompose(planes, pts, slab=SLAB, min_size=0.5, tilt=False, max_slabs=400):
             (x0, x1), (y0, y1), (z0, z1) = _bounds(pts)
             return [{"x": (x0, x1), "y": (y0, y1), "z": (z0, z1), "phi": 0.0, "kind": "ramp", "ramp": rb}]
     return slabs(planes, pts, slab, min_size, max_slabs)
+
+
+def _z_range(planes, x, y):
+    lo, hi = -1e9, 1e9
+    for nx, ny, nz, d in planes:
+        if abs(nz) < 1e-6:
+            continue
+        z = (d - nx * x - ny * y) / nz
+        if nz > 0:
+            hi = min(hi, z)
+        else:
+            lo = max(lo, z)
+    return lo, hi
+
+
+def decompose_axis(planes, pts, slab=SLAB):
+    """prop-hunt-maps' original cut, for an adapter whose output must not change: `decompose` with
+    the corner test of a box (a wedge passes it), any-plan prisms (`prism_box(fill=None)`), the
+    upright-side test at 1e-4, and slabs cut across the longer horizontal axis, each as tall as the
+    planes are at the slab's middle, dropped when under 0.5 high (never grown). Same box dicts; a
+    slab's kind is "slab"."""
+    if len(pts) < 4:
+        return []
+    ranges = box_in_frame(pts, 0.0, 0.5, solid=False)
+    if ranges is not None:
+        (x0, x1), (y0, y1), (z0, z1) = ranges
+        return [{"x": (x0, x1), "y": (y0, y1), "z": (z0, z1), "phi": 0.0, "kind": "box"}]
+    tried = set()
+    for nx, ny, nz, _d in planes:
+        if abs(nz) > 1e-4:
+            continue
+        phi = round(math.degrees(math.atan2(ny, nx)) % 90.0, 2)
+        if phi in tried or phi < 0.05 or phi > 89.95:
+            continue
+        tried.add(phi)
+        box = box_in_frame(pts, phi, 1.5, solid=False)
+        if box is not None:
+            return [{"x": box[0], "y": box[1], "z": box[2], "phi": phi, "kind": "turned"}]
+    pb = prism_box(pts, fill=None, ordered=False)
+    if pb is not None:
+        (bx, by, bz), phi = pb
+        return [{"x": bx, "y": by, "z": bz, "phi": phi, "kind": "prism"}]
+    (x0, x1), (y0, y1), (z0, z1) = _bounds(pts)
+    out = []
+    along_x = x1 - x0 >= y1 - y0
+    lo, hi = (x0, x1) if along_x else (y0, y1)
+    n = max(1, math.ceil((hi - lo) / slab))
+    for i in range(n):
+        a, b = lo + (hi - lo) * i / n, lo + (hi - lo) * (i + 1) / n
+        zlo, zhi = _z_range(planes, (a + b) / 2, (y0 + y1) / 2) if along_x else _z_range(planes, (x0 + x1) / 2, (a + b) / 2)
+        zlo, zhi = max(zlo, z0), min(zhi, z1)
+        if zhi - zlo > 0.5:
+            out.append({"x": (a, b), "y": (y0, y1), "z": (zlo, zhi), "phi": 0.0, "kind": "slab"} if along_x
+                       else {"x": (x0, x1), "y": (a, b), "z": (zlo, zhi), "phi": 0.0, "kind": "slab"})
+    return out
 
 
 def centre(box):
