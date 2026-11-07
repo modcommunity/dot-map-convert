@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt .bsp (VBSP 19/20) into a mg-prop-hunt map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--start-island] [--dress=N] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--bounds=x0,y0,z0,x1,y1,z1]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--start-island] [--dress=N] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--floor=m] [--min-size=m] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--bounds=x0,y0,z0,x1,y1,z1]
 
 --field=<name>=<number> sets a document number the map's own band wants (players_per_hunter, round_seconds,
 hide_seconds), found by headless_bots, so a rerun of the importer keeps it.
@@ -72,6 +72,8 @@ from dotbsp import standins  # noqa: E402
 import build_maps  # noqa: E402
 
 S = 0.01905
+FLOOR = 0.0   # --floor=m: the author's ground, in metres; subtracted so it stands at y = 0
+MIN_SIZE = 0.0   # --min-size=m: boxes with a longest side under this are dropped
 SLAB = 28.0     # source units: ~0.53 m, a slope's riser
 
 TOOLS = ("TOOLS/", "tools/")
@@ -823,7 +825,7 @@ START_CLASSES = ("info_player_start", "info_player_terrorist", "info_player_coun
 
 
 def gd(p):
-    return (p[0] * S, p[2] * S, -p[1] * S)
+    return (p[0] * S, p[2] * S - FLOOR, -p[1] * S)
 
 
 def kv(e, k, default=None):
@@ -1238,7 +1240,7 @@ def drop_buried(boxes, field, cell=80.0):
     for (x0, x1), (_lo, hi), (y0, y1), _m in field:
         for i in range(int(round((x1 - x0) / cell))):
             for j in range(int(round((y1 - y0) / cell))):
-                top[(int(round((x0 * S - fx) / c)) + i, int(round((-y1 * S - fz) / c)) + j)] = hi * S
+                top[(int(round((x0 * S - fx) / c)) + i, int(round((-y1 * S - fz) / c)) + j)] = hi * S - FLOOR
     keep = []
     for b in boxes:
         x, y, z = b["at"]
@@ -1312,6 +1314,7 @@ HOUSE_DRESS = ("furniture_potted_plant", "furniture_trashcan", "furniture_lounge
 
 
 def main(argv):
+    global FLOOR, MIN_SIZE
     args = [a for a in argv[1:] if not a.startswith("--")]
     out_path = None
     style = ""
@@ -1330,7 +1333,11 @@ def main(argv):
     box_budget = {}
     bounds = None
     for a in argv[1:]:
-        if a.startswith("--out="):
+        if a.startswith("--floor="):
+            FLOOR = float(a[8:])
+        elif a.startswith("--min-size="):
+            MIN_SIZE = float(a[11:])
+        elif a.startswith("--out="):
             out_path = a[6:]
         elif a == "--widen-doors":
             widen = True
@@ -1415,7 +1422,7 @@ def main(argv):
                 bx = m.box((gx, gy, gz), ((x1 - x0) * S, (z1 - z0) * S, (y1 - y0) * S), mt[0], mt[1], yaw=phi)
             else:
                 # Source y is godot -z: the box's range flips.
-                bx = m.span(x0 * S, x1 * S, z0 * S, z1 * S, -y1 * S, -y0 * S, mt[0], mt[1])
+                bx = m.span(x0 * S, x1 * S, z0 * S - FLOOR, z1 * S - FLOOR, -y1 * S, -y0 * S, mt[0], mt[1])
             if invisible and bx is not None:
                 bx["visible"] = False
             elif bx is not None and mt[0] == "flat" and style == "yard":
@@ -1441,13 +1448,15 @@ def main(argv):
             field = terrain_boxes(bsp, cell=cell, inside=inside)
             print("terrain: cell %.0f for the box limit" % cell)
         for (x0, x1), (y0, y1), (z0, z1), mat in field:
-            m.span(x0 * S, x1 * S, y0 * S, y1 * S, -z1 * S, -z0 * S, mat, (0.85, 0.9, 0.78))
+            m.span(x0 * S, x1 * S, y0 * S - FLOOR, y1 * S - FLOOR, -z1 * S, -z0 * S, mat, (0.85, 0.9, 0.78))
             n += 1
         print("terrain: %d ground boxes from the displacements" % n)
     print("brushes %d  tool-only %d  sliced %d  boxes %d" % (len(bsp.model_brushes(0)), skipped, sliced, len(m.boxes)))
 
     docboxes.drop_door_leaves(m.boxes)
     docboxes.prune_far_scenery(m.boxes, [gd(vec(e["origin"])) for e in start_entities(bsp, inside)])
+    if MIN_SIZE:
+        print("small boxes dropped: %d" % docboxes.drop_small(m.boxes, MIN_SIZE))
 
     # Props: sit on the highest solid box under the footprint when one is within reach of the
     # source height, else at the source height (a lamp on a table the author placed as a prop).
@@ -1597,6 +1606,17 @@ def main(argv):
         if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
             m.spawn("hunters", x, z, yaw=0.0, y=floor_y + 0.05)
             have.append((x, z))
+    # Still short (the author's starts mostly stood on terrain left out, so there is no floor at floor_y): the nearest
+    # clear floor to the hiders' starts gives them the three they need and keeps both joined.
+    if m.spawns["props"] and len(m.spawns["hunters"]) < 3:
+        cx = sum(sp["at"][0] for sp in m.spawns["props"]) / len(m.spawns["props"])
+        cz = sum(sp["at"][2] for sp in m.spawns["props"]) / len(m.spawns["props"])
+        for size, x, z in sorted(m.spots(step=1.5, top=60), key=lambda t: (t[1] - cx) ** 2 + (t[2] - cz) ** 2):
+            if len(m.spawns["hunters"]) >= 3:
+                break
+            if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
+                m.spawn("hunters", x, z, yaw=0.0)
+                have.append((x, z))
     docboxes.lend_starts(m.spawns, "props", "hunters")
     hy = sorted(sp["at"][1] for sp in m.spawns["hunters"])
     fy = round(hy[len(hy) // 2] - 0.05, 3) if hy else 0.0
@@ -1667,6 +1687,7 @@ def main(argv):
             n_doors += widen_sliced_doors(doc["boxes"])
             print("dropped %d door trim posts" % drop_trim_posts(doc["boxes"]))
         print("widened %d doorways to 1.4 m" % n_doors)
+    print("ground pads under %d spawn groups with no floor" % docboxes.pad_spawns(doc, list(doc["spawns"])))
     docboxes.apply_budget(doc["boxes"], box_budget)
     if start_island:
         moved = docboxes.restart_on_largest_island(doc, build_maps.size_of, build_maps.footprint)

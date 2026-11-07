@@ -12,7 +12,7 @@ each function is tested against them on real documents (`tests/test_lift.py`, `D
 * `within(box, x, z)`: is a point under the box's footprint (turned boxes included);
 * `suburban_surface(at, size, palette)`: a developer-grid box's material by its shape;
 * `widen_doors`, `drop_door_leaves`, `add_doors`: doorways;
-* `prune_far_scenery`, `prune_pockets`, `scatter_cover`: pruning and furnishing a finished document.
+* `prune_far_scenery`, `prune_pockets`, `scatter_cover`, `walk_flood`, `walked_spots`, `scatter_walked`: pruning and furnishing a finished document.
 
 `prune_pockets` is a 0.1 m flat flood of one floor height, the importers' version. It is *not*
 `flood.Flood`, which is multi-storey; see the README before swapping.
@@ -22,7 +22,7 @@ import math
 import random
 import re
 
-from . import reader
+from . import flood as _flood, reader, terrain as _terrain
 
 # Dev-grid surface palette, the one three importers shared (RGB 0..1).
 SUBURBAN_PALETTE = {
@@ -202,6 +202,34 @@ def drop_door_leaves(boxes):
 
 
 
+def drop_small(boxes, min_size):
+    """Drops boxes whose longest side is under `min_size` metres (trim, rails, clutter) and returns how many; a map over the game's wire limit shrinks most here."""
+    keep = [b for b in boxes if max(b["size"]) >= min_size]
+    n = len(boxes) - len(keep)
+    boxes[:] = keep
+    return n
+
+
+def pad_spawns(doc, sides, mat="concrete", pad=2.5, reach=0.4):
+    """Lays a flat pad under each spawn that has no solid top within `reach` metres below it (a start
+    the author stood on terrain this converter leaves out), one pad per pad-sized cell, and returns the count."""
+    solid = [b for b in doc["boxes"] if b.get("solid", True)]
+    cells = {}
+    for side in sides:
+        for o in doc.get("spawns", {}).get(side, []):
+            x, y, z = o["at"]
+            if any(b["at"][1] + b["size"][1] / 2 <= y + 0.02 and b["at"][1] + b["size"][1] / 2 >= y - reach and within(b, x, z) for b in solid):
+                continue
+            cells.setdefault((round(x / pad), round(z / pad), round(y, 1)), []).append(o["at"])
+    for pts in cells.values():
+        x0, x1 = min(p[0] for p in pts) - 0.8, max(p[0] for p in pts) + 0.8
+        z0, z1 = min(p[2] for p in pts) - 0.8, max(p[2] for p in pts) + 0.8
+        top = min(p[1] for p in pts) - 0.05
+        doc["boxes"].append({"at": [round((x0 + x1) / 2, 3), round(top - 0.15, 3), round((z0 + z1) / 2, 3)],
+                             "size": [round(x1 - x0, 3), 0.3, round(z1 - z0, 3)], "mat": mat})
+    return len(cells)
+
+
 def prune_far_scenery(boxes, starts, reach=12.0, log=print):
     """Drops the boxes of every cluster that is out of reach of the starts. A community map keeps
     its 3D skybox scenery (a distant city, a crane) in the same world as the play space, and the
@@ -379,6 +407,79 @@ def scatter_cover(m, count, seed, kinds, spacing=2.5, avoid=(), avoid_r=0.0, cle
     return len(placed)
 
 
+def walk_flood(boxes, start, tris=None, mat="grass", tint=None, budget=24000, scale=0.01905, cell=0.5):
+    """`flood.Flood` from `start` (x, y, z) over a box list still holding `--terrain`'s stepped field:
+    the field is walked as the heightfield `swap_terrain` will make of it (by slope, not by step), so a
+    hillside a 1.5 m stepped cell makes a wall of is ground. Jumps and drops are capped at 0.9 m both
+    ways, so what is reached can also walk back. None when no ground is within 3 m of the start."""
+    ground, rest = None, boxes
+    if tris:
+        probe = {"boxes": list(boxes)}
+        ground = _terrain.swap_terrain(probe, tris, mat, tint, budget, scale=scale, skirt=False)
+        rest = probe["boxes"]
+    fl = _flood.Flood(rest, cell=cell, jump=0.9, drop=0.9, terrain=ground).run([start])
+    if not fl.seen:
+        # A start over a hole gets a pad later (pad_spawns): seed from the nearest ground within 3 m.
+        ix, iz = fl.cell_of(start[0], start[2])
+        reach = int(math.ceil(3.0 / cell))
+        near = [((dx * dx + dz * dz), abs(h - start[1]), ix + dx, iz + dz, h)
+                for dx in range(-reach, reach + 1) for dz in range(-reach, reach + 1)
+                for h in fl.surf.get((ix + dx, iz + dz), ()) if start[1] - 1.5 <= h <= start[1] + 0.6]
+        if not near:
+            return None
+        _, _, jx, jz, h = min(near)
+        x, z = fl.centre_of(jx, jz)
+        fl.run([(x, h, z)])
+        if not fl.seen:
+            return None
+    fl.ground = ground
+    return fl
+
+
+def walked_spots(fl, margin=2):
+    """(x, y, z) at the middle of every walked cell with `margin` cells round it walked at a step's height:
+    open ground, level or a gentle slope, on any floor or terrain, in a fixed order."""
+    out = []
+    for (ix, iz), h in sorted(fl.deep_cells(margin).items()):
+        x, z = fl.centre_of(ix, iz)
+        out.append((round(x, 3), h, round(z, 3)))
+    return out
+
+
+def level_on(ground, x, z, reach, level):
+    """Whether heightfield `ground` is near level at (x, z): its corners `reach` metres out differ by at most
+    `level` metres. True off the field (and with no field): a floor box is level."""
+    if ground is None:
+        return True
+    hs = [ground.height(x + dx, z + dz) for dx in (-reach, reach) for dz in (-reach, reach)]
+    return all(v is None for v in hs) or (None not in hs and max(hs) - min(hs) <= level)
+
+
+def scatter_walked(m, spots, count, seed, kinds, spacing=2.5, avoid=(), rest=None, level=0.25, ground=None):
+    """`scatter_cover` over `walked_spots`, for the cover `scatter_cover` found no level floor for (terrain,
+    terraces off the seekers' floor). `rest(x, z, y)` gives the height a prop is set at (the stepped
+    field's top, which `swap_terrain` lands on the heightfield) or None; on `ground` a spot whose corners
+    differ by more than `level` metres is skipped, so a piece does not hang off a slope."""
+    rng = random.Random(seed)
+    spots = list(spots)
+    rng.shuffle(spots)
+    taken = [(q["at"][0], q["at"][2]) for q in m.props]
+    placed = 0
+    for x, h, z in spots:
+        if placed >= count:
+            break
+        if not all((x - a) ** 2 + (z - b) ** 2 >= rad ** 2 for a, b, rad in avoid) or not all((x - a) ** 2 + (z - b) ** 2 >= spacing ** 2 for a, b in taken):
+            continue
+        if not level_on(ground, x, z, 0.75, level):
+            continue
+        y = rest(x, z, h) if rest else h
+        if y is None:
+            continue
+        m.prop(rng.choice(kinds), x, z, yaw=rng.choice((0.0, 90.0, 180.0, 270.0)), y=y)
+        taken.append((x, z))
+        placed += 1
+    return placed
+
 
 def add_doors(m, doc, entities, shift, slide=False, scale=0.01905, skip=(), log=print):
     """A real, usable door for each of the author's prop_door_rotating, hung where the doorway is.
@@ -416,6 +517,10 @@ def add_doors(m, doc, entities, shift, slide=False, scale=0.01905, skip=(), log=
         if any(abs(hx - a) < 0.8 and abs(hz - b) < 0.8 for a, b in skip):
             continue
         fy = max([b["at"][1] + b["size"][1] / 2 for b in doc["boxes"] if b.get("solid", True) and within(b, hx, hz) and b["at"][1] + b["size"][1] / 2 <= hy + 0.1] or [0.0])
+        # The hinge stands on the wall line, often a hair's gap between floor boxes: a floor up to 0.15 m
+        # above the one found there is the room's (a door hung on the slab below had its panel in it).
+        fy = max([t for t in (b["at"][1] + b["size"][1] / 2 for b in doc["boxes"] if b.get("solid", True) and within(b, hx, hz, 0.02))
+                  if fy <= t <= min(fy + 0.15, hy + 0.1)] or [fy])
         best = None
         for axis in (0, 2):
             for sign in (1, -1):

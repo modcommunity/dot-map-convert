@@ -13,7 +13,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-from dotbsp import boxes, flood, paths, terrain  # noqa: E402
+from dotbsp import boxes, docboxes, flood, paths, terrain  # noqa: E402
 
 FIXTURE = os.path.join(paths.dot_map_dir(), "examples", "bsp_mesh", "terrain_fixture.json")
 
@@ -165,6 +165,49 @@ class TestSkirt(unittest.TestCase):
         self.assertEqual(walled["skirt"], lvl)
         self.assertEqual({k: v for k, v in walled.items() if k != "skirt"}, plain, "heights, walk and size untouched")
         self.assertEqual(terrain.Heightfield.decode(walled)[0].h, terrain.Heightfield.decode(plain)[0].h)
+
+
+class TestWalkedCover(unittest.TestCase):
+    """docboxes.walk_flood and scatter_walked: a hillside the importer cut as a stepped field (1.5 m cells,
+    risers a body cannot step) still gets cover and hider starts, on the heightfield's slope."""
+
+    class _Map:
+        def __init__(self):
+            self.props = []
+
+        def prop(self, pid, x, z, yaw=0.0, y=0.0):
+            self.props.append({"id": pid, "at": [x, y, z], "yaw": yaw})
+
+    def test_hill(self):
+        s, tint = 0.01905, [0.85, 0.9, 0.78]
+        src = [tuple((p[0] / s, -p[2] / s, p[1] / s) for p in t) for t in grid_tris(lambda x, z: hill(x, z) * 1.7, 0, 0, 40, 40, 1.6)]
+        field = []
+        for c in boxes.terrain_cells(src):
+            (x0, x1), (y0, y1), (z0, z1) = c["x"], c["z"], c["y"]
+            field.append({"at": [round((x0 + x1) / 2 * s, 3), round((y0 + y1) / 2 * s, 3), round(-(z0 + z1) / 2 * s, 3)],
+                          "size": [round((x1 - x0) * s, 3), round((y1 - y0) * s, 3), round((z1 - z0) * s, 3)], "mat": "grass", "tint": tint})
+        walk = docboxes.walk_flood(field, (3, 0.2, 3), src, "grass", tint, scale=s)
+        self.assertIsNotNone(walk.reachable(20, 10.5, 20), "the hilltop is walked")
+        spots = docboxes.walked_spots(walk)
+        self.assertTrue(any(h > 2.0 for _, h, _ in spots), "open ground up the slope")
+        tops = [b["at"][1] + b["size"][1] / 2 for b in field]
+        m = self._Map()
+
+        def rest(x, z, h):
+            got = [b["at"][1] + b["size"][1] / 2 for b in field if docboxes.within(b, x, z) and b["at"][1] + b["size"][1] / 2 <= h + 0.6]
+            return max(got) if got else None
+        n = docboxes.scatter_walked(m, spots, 12, 7, ("a", "b"), avoid=[(3, 3, 4.0)], rest=rest, ground=walk.ground)
+        self.assertEqual(n, 12)
+        for q in m.props:
+            x, y, z = q["at"]
+            self.assertGreaterEqual((x - 3) ** 2 + (z - 3) ** 2, 16.0)
+            self.assertTrue(any(abs(y - t) < 1e-6 for t in tops), "set on a field top, which swap_terrain lands")
+            hs = [walk.ground.height(x + dx, z + dz) for dx in (-0.75, 0.75) for dz in (-0.75, 0.75)]
+            self.assertLessEqual(max(hs) - min(hs), 0.25)
+        top = self._Map()
+        self.assertGreater(docboxes.scatter_walked(top, [p for p in spots if p[1] > 5.0], 2, 7, ("a",), rest=rest, ground=walk.ground), 0, "and on the hilltop")
+        self.assertTrue(all(q["at"][1] > 5.0 for q in top.props))
+        self.assertIsNone(docboxes.walk_flood(field, (100, 0, 100), src, "grass", tint, scale=s), "a start on nothing")
 
 
 def fixture():
