@@ -470,3 +470,517 @@ def add_doors(m, doc, entities, shift, slide=False, scale=0.01905, skip=(), log=
             log("  door at (%.1f, %.1f): %d props cleared from its swing" % (hx, hz, len(gone)))
     log("doors: %d hung, %d with no doorway" % (hung, missed))
     return hung
+
+
+def merge_touching(boxes, tol=0.002):
+    """Merges axis-aligned boxes of one material that touch face to face with the same cross-section.
+
+    Repeats along each axis until nothing joins; a turned box is left alone. Returns how many boxes went."""
+    start = len(boxes)
+    keep = [b for b in boxes if b.get("yaw")]
+    work = [b for b in boxes if not b.get("yaw")]
+    changed = True
+    while changed:
+        changed = False
+        for ax in (1, 0, 2):
+            o1, o2 = [a for a in (0, 1, 2) if a != ax]
+            groups = {}
+            for b in work:
+                attrs = tuple(sorted((k, repr(v)) for k, v in b.items() if k not in ("at", "size")))
+                key = (attrs, round(b["at"][o1] / tol), round(b["size"][o1] / tol),
+                       round(b["at"][o2] / tol), round(b["size"][o2] / tol))
+                groups.setdefault(key, []).append(b)
+            out = []
+            for grp in groups.values():
+                grp.sort(key=lambda b: b["at"][ax] - b["size"][ax] / 2)
+                cur = grp[0]
+                for b in grp[1:]:
+                    lo, hi = cur["at"][ax] - cur["size"][ax] / 2, cur["at"][ax] + cur["size"][ax] / 2
+                    blo, bhi = b["at"][ax] - b["size"][ax] / 2, b["at"][ax] + b["size"][ax] / 2
+                    if blo <= hi + tol:
+                        top = max(hi, bhi)
+                        cur = dict(cur)
+                        cur["at"] = list(cur["at"])
+                        cur["size"] = list(cur["size"])
+                        cur["at"][ax] = round((lo + top) / 2, 3)
+                        cur["size"][ax] = round(top - lo, 3)
+                        changed = True
+                    else:
+                        out.append(cur)
+                        cur = b
+                out.append(cur)
+            work = out
+    boxes[:] = keep + work
+    return start - len(boxes)
+
+
+def drop_trim(boxes, min_volume=0.0, min_thickness=0.0, panel=1.0, walkable=0.25):
+    """Drops detail boxes below a volume or thinner than a thickness (a moulding, a skirting, a frame).
+
+    A box whose longest side reaches `panel` metres, or whose footprint (x by z) reaches `walkable` square
+    metres, is a wall, header, floor or stair step and stays; an unseen collision box (visible false) always
+    stays. Returns how many went."""
+    def trim(b):
+        if b.get("visible", True) is False:
+            return False
+        s = b["size"]
+        # A long box (a wall, a header, a floor panel) and a walkable top (a stair step) are structure, not trim.
+        if max(s) >= panel or s[0] * s[2] >= walkable:
+            return False
+        if min_volume > 0.0 and s[0] * s[1] * s[2] < min_volume:
+            return True
+        return min_thickness > 0.0 and min(s) < min_thickness
+    n = len(boxes)
+    boxes[:] = [b for b in boxes if not trim(b)]
+    return n - len(boxes)
+
+
+def floor_islands(boxes, cell=0.25, step=0.4, head=1.4):
+    """Labels the walkable floor of a document: (islands, state_of), no body radius, any height.
+
+    A surface is a solid box's top with nothing solid between 0.3 m and `head` above it; two
+    neighbouring cells join when their surfaces differ by at most `step` (the bots' climb).
+    `islands` is [(cells, [states])] largest first; `state_of(x, z, y)` is the state index of the
+    surface under a point (within 0.3 m of y), or None. A state is (zi, xi, top)."""
+    solid = [b for b in boxes if b.get("solid", True)]
+    if not solid:
+        return [], lambda x, z, y: None
+    x0 = min(b["at"][0] - b["size"][0] / 2 for b in solid) - 1.0
+    z0 = min(b["at"][2] - b["size"][2] / 2 for b in solid) - 1.0
+    W = int((max(b["at"][0] + b["size"][0] / 2 for b in solid) + 1.0 - x0) / cell) + 1
+    H = int((max(b["at"][2] + b["size"][2] / 2 for b in solid) + 1.0 - z0) / cell) + 1
+    spans = {}
+
+    def over(b, grow):
+        hx, hz = b["size"][0] / 2, b["size"][2] / 2
+        if b.get("yaw"):
+            hx = hz = math.hypot(hx, hz)
+        for zi in range(max(0, int((b["at"][2] - hz - z0) / cell)), min(H, int((b["at"][2] + hz - z0) / cell) + 2)):
+            for xi in range(max(0, int((b["at"][0] - hx - x0) / cell)), min(W, int((b["at"][0] + hx - x0) / cell) + 2)):
+                if grow or within(b, x0 + (xi + 0.5) * cell, z0 + (zi + 0.5) * cell):
+                    yield zi * W + xi
+
+    for b in solid:
+        lo, hi = round(b["at"][1] - b["size"][1] / 2, 3), round(b["at"][1] + b["size"][1] / 2, 3)
+        thin = min(b["size"][0], b["size"][2]) < cell
+        for i in over(b, thin):
+            spans.setdefault(i, []).append((lo, hi, thin))
+    surfaces = {}
+    for i, sp in spans.items():
+        for lo, hi, thin in sp:
+            if thin and hi - lo < 0.5:
+                continue
+            if not any(l2 < hi + head and h2 > hi + 0.3 for l2, h2, _t in sp):
+                if hi not in surfaces.setdefault(i, []):
+                    surfaces[i].append(hi)
+    label = {}
+    islands = []
+    for i0 in sorted(surfaces):
+        for t0 in surfaces[i0]:
+            if (i0, t0) in label:
+                continue
+            members = [(i0, t0)]
+            label[(i0, t0)] = len(islands)
+            k = 0
+            while k < len(members):
+                i, t = members[k]
+                k += 1
+                zi, xi = divmod(i, W)
+                for dz, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nz, nx = zi + dz, xi + dx
+                    if not (0 <= nz < H and 0 <= nx < W):
+                        continue
+                    n = nz * W + nx
+                    for t2 in surfaces.get(n, ()):
+                        if abs(t2 - t) <= step and (n, t2) not in label:
+                            label[(n, t2)] = len(islands)
+                            members.append((n, t2))
+            islands.append(members)
+    order = sorted(range(len(islands)), key=lambda k: -len(islands[k]))
+    rank = {k: r for r, k in enumerate(order)}
+    ranked = [[(divmod(i, W), t) for i, t in islands[k]] for k in order]
+
+    def state_of(x, z, y):
+        zi, xi = int((z - z0) / cell), int((x - x0) / cell)
+        if not (0 <= zi < H and 0 <= xi < W):
+            return None
+        i = zi * W + xi
+        best = min(((abs(t - y), t) for t in surfaces.get(i, ()) if abs(t - y) <= 0.3), default=None)
+        return None if best is None else (rank[label[(i, best[1])]], zi, xi, best[1])
+
+    return [(len(m), m) for m in ranked], state_of, (x0, z0, cell)
+
+
+def restart_on_largest_island(doc, size_of, footprint, props_wanted=8, hunters_wanted=3, spacing=3.0, log=print):
+    """Puts the start and hunter spawns on the largest connected floor island (--start-island).
+
+    A map whose author starts are scattered by order can put the props' first start on a small
+    isolated platform while the hiding places are on the big floor, and every place then reads
+    as cut off. Spawns already on it stay; the rest are dropped and topped up
+    from its clearest open floor, `spacing` m apart. Toys off the island follow to its spots.
+    The island is the largest one that holds at least one author spawn (all of them if none do).
+    Returns the number of spawns moved, or None when the document has no floor."""
+    islands, state_of, (x0, z0, cell) = floor_islands(doc["boxes"])
+    if not islands:
+        return None
+    log("floor islands: %s cells (largest first)" % ", ".join(str(n) for n, _m in islands[:6]))
+    # Roofs and wall tops are islands too, so the biggest must be one an author start stands on.
+    own = {s[0] for side in doc["spawns"].values() for sp in side
+           for s in [state_of(sp["at"][0], sp["at"][2], sp["at"][1] - 0.05)] if s is not None}
+    top = min(own) if own else 0
+    members = islands[top][1]
+    cells = {(zi, xi, t) for (zi, xi), t in members}
+    flat = {}
+    for zi, xi, t in cells:
+        flat.setdefault((zi, xi), []).append(t)
+
+    def on_island(at, base=0.05):
+        s = state_of(at[0], at[2], at[1] - base)
+        return s is not None and s[0] == top
+
+    props = [q for q in doc["props"]]
+
+    def clear_of_props(x, y, z):
+        for q in props:
+            sx, sy, sz = size_of(q["id"])
+            fw, fd = footprint(q["id"], q.get("yaw", 0.0))
+            if q["at"][1] < y + 1.4 and q["at"][1] + sy > y + 0.1 and abs(x - q["at"][0]) < fw / 2 + 0.5 and abs(z - q["at"][2]) < fd / 2 + 0.5:
+                return False
+        return True
+
+    def room(zi, xi, t, r):
+        """How many of the (2r+1)^2 cells round this one are the same island at about this level."""
+        return sum(1 for dz in range(-r, r + 1) for dx in range(-r, r + 1)
+                   if any(abs(t2 - t) <= 0.4 for t2 in flat.get((zi + dz, xi + dx), ())))
+
+    cx = sum(zi for zi, xi, t in cells) / len(cells)
+    cz = sum(xi for zi, xi, t in cells) / len(cells)
+    r = max(1, int(1.5 / cell))
+    full = (2 * r + 1) ** 2
+    cand = sorted(((zi, xi, t) for zi, xi, t in cells if room(zi, xi, t, r) == full),
+                  key=lambda c: ((c[0] - cx) ** 2 + (c[1] - cz) ** 2, c[0], c[1]))
+    kept = {side: [sp for sp in doc["spawns"][side] if on_island(sp["at"])] for side in ("props", "hunters")}
+    taken = [(sp["at"][0], sp["at"][2]) for side in kept.values() for sp in side]
+    moved = sum(len(doc["spawns"][s]) - len(kept[s]) for s in kept)
+    for side, want in (("props", props_wanted), ("hunters", hunters_wanted)):
+        for zi, xi, t in cand:
+            if len(kept[side]) >= want:
+                break
+            x, z = x0 + (xi + 0.5) * cell, z0 + (zi + 0.5) * cell
+            if all((x - a) ** 2 + (z - b) ** 2 >= spacing ** 2 for a, b in taken) and clear_of_props(x, t, z):
+                kept[side].append({"at": [round(x, 3), round(t + 0.05, 3), round(z, 3)], "yaw": 0})
+                taken.append((x, z))
+    doc["spawns"].update(kept)
+    for toy in doc.get("toys", []):
+        if on_island(toy["at"], 0.0):
+            continue
+        for zi, xi, t in cand:
+            x, z = x0 + (xi + 0.5) * cell, z0 + (zi + 0.5) * cell
+            if all((x - a) ** 2 + (z - b) ** 2 >= 4.0 for a, b in taken) and clear_of_props(x, t, z):
+                toy["at"] = [round(x, 3), round(t, 3), round(z, 3)]
+                taken.append((x, z))
+                break
+    return moved
+
+
+def drop_other_terrain(doc, material="grass", min_cells=2000, log=print):
+    """Drops ground slabs of a big floor island no spawn stands on (--start-island).
+
+    A terrace below a cliff is a pit: the bots drop into it, nothing climbs out, and the nav query
+    for any goal beyond fails. Only `material` slabs go, and only when their island is larger than
+    `min_cells`, so a roof or a small platform stays. Props left standing on nothing are dropped
+    by the audit that follows. Returns the number of slabs dropped."""
+    islands, state_of, _grid = floor_islands(doc["boxes"])
+    own = {s[0] for side in doc["spawns"].values() for sp in side
+           for s in [state_of(sp["at"][0], sp["at"][2], sp["at"][1] - 0.05)] if s is not None}
+    if not own:
+        return 0
+    big = {n for n, (cells, _m) in enumerate(islands) if cells >= min_cells and n not in own}
+    keep = []
+    for b in doc["boxes"]:
+        if b.get("mat") == material and b.get("solid", True):
+            s = state_of(b["at"][0], b["at"][2], b["at"][1] + b["size"][1] / 2)
+            if s is not None and s[0] in big:
+                continue
+        keep.append(b)
+    gone = len(doc["boxes"]) - len(keep)
+    doc["boxes"][:] = keep
+    if gone and log:
+        log("dropped %d ground slabs of islands no spawn stands on" % gone)
+    return gone
+
+
+def budget_flag(arg, opts):
+    """Reads --merge-boxes, --min-box-volume=<m3>, --min-box-thickness=<m> and --max-boxes=<n> into opts; True when arg was one."""
+    if arg == "--merge-boxes":
+        opts["merge"] = True
+    elif arg.startswith("--min-box-volume="):
+        opts["volume"] = float(arg.split("=", 1)[1])
+    elif arg.startswith("--min-box-thickness="):
+        opts["thickness"] = float(arg.split("=", 1)[1])
+    elif arg.startswith("--max-boxes="):
+        opts["max"] = int(arg.split("=", 1)[1])
+    else:
+        return False
+    return True
+
+
+def apply_budget(boxes, opts):
+    """Runs the opt-in box budget (merge, then trim) and prints the counts; nothing happens with no flag."""
+    if not any(k in opts for k in ("merge", "volume", "thickness")):
+        return
+    before = len(boxes)
+    merged = merge_touching(boxes) if opts.get("merge") else 0
+    trimmed = drop_trim(boxes, opts.get("volume", 0.0), opts.get("thickness", 0.0))
+    print("box budget: %d boxes, merged %d, dropped %d trim, %d left" % (before, merged, trimmed, len(boxes)))
+
+
+def _intervals(boxes, cell):
+    """{(xi, zi): [(lo, hi, box index)]} of the solid boxes over a grid of `cell` metres (a turned box by its bounding square)."""
+    cols = {}
+    for i, b in enumerate(boxes):
+        if not b.get("solid", True):
+            continue
+        hx, hz = b["size"][0] / 2, b["size"][2] / 2
+        if b.get("yaw"):
+            hx = hz = math.hypot(hx, hz)
+        lo, hi = b["at"][1] - b["size"][1] / 2, b["at"][1] + b["size"][1] / 2
+        for xi in range(int((b["at"][0] - hx) // cell), int((b["at"][0] + hx) // cell) + 1):
+            for zi in range(int((b["at"][2] - hz) // cell), int((b["at"][2] + hz) // cell) + 1):
+                if not b.get("yaw") or within(b, (xi + 0.5) * cell, (zi + 0.5) * cell):
+                    cols.setdefault((xi, zi), []).append((lo, hi, i))
+    return cols
+
+
+def _anchors(doc):
+    """The points that need ground under them: every spawn, prop and light, as (x, y, z)."""
+    pts = [tuple(s["at"]) for lst in doc.get("spawns", {}).values() for s in lst]
+    pts += [tuple(q["at"]) for q in doc.get("props", [])]
+    pts += [tuple(q["at"]) for q in doc.get("lights", [])]
+    return pts
+
+
+def cap_protected(doc, grid=2.0):
+    """Indices of the boxes --max-boxes never cuts: a floor or stair, a door's frame, the ground under an anchor.
+
+    A floor or stair is a box with a walkable top (footprint 0.25 m2 or more, no side under 0.3 m) and
+    headroom over it; a door's frame is any box within 0.15 m of a door's leaf; the ground under a
+    spawn, prop or light is the highest top within 0.35 m above its feet."""
+    boxes = doc["boxes"]
+    keep = set()
+    cols = {}
+    for i, b in enumerate(boxes):
+        if not b.get("solid", True):
+            continue
+        for xi in range(int((b["at"][0] - b["size"][0] / 2) // grid) - 1, int((b["at"][0] + b["size"][0] / 2) // grid) + 2):
+            for zi in range(int((b["at"][2] - b["size"][2] / 2) // grid) - 1, int((b["at"][2] + b["size"][2] / 2) // grid) + 2):
+                cols.setdefault((xi, zi), []).append(i)
+
+    def near(x0, x1, z0, z1):
+        seen = set()
+        for xi in range(int(x0 // grid), int(x1 // grid) + 1):
+            for zi in range(int(z0 // grid), int(z1 // grid) + 1):
+                seen.update(cols.get((xi, zi), ()))
+        return seen
+
+    def reach_of(b):
+        hx, hz = b["size"][0] / 2, b["size"][2] / 2
+        return (math.hypot(hx, hz),) * 2 if b.get("yaw") else (hx, hz)
+
+    def walkable(i):
+        """True when nothing that replaces box i's top lies within head height above it."""
+        b = boxes[i]
+        hx, hz = reach_of(b)
+        top = b["at"][1] + b["size"][1] / 2
+        x, z = b["at"][0], b["at"][2]
+        area = 4 * hx * hz
+        over = 0.0
+        for j in near(x - hx, x + hx, z - hz, z + hz):
+            o = boxes[j]
+            if j == i or o.get("yaw") or o["at"][1] - o["size"][1] / 2 >= top + 1.8 or o["at"][1] + o["size"][1] / 2 <= top + 0.05:
+                continue
+            w = min(x + hx, o["at"][0] + o["size"][0] / 2) - max(x - hx, o["at"][0] - o["size"][0] / 2)
+            d = min(z + hz, o["at"][2] + o["size"][2] / 2) - max(z - hz, o["at"][2] - o["size"][2] / 2)
+            if w > 0.05 and d > 0.05:
+                over += w * d
+        return over < 0.5 * area
+
+    steps = []      # shallow or turned treads, kept only when they chain to a neighbouring height
+    for i, b in enumerate(boxes):
+        if not b.get("solid", True):
+            continue
+        sx, sy, sz = b["size"]
+        if sx * sz < 0.25 or min(sx, sz) < 0.3:
+            if sx * sz >= 0.05 and min(sx, sz) >= 0.15 and walkable(i):
+                steps.append(i)
+            continue
+        if walkable(i):
+            keep.add(i)
+    for i in steps:
+        b = boxes[i]
+        hx, hz = reach_of(b)
+        r = math.hypot(hx, hz)
+        top = b["at"][1] + b["size"][1] / 2
+        for j in near(b["at"][0] - r - 0.1, b["at"][0] + r + 0.1, b["at"][2] - r - 0.1, b["at"][2] + r + 0.1):
+            o = boxes[j]
+            if j == i or not o.get("solid", True) or min(o["size"][0], o["size"][2]) < 0.15:
+                continue
+            ot = o["at"][1] + o["size"][1] / 2
+            ro = math.hypot(o["size"][0] / 2, o["size"][2] / 2)
+            if 0.03 <= abs(ot - top) <= 0.5 and math.hypot(o["at"][0] - b["at"][0], o["at"][2] - b["at"][2]) <= r + ro + 0.1:
+                keep.add(i)
+                break
+    for d in doc.get("doors", []):
+        dx, dy, dz = d["at"]
+        hx, hy, hz = d["size"][0] / 2 + 0.15, d["size"][1] / 2 + 0.15, d["size"][2] / 2 + 0.15
+        if abs(math.sin(math.radians(d.get("yaw", 0.0)))) > 0.7071:
+            hx, hz = hz, hx         # a door in a z wall is turned: its width runs along z
+        for j in near(dx - hx, dx + hx, dz - hz, dz + hz):
+            o = boxes[j]
+            if abs(o["at"][0] - dx) <= hx + o["size"][0] / 2 and abs(o["at"][1] - dy) <= hy + o["size"][1] / 2 and abs(o["at"][2] - dz) <= hz + o["size"][2] / 2:
+                keep.add(j)
+    def hold(x, y, z):
+        """Keeps the ground at (x, z) for feet at y: the highest top at or under y + 0.35 and the support one step below it."""
+        under = sorted(((o["at"][1] + o["size"][1] / 2, j) for j in near(x, x, z, z) for o in (boxes[j],)
+                        if o["at"][1] + o["size"][1] / 2 <= y + 0.35 and within(o, x, z)), reverse=True)
+        if not under:
+            return
+        best = under[0][0]
+        keep.update(j for t, j in under if t >= best - 0.05)
+        lower = [(t, j) for t, j in under if best - 0.5 <= t < best - 0.05]
+        if lower:
+            nxt = lower[0][0]
+            keep.update(j for t, j in lower if t >= nxt - 0.05)
+
+    for x, y, z in _anchors(doc):
+        hold(x, y, z)
+    for lst in doc.get("spawns", {}).values():
+        for sp in lst:
+            x, y, z = sp["at"]
+            for ox, oz in ((0.75, 0), (-0.75, 0), (0, 0.75), (0, -0.75)):
+                hold(x + ox, y, z + oz)
+    return keep
+
+
+def reach_report(doc, boxes=None, cell=0.25, step=0.45, head=1.7):
+    """Which spawns a body could walk to from the first one, over the document's boxes (or `boxes`).
+
+    A multi-storey flood on a `cell` grid: a column's standing places are the tops of its solid boxes with
+    `head` metres clear above, and two neighbouring places join when their tops differ by `step` or less.
+    Props and body radius are left out (prune_pockets owns those): this is for comparing a document
+    before and after boxes are cut. Returns (reached, total, unreached spawn indices in list order)."""
+    boxes = doc["boxes"] if boxes is None else boxes
+    spawns = [s["at"] for lst in doc.get("spawns", {}).values() for s in lst]
+    if not spawns:
+        return 0, 0, []
+    cols = _intervals(boxes, cell)
+    places = {}
+    for k, iv in cols.items():
+        iv.sort()
+        merged = []
+        for lo, hi, _ in iv:
+            if merged and lo <= merged[-1][1] + 0.02:
+                merged[-1][1] = max(merged[-1][1], hi)
+            else:
+                merged.append([lo, hi])
+        tops = [m[1] for n, m in enumerate(merged) if n + 1 == len(merged) or merged[n + 1][0] - m[1] >= head]
+        places[k] = tops
+
+    def find(p):
+        xi, zi = int(p[0] // cell), int(p[2] // cell)
+        best = None
+        for dx in (0, -1, 1):
+            for dz in (0, -1, 1):
+                for t in places.get((xi + dx, zi + dz), ()):
+                    if t <= p[1] + 0.5 and (best is None or t > best[2]):
+                        best = (xi + dx, zi + dz, t)
+        return best
+
+    start = find(spawns[0])
+    if start is None:
+        return 0, len(spawns), list(range(len(spawns)))
+    seen = {(start[0], start[1], round(start[2], 3))}
+    stack = [start]
+    while stack:
+        xi, zi, t = stack.pop()
+        for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            for t2 in places.get((xi + dx, zi + dz), ()):
+                key = (xi + dx, zi + dz, round(t2, 3))
+                if abs(t2 - t) <= step and key not in seen:
+                    seen.add(key)
+                    stack.append((xi + dx, zi + dz, t2))
+    lost = []
+    for n, p in enumerate(spawns):
+        f = find(p)
+        if f is None or (f[0], f[1], round(f[2], 3)) not in seen:
+            lost.append(n)
+    return len(spawns) - len(lost), len(spawns), lost
+
+
+def cap_boxes(doc, limit, log=print):
+    """Cuts the least important boxes until `limit` or fewer are left (--max-boxes); returns how many were cut.
+
+    Smallest volume first, never a box cap_protected names. The spawns' reach is measured before and
+    after (reach_report); a loss restores the cut boxes needed to reconnect, or exits non-zero. A document already at or under `limit` is not touched."""
+    boxes = doc["boxes"]
+    if len(boxes) <= limit:
+        return 0
+    before = len(boxes)
+    reach0 = reach_report(doc)
+    keep = cap_protected(doc)
+    order = sorted((i for i in range(len(boxes)) if i not in keep), key=lambda i: (boxes[i]["size"][0] * boxes[i]["size"][1] * boxes[i]["size"][2], i))
+    cut = order[:max(0, before - limit)]
+    vol = lambda i: boxes[i]["size"][0] * boxes[i]["size"][1] * boxes[i]["size"][2]
+    lost0 = set(reach0[2])
+
+    def lost_after(restored):
+        gone = set(cut) - set(restored)
+        return set(reach_report(doc, [b for i, b in enumerate(boxes) if i not in gone])[2]) - lost0
+
+    restored = []
+    if lost_after([]):
+        # Restore the fewest cut boxes, largest first: the smallest prefix of that order that
+        # brings every spawn back (binary search; the full set is the document as it was).
+        big = sorted(cut, key=lambda i: (-vol(i), i))
+        lo, hi = 1, len(big)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if lost_after(big[:mid]):
+                lo = mid + 1
+            else:
+                hi = mid
+        restored = big[:lo]
+        if lost_after(restored):
+            raise SystemExit("box cap: reach dropped and restoring every cut box did not bring it back")
+        log("box cap: cutting lost reach, restored %d of %d cut boxes (largest first)" % (len(restored), len(cut)))
+    gone = set(cut) - set(restored)
+    biggest = max((boxes[i] for i in gone), key=lambda b: b["size"][0] * b["size"][1] * b["size"][2], default=None)
+    doc["boxes"][:] = [b for i, b in enumerate(boxes) if i not in gone]
+    msg = "box cap: %d boxes over --max-boxes=%d, cut %d, %d left (%d protected)" % (before, limit, len(gone), len(doc["boxes"]), len(keep))
+    if biggest is not None:
+        s = biggest["size"]
+        msg += "; largest cut %.2f m3 at (%.1f, %.1f, %.1f) size %.2f x %.2f x %.2f" % (s[0] * s[1] * s[2], *biggest["at"], *s)
+    log(msg)
+    if len(doc["boxes"]) > limit:
+        log("box cap: STILL OVER by %d: the rest are floors, stairs, door frames, the ground under a spawn, prop or light, or boxes a route needs" % (len(doc["boxes"]) - limit))
+    reach1 = reach_report(doc)
+    log("box cap: spawns reachable from the first: %d of %d before, %d of %d after" % (reach0[0], reach0[1], reach1[0], reach1[1]))
+    return len(gone)
+
+
+def apply_cap(doc, opts, log=print):
+    """Runs the opt-in --max-boxes cap, last of the passes that add or remove boxes; nothing happens without the flag."""
+    if "max" in opts:
+        cap_boxes(doc, opts["max"], log)
+
+
+def lend_starts(spawns, src, dst, want=3):
+    """Moves starts from `src` to `dst` while `dst` has none and `src` keeps at least one (a small map whose
+    top-up of `src` took every spot). Returns how many moved."""
+    n = 0
+    if spawns[dst]:
+        return 0
+    while len(spawns[src]) > 1 and n < want:
+        spawns[dst].append(spawns[src].pop())
+        n += 1
+    return n
