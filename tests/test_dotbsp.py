@@ -657,6 +657,22 @@ class LightsEquivalence(unittest.TestCase):
             self.assertEqual(gap, self.original(pts, cap)[1])
         self.assertEqual(lights.thin_by_gap([], 5), ([], 0.0))
 
+    def test_thin_by_gap_first_is_hide_n_seeks_loop(self):
+        import random
+        rng = random.Random(5)
+        for n in (400, 900):
+            lamps = [{"at": [rng.uniform(0, 40), rng.uniform(0, 6), rng.uniform(0, 40)]} for _ in range(n)]
+            radius = 0.5                    # hide-n-seek-maps' loop as it was written
+            while True:
+                kept = []
+                for lt in lamps:
+                    if all(sum((a - b) ** 2 for a, b in zip(lt["at"], k["at"])) >= radius ** 2 for k in kept):
+                        kept.append(lt)
+                if len(kept) <= 128:
+                    break
+                radius += 0.25
+            self.assertEqual(lights.thin_by_gap(lamps, 128, step=0.25, first=0.5), (kept, radius))
+
     def test_thin_by_gap_on_murder_mystery_lights(self):
         mod = repo_importer("murder-mystery-maps")
         if mod is None:
