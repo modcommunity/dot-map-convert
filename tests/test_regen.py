@@ -147,6 +147,8 @@ class RegenTests(unittest.TestCase):
         hand = coverage.handled()
         self.assertTrue(any(c.fullmatch("ambient_generic") and k.fullmatch("PitchStart") for c, k in hand))
         self.assertFalse(any(c.fullmatch("ambient_generic") and k.fullmatch("zz_nothing") for c, k in hand))
+        self.assertTrue(any(c.fullmatch("ambient_generic") and k.fullmatch("pitch") for c, k in hand))
+        self.assertTrue(any(c.fullmatch("worldspawn") and k.fullmatch("no_decomp") for c, k in hand))
 
     def test_credit_is_required(self):
         store.put(self.root, "t", "nocredit", synth.build(entities=ENTS, materials=MAT + ("X/Y",)))
