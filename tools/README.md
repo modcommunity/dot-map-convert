@@ -26,7 +26,7 @@ Everything that converts a map, a model, a texture or a sound lives in this repo
 | `mg-wipeout-maps/import_world.py` | wipeout course from a regenerated world |
 | `mg-deathrun-maps/bsp_to_course.py`, `plan_route.py`, `draft_spec.py` | deathrun course from a spec, the route planner over the document the importer would write, and the first spec for a community map |
 | `mg-look-at-me/bsp_layout.py` | floor skeleton (rooms on the 4 m grid) from an intermediate |
-| `game-g2gfast/bsp_import.py`, `bsp_mechanics.py`, `bsp_props.py`, `vtf.py`, `stock_*.py`, `vrf_import.py`, `teleport_traps.py` | the g2gfast mesh, lightmap and texture pipeline, its stock-asset stand-ins and surveys |
+| `game-g2gfast/bsp_import.py`, `bsp_mechanics.py`, `bsp_props.py`, `vtf.py`, `stock_*.py`, `vrf_import.py`, `teleport_traps.py` | the g2gfast mesh, lightmap and texture pipeline, its stock-asset stand-ins and surveys Also the arena maps: per-side spawns (`team` red/blue from `TeamNum`), `control_points`, `resupply` and the authored `flag_spawns` and `modes` of `zones/<id>.json` land in the manifest. |
 
 ## Stayed in the map and game repositories, on purpose
 
