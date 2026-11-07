@@ -195,12 +195,11 @@ def _scorer(bsp, doc, scale, field):
 def grid(score, off):
     """The candidate's best neighbour on a grid over x and z (the FFT cell is half a metre and a wall is 0.3 m thick)."""
     best, pick = -1.0, list(off)
-    for dx in range(-6, 7):
-        for dz in range(-6, 7):
-            t = [off[0] + dx * 0.1, off[1], off[2] + dz * 0.1]
-            v = score(t)
-            if v > best + 1e-9:
-                best, pick = v, t
+    for dx, dz in sorted(itertools.product(range(-6, 7), repeat=2), key=lambda d: d[0] ** 2 + d[1] ** 2):   # a tie keeps the nearest
+        t = [off[0] + dx * 0.1, off[1], off[2] + dz * 0.1]
+        v = score(t)
+        if v > best + 1e-9:
+            best, pick = v, t
     return pick, best
 
 
@@ -274,110 +273,6 @@ def run_doc(bsp_path, doc_path, scale, max_loss, passable=(), skip_kinds=DOC_PAS
         if not cands:
             return {"error": "no boxes or no source brushes"}
         off, hit = refine(bsp, doc, cands, scale, field)
-    out = audit.Boxes(shift_boxes(boxes, off), terrain=Shifted(terrain_field, off) if terrain_field else None)
-    hit = n = 0
-    for bi in sample:
-        qs = audit.brush_points(bsp, bi, (0.0, 0.0, 0.0))
-        if not qs:
-            continue
-        n += 1
-        hit += any(out.contains(*audit.to_game(q, scale)) for q in qs)
-    return hit / n if n else 0.0
-
-
-def _scorer(bsp, doc, scale, field):
-    cand = solid_brushes(bsp)
-    sample = cand[::max(1, len(cand) // 250)]
-    return lambda t: brush_hits(bsp, doc["boxes"], t, scale, sample, field)
-
-
-def grid(score, off):
-    """The candidate's best neighbour on a grid over x and z (the FFT cell is half a metre and a wall is 0.3 m thick)."""
-    best, pick = -1.0, list(off)
-    for dx in range(-6, 7):
-        for dz in range(-6, 7):
-            t = [off[0] + dx * 0.1, off[1], off[2] + dz * 0.1]
-            v = score(t)
-            if v > best + 1e-9:
-                best, pick = v, t
-    return pick, best
-
-
-def climb(score, off, best):
-    """A hill-climb that also moves diagonally, so it does not stop on a ridge where one axis alone loses hits."""
-    moves = [m for m in itertools.product((-1, 0, 1), repeat=3) if any(m)]
-    for step in (0.1, 0.03, 0.01):
-        moved = True
-        while moved:
-            moved = False
-            for m in moves:
-                t = [off[k] + m[k] * step for k in range(3)]
-                v = score(t)
-                if v > best + 1e-9:
-                    off, best, moved = t, v, True
-    return [round(float(v), 3) for v in off], float(best)
-
-
-def refine(bsp, doc, cands, scale, field, keep=3):
-    """(offset, hit share) of the best of the FFT candidates: all gridded, the best `keep` climbed."""
-    score = _scorer(bsp, doc, scale, field)
-    ranked = sorted((grid(score, c) for c in cands), key=lambda t: -t[1])[:keep]
-    return max((climb(score, o, h) for o, h in ranked), key=lambda t: t[1])
-
-
-def summary(r, max_loss):
-    bl = 1.0 - r["brushes_collided"] / r["brushes_expected"] if r["brushes_expected"] else 0.0
-    fl = r["floor_missed"] / r["floor_samples"] if r["floor_samples"] else 0.0
-    worst = sorted(((v[1] - v[2], k) for k, v in r["brushes"].items() if v[1] and v[2] < v[1]), reverse=True)[:3]
-    wf = sorted(((v[0], k, v[1]) for k, v in r["floors"].items()), reverse=True)[:3]
-    return {"brush_loss": bl, "floor_loss": fl, "brushes": (r["brushes_collided"], r["brushes_expected"]),
-            "floors": (r["floor_samples"] - r["floor_missed"], r["floor_samples"]),
-            "worst_brushes": [(k, n) for n, k in worst], "worst_floors": [(k.replace("|", " "), m, n) for m, k, n in wf],
-            "ok": bl <= max_loss and fl <= max_loss}
-
-
-def recorded_frame(doc, bsp_path):
-    """The document's `source_frame` when it describes this .bsp (same hash, when it records one), else None."""
-    sf = sourceframe.read(doc)
-    if sf is None:
-        return None
-    if sf.get("sha256") and sf["sha256"] != sourceframe.file_sha256(bsp_path):
-        return None
-    return sf
-
-
-def keep_of(sf):
-    """The audit's region for a recorded crop (--within/--band), or None for the whole map."""
-    if not sf or not (sf.get("crop") or sf.get("crop_band")):
-        return None
-    return audit.region(",".join(map(str, sf["crop"])) if sf.get("crop") else None,
-                        ",".join(map(str, sf["crop_band"])) if sf.get("crop_band") else None)
-
-
-def run_doc(bsp_path, doc_path, scale, max_loss, passable=(), skip_kinds=DOC_PASSABLE_KINDS):
-    bsp = load_bsp(bsp_path)
-    with open(doc_path) as f:
-        doc = json.load(f)
-    field = terrain.Heightfield.decode(doc["terrain"])[0] if doc.get("terrain") else None
-    sf = recorded_frame(doc, bsp_path)
-    keep = None
-    if sf:
-        # the importer's own shift: exact, so nothing is searched and the fit is only reported
-        scale = sf.get("scale") or scale
-        off = [float(v) for v in sf["offset"]]
-        cand = solid_brushes(bsp)
-        hit = brush_hits(bsp, doc.get("boxes", []), off, scale, cand[::max(1, len(cand) // 250)], field)
-        keep = keep_of(sf)
-    else:
-        off = register(bsp, doc, scale)
-        if not off:
-            return {"error": "no boxes or no source brushes"}
-        best = None
-        for cand in off:
-            o, h = refine(bsp, doc, cand, scale, field)
-            if best is None or h > best[1]:
-                best = (o, h)
-        off, hit = best
     out = audit.Boxes(shift_boxes(doc.get("boxes", []), off), terrain=Shifted(field, off) if field else None)
     cl = lambda c: c == "worldspawn" or (classes.treatment(c)[0] == "world" and c not in passable)  # noqa: E731
     s = summary(audit.audit(bsp, out, scale, 0.0, cl, keep=keep, skip_kinds=skip_kinds), max_loss)
