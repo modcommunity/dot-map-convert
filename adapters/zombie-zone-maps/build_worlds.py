@@ -43,7 +43,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import import_bsp  # noqa: E402  (puts dot-map-convert on the path, and owns the material table)
-from dotbsp import environment, importer, licence, mesh, movers, reader, standins, units  # noqa: E402
+from dotbsp import environment, importer, licence, mesh, models, movers, reader, standins, units  # noqa: E402
 
 # Metres of world one batch covers: the game's own (ZzMap.CHUNK), because the compatibility renderer
 # lights a mesh with at most eight lamps and a chunk is about a room, which is about a lamp.
@@ -167,9 +167,12 @@ def main(argv):
     credit["note"] = "Geometry converted from the original map with credit; its textures and models are not used. Removed on the author's request."
     doc = mesh.write(m, os.path.join(out_dir, map_id), credit=credit, name=map_id, extra=extra)
     # The licence pass: every texture a free one, the models and sounds stand-ins (dot-map's tables), props placed.
-    shaped = standins.shape_matches(bsp)
+    # The sizes come from the raw import's models.json when the map has one (no second read of the pakfile).
+    raw = importer.raw_dir("zz", map_id)
+    packed = models.measure(bsp, raw=raw if os.path.isdir(raw) else None)
+    shaped = standins.shape_matches(bsp, packed=packed)
     licence.annotate(doc, out_dir, models=importer.placed_models(bsp), shaped=shaped)
-    doc["props"] = standins.placements(bsp, y0=y0, shaped=shaped)
+    doc["props"] = standins.placements(bsp, y0=y0, shaped=shaped, packed=packed)
     problems = licence.check(doc)
     with open(os.path.join(out_dir, map_id + ".json"), "w") as f:
         json.dump(doc, f, indent=1, sort_keys=True)

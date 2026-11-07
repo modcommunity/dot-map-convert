@@ -157,5 +157,69 @@ class Models(unittest.TestCase):
         self.assertTrue(models.compatible((0.49, 0.51, 0.61), cat["crate"]))
 
 
+class FakeBsp:
+    """Just what `models.measure` and `standins.shape_matches` ask of a bsp: entities, static props, a pakfile."""
+
+    def __init__(self, pak, placed):
+        self.pak, self.reads = pak, 0
+        self.entities = [{"classname": "prop_physics", "model": m, "origin": "0 0 0"} for m in placed]
+
+    def static_props(self):
+        return []
+
+    def read_pak(self, notes=None, only=None):
+        self.reads += 1
+        return self.pak
+
+
+class Reach(unittest.TestCase):
+    """A model the map packs reaches the shipped manifest as a stand-in of its measured shape."""
+
+    PAK = {"models/props/thing.mdl": None, "models/props/thing.vvd": None, "models/props/thing.dx90.vtx": None}
+
+    def setUp(self):
+        global POINTS
+        self._points, POINTS = POINTS, [(0, 0, 0), (40, 0, 10), (0, 40, 40)]   # a 0.76 m block, not a flat triangle
+
+    def tearDown(self):
+        global POINTS
+        POINTS = self._points
+
+    def bsp(self, placed=("models/props/thing.mdl",)):
+        pak = dict(self.PAK, **{"models/props/thing.mdl": make_mdl(), "models/props/thing.vvd": make_vvd(),
+                                "models/props/thing.dx90.vtx": make_vtx()})
+        return FakeBsp(pak, placed)
+
+    def test_measure_reads_the_stored_index_and_skips_the_pakfile(self):
+        bsp = self.bsp()
+        with tempfile.TemporaryDirectory() as raw:
+            idx = models.extract(bsp, os.path.join(raw, "models"))
+            self.assertEqual(bsp.reads, 1)
+            stored = models.measure(bsp, raw=raw)
+            self.assertEqual(bsp.reads, 1)                      # not opened again
+            self.assertEqual(stored.get("models/props/thing.mdl")["size"], idx["models/props/thing.mdl"]["size"])
+            # a model the stored index never saw: measured from the pakfile after all
+            bsp2 = self.bsp(("models/props/thing.mdl", "models/props/other.mdl"))
+            models.measure(bsp2, raw=raw)
+            self.assertEqual(bsp2.reads, 1)
+        bsp3 = self.bsp()
+        models.measure(bsp3, raw=os.path.join(raw, "missing"))   # no raw import: the pakfile
+        self.assertEqual(bsp3.reads, 1)
+
+    def test_packed_model_gets_a_shaped_stand_in(self):
+        from dotbsp import standins
+        bsp = self.bsp()
+        packed = models.measure(bsp)
+        shaped = standins.shape_matches(bsp, packed=packed)
+        self.assertIn("models/props/thing.mdl", shaped)
+        hit = shaped["models/props/thing.mdl"]
+        self.assertTrue(hit["stand_in"])
+        self.assertAlmostEqual(hit["size"], max(packed.get("models/props/thing.mdl")["size"]), places=2)
+        reads = bsp.reads
+        out = standins.placements(bsp, shaped=shaped, packed=packed)
+        self.assertEqual(bsp.reads, reads)                      # placements reuse the one measure
+        self.assertTrue(any(r.get("shape") or r.get("box") for r in out), out)
+
+
 if __name__ == "__main__":
     unittest.main()
