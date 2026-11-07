@@ -2,6 +2,7 @@
 Run: python3 -I tests/test_modelmap.py
 """
 
+import importlib.util
 import os
 import sys
 import tempfile
@@ -54,6 +55,7 @@ class ModelMap(unittest.TestCase):
         got = modelmap.pick("m", (0.08, 0.33, 0.08), modelmap.GENERIC, lib)
         self.assertEqual(got[0]["id"], "ph_candle_holder")
 
+    @unittest.skipUnless(importlib.util.find_spec("trimesh"), "needs the trimesh package (pip install trimesh), which writes the generated stand-in models")
     def test_own_model_and_ship(self):
         with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as store:
             r = modelmap.own_model(root, "box", (0.5, 0.2, 0.3), "e8e8e0")
