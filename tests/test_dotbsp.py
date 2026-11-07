@@ -556,7 +556,7 @@ class DocBoxes(unittest.TestCase):
         self.assertEqual(docboxes.majority_material(list(reversed(names)), table), ("a", None))
         code = ("import sys; sys.path.insert(0, %r); from dotbsp import docboxes; "
                 "print(docboxes.majority_material(%r, %r))" % (os.path.dirname(HERE), names, table))
-        outs = {subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True,
+        outs = {subprocess.run([sys.executable, "-P", "-c", code], capture_output=True, text=True,
                                env=dict(os.environ, PYTHONHASHSEED=str(seed))).stdout for seed in (0, 1, 2, 3, 4, 5)}
         self.assertEqual(outs, {"('a', None)\n"})
 
