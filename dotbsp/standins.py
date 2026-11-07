@@ -253,7 +253,7 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
         else:
             _fit_natural(rec, packed.get(p["model"]), p.get("scale"))
         out.append(rec)
-    shaped = shape_matches(bsp, game_table, table) if shaped is None else shaped
+    shaped = shape_matches(bsp, game_table, table, packed=packed) if shaped is None else shaped
     spots = _spots(doc)
     libm = {m for m, s in shaped.items() if s["stand_in"].startswith("lib/")}
     out = [r for r in out if _props.norm_model(r["model"]) not in libm]
