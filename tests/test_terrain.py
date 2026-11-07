@@ -184,6 +184,55 @@ def fixture():
                              if None not in c)}
 
 
+class TestSwapTerrain(unittest.TestCase):
+    """swap_terrain on a synthetic displacement: a gentle slope 2400 units square, in map units."""
+    SCALE = 0.01905
+    SHIFT = (5.0, 0.5, -3.0)
+
+    def setUp(self):
+        # grid_tris is (x, height, z); map units are (x, y, height)
+        self.tris = [tuple((p[0], p[2], p[1]) for p in t) for t in grid_tris(lambda x, y: 200 + 0.05 * x, 0, 0, 2400, 2400, 240)]
+        self.cells = boxes.terrain_cells(self.tris)
+        self.assertGreater(len(self.cells), 20)
+        self.doc_boxes = []
+        for c in self.cells:
+            (x0, x1), (y0, y1), (z0, z1) = c["x"], c["z"], c["y"]
+            x0, x1, y0, y1, z0, z1 = [v * self.SCALE for v in (x0, x1, y0, y1, -z1, -z0)]
+            at = [(x0 + x1) / 2 + self.SHIFT[0], (y0 + y1) / 2 + self.SHIFT[1], (z0 + z1) / 2 + self.SHIFT[2]]
+            self.doc_boxes.append({"at": [round(v, 3) for v in at], "size": [round(x1 - x0, 3), round(y1 - y0, 3), round(z1 - z0, 3)], "mat": "grass", "tint": None})
+
+    def doc(self):
+        wall = {"at": [100.0, 5.0, 100.0], "size": [1.0, 2.0, 1.0], "mat": "brick", "tint": None}
+        top = self.doc_boxes[len(self.doc_boxes) // 2]
+        x, y, z = top["at"][0], top["at"][1] + top["size"][1] / 2, top["at"][2]
+        return {"boxes": [dict(b) for b in self.doc_boxes] + [wall], "props": [{"at": [x, y, z]}, {"at": [x, y + 9, z]}],
+                "spawns": {"a": [{"at": [x, y, z]}]}, "toys": []}, wall, (x, y, z)
+
+    def test_replaces_field_with_heightfield(self):
+        doc, wall, (x, y, z) = self.doc()
+        ground = terrain.swap_terrain(doc, self.tris, "grass", None)
+        self.assertEqual(doc["boxes"], [wall], "only the field boxes go")
+        self.assertIn("terrain", doc)
+        back, _ = terrain.Heightfield.decode(doc["terrain"])
+        self.assertAlmostEqual(back.height(x, z), ground.height(x, z), places=6)
+        self.assertIsNotNone(ground.height(x, z))
+
+    def test_sets_down_what_stood_on_the_field(self):
+        doc, _, (x, y, z) = self.doc()
+        ground = terrain.swap_terrain(doc, self.tris, "grass", None)
+        h = round(ground.height(x, z), 3)
+        self.assertEqual(doc["props"][0]["at"], [x, h, z])
+        self.assertEqual(doc["props"][1]["at"], [x, y + 9, z], "a prop in the air stays")
+        self.assertEqual(doc["spawns"]["a"][0]["at"], [x, h, z])
+
+    def test_wrong_material_or_no_field_refuses(self):
+        doc, _, _ = self.doc()
+        with self.assertRaises(SystemExit):
+            terrain.swap_terrain(doc, self.tris, "snow", None)
+        with self.assertRaises(SystemExit):
+            terrain.swap_terrain({"boxes": doc["boxes"][-1:]}, self.tris, "grass", None)
+
+
 class TestFixture(unittest.TestCase):
     def test_fixture_current(self):
         with open(FIXTURE) as f:
