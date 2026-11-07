@@ -172,13 +172,13 @@ logic_beats	data	a mode script's music beats	DotMapBeats
 math_counter	data	a counter with outputs -- logic	DotMapCounter
 math_colorblend	data	maps a value to a colour -- logic	DotMapColorBlend
 multi_manager	data	the older multi-output relay -- logic	
-filter_activator_name	data	passes activators by name -- logic	
-filter_activator_class	data	passes activators by class -- logic	
-filter_activator_team	data	passes activators by team -- logic	
-filter_damage_type	data	passes damage by type -- logic	
-filter_multi	data	combines filters -- logic	
+filter_activator_name	data	passes activators by name -- logic	DotMapFilter
+filter_activator_class	data	passes activators by class -- logic	DotMapFilter
+filter_activator_team	data	passes activators by team -- logic	DotMapFilter
+filter_damage_type	data	passes damage by type -- logic	DotMapFilter
+filter_multi	data	combines filters -- logic	DotMapFilter
 path_track	data	a corner of a train's path; read by the movers for func_tracktrain	
-game_player_equip	data	gives players weapons on spawn -- the game decides kits	
+game_player_equip	data	gives players weapons on spawn -- the game decides kits	DotMapPlayerEquip
 game_weapon_manager	dropped	caps dropped weapons; the game owns weapons	
 player_weaponstrip	data	takes weapons by input -- logic	
 player_speedmod	data	changes a player's speed by input -- logic	
