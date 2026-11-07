@@ -83,15 +83,16 @@ def thin(lamps, max_lights=100, min_spacing=0.0):
     return [lamps[i] for i in sorted(keep)]
 
 
-def thin_by_gap(points, max_lights, step=0.5):
+def thin_by_gap(points, max_lights, step=0.5, first=None):
     """(kept, gap): murder-mystery-maps' `--max-lights`, exactly. Items stay in document order; the
     minimum gap between kept ones starts at 0 and widens by `step` metres until at most `max_lights`
     fit; an item is kept when it is at least `gap` from every one kept so far (3D, compared squared).
-    `points` are [x, y, z] sequences or lamp dicts with an `at` of three numbers (both are read)."""
+    `points` are [x, y, z] sequences or lamp dicts with an `at` of three numbers (both are read).
+    `first` is the first gap tried when it is not `step` (hide-n-seek-maps: first=0.5, step=0.25)."""
     def at(p):
         return p["at"] if isinstance(p, dict) else p
 
-    gap = 0.0
+    gap = 0.0 if first is None else first - step
     kept = list(points)
     while len(kept) > max_lights:
         gap += step
