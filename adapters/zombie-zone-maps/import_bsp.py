@@ -2180,6 +2180,11 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
         if len(h2) - len(have) > len(blocks_of([pr])) + 6:
             keep, res, have = trial, r2, h2
     floors, surf, seen2, parent, dist = build_nav(boxes, starts, blocks_of(keep), True)
+    if os.environ.get("ZZ_DEBUG_PROPS"):
+        # The decor props kept as blocks in the wide flood, for nav_coverage.py --props: [x, y, z, radius].
+        with open(os.environ["ZZ_DEBUG_PROPS"], "w") as dbg:
+            json.dump({"cell": CELL, "blocks": [[*pr["at"], max(sizes[pr["id"]][0], sizes[pr["id"]][2]) / 2 + 0.3]
+                                                for pr in keep if sizes[pr["id"]][1] > 0.5]}, dbg)
     # `nav_min_depth` metres: the flood's rectangles on a ragged diagonal (a stepped walkway) come out
     # one cell deep, 0.4 m, and the game's graph puts its first point half a spacing into a floor,
     # so a strip that thin holds no point and the walkway has no ground at all. A thin strip is
