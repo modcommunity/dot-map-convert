@@ -19,3 +19,12 @@ func_tracktrain|func_tanktrain|func_door.*	volume	ignored	loudness of the mover'
 prop_.*|func_breakable.*|func_physbox.*	(renderamt|rendercolor|skin)	ignored	a tint or skin of the original model; the stand-in has one look
 worldspawn	(mapversion|comment|message)	ignored	editor bookkeeping
 info_player_.*	disabled	read	the spawn starts disabled (DotMapEntity enabled state)
+ambient_generic	pitch	ignored	the original sample's base pitch in percent; the stand-in is another sample and plays at its own pitch
+point_viewcontrol	(acceleration|deceleration)	ignored	easing of the original's scripted camera move; the camera path is followed at constant speed
+light_spot|light|light_dynamic	(_fifty_percent_distance|_zero_percent_distance)	read	intermediate.py records both falloff distances of the lamp
+light_dynamic	(_constant_attn|_linear_attn)	ignored	falloff curve of the original lamp; the converted lamp uses its distance range
+env_headcrabcanister	(damage|damageradius|flighttime|flightspeed|headcrabcount|skyboxcannistercount|smokelifetime)	ignored	the source campaign's scripted canister drop; the class is on the unconverted ignore list
+func_physbox|func_breakable|func_breakable_surf	modelscale	ignored	scale of the original model; the stand-in is fitted to the recorded size
+func_breakable	gibmodel	ignored	the original's gib model; breakage debris is cosmetic
+worldspawn	no_decomp	ignored	decompiler marker, not a map setting
+env_projectedtexture	(lightcolor|texturename)	ignored	the original's projected texture; the converted lamp has no projection
