@@ -167,6 +167,24 @@ class Boxes(unittest.TestCase):
         out = boxes.decompose(planes, pts, tilt=True)
         self.assertTrue(any(b["kind"] == "ramp" for b in out), [b["kind"] for b in out])
 
+    def test_axis_cut_is_prop_hunts_original(self):
+        # the old corner test: a level-ended wedge is a block (the shared cut slices it)
+        wedge = [(0, 0, 0), (64, 0, 0), (0, 256, 0), (64, 256, 0), (0, 256, 128), (64, 256, 128)]
+        planes = [(0, 0, -1, 0), (-1, 0, 0, 0), (1, 0, 0, 64), (0, 1, 0, 256), (0, -0.4472, 0.8944, 0)]
+        self.assertEqual([b["kind"] for b in boxes.decompose_axis(planes, wedge)], ["box"])
+        # a triangular column is its turned rectangle, not slabs
+        tri = [(0, 0), (100, 0), (0, 100)]
+        pts = [(x, y, z) for x, y in tri for z in (0, 50)]
+        tplanes = [(0, -1, 0, 0), (-1, 0, 0, 0), (0.7071, 0.7071, 0, 70.71), (0, 0, 1, 50), (0, 0, -1, 0)]
+        self.assertEqual([b["kind"] for b in boxes.decompose_axis(tplanes, pts)], ["box"])
+        # a roof cut across its longer axis, each slab as tall as the planes at its middle, none grown
+        roof = [(0, 0, 0), (256, 0, 0), (0, 64, 0), (256, 64, 0), (128, 0, 128), (128, 64, 128)]
+        rplanes = [(0, 0, -1, 0), (0, -1, 0, 0), (0, 1, 0, 64), (-0.7071, 0, 0.7071, 0), (0.7071, 0, 0.7071, 181.019)]
+        out = boxes.decompose_axis(rplanes, roof, slab=64)
+        self.assertEqual([b["kind"] for b in out], ["slab"] * 4)
+        self.assertEqual([round(b["z"][1], 1) for b in out], [32.0, 96.0, 96.0, 32.0])
+        self.assertEqual(boxes.decompose_axis(planes, wedge[:3]), [])
+
 
 class Intermediate(unittest.TestCase):
     def doc(self, **kw):
