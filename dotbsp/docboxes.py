@@ -22,7 +22,7 @@ import math
 import random
 import re
 
-from . import flood as _flood, reader, terrain as _terrain
+from . import flood as _flood_mod, reader, terrain as _terrain
 
 # Dev-grid surface palette, the one three importers shared (RGB 0..1).
 SUBURBAN_PALETTE = {
@@ -417,7 +417,7 @@ def walk_flood(boxes, start, tris=None, mat="grass", tint=None, budget=24000, sc
         probe = {"boxes": list(boxes)}
         ground = _terrain.swap_terrain(probe, tris, mat, tint, budget, scale=scale, skirt=False)
         rest = probe["boxes"]
-    fl = _flood.Flood(rest, cell=cell, jump=0.9, drop=0.9, terrain=ground).run([start])
+    fl = _flood_mod.Flood(rest, cell=cell, jump=0.9, drop=0.9, terrain=ground).run([start])
     if not fl.seen:
         # A start over a hole gets a pad later (pad_spawns): seed from the nearest ground within 3 m.
         ix, iz = fl.cell_of(start[0], start[2])
