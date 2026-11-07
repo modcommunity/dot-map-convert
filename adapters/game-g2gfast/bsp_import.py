@@ -2941,6 +2941,71 @@ def targetless_teleports(z):
     return len(dropped)
 
 
+def train_movers(bsp, limit=256):
+    """The `func_tracktrain`s and the `path_track` corners they run along, in Hammer units.
+
+    [b]A moving solid needs its route, and the route is not in the brush.[/b] A crusher is a
+    brush entity whose `target` names the first `path_track`; each corner names the next
+    (`target`) and may set the speed from there (`speed`) and a pause on arrival (`wait`).
+    The importer used to keep the brush as one static solid and drop the rest, so the four
+    crushers in surf_i_hate_campers stood still. This only READS them into the manifest
+    (`train_movers`); the game that runs them moves the solid, and until it does the brush
+    stays solid where it was compiled.
+
+    `min`/`max` are the brush's bounds relative to its `origin`, the point that travels
+    along the corners (so the hull at a corner is origin + bounds). A path that comes back
+    to a corner it has been through is a loop (`loop` true) rather than endless. A train
+    whose first corner is missing keeps an empty path. Returns [] for a map with none, and
+    the manifest then has no key at all, so other maps' manifests do not change.
+    """
+    corners = {}
+    for e in bsp.entities:
+        if e.get("classname", "") == "path_track" and e.get("targetname"):
+            corners.setdefault(e["targetname"].strip().lower(), e)
+
+    def number(e, key, default=0.0):
+        try:
+            return float(e.get(key, default))
+        except ValueError:
+            return float(default)
+
+    out = []
+    for e in bsp.entities:
+        if e.get("classname", "") != "func_tracktrain" or not e.get("model", "").startswith("*"):
+            continue
+        box = brush_box(bsp, e)
+        if box is None:
+            continue
+        o = entity_origin(e)
+        path, seen, looped = [], set(), False
+        name = e.get("target", "").strip()
+        while name and len(path) < limit:
+            c = corners.get(name.lower())
+            if c is None:
+                break
+            if name.lower() in seen:
+                looped = True
+                break
+            seen.add(name.lower())
+            corner = {"name": name, "origin": entity_origin(c)}
+            if number(c, "speed"):
+                corner["speed"] = number(c, "speed")
+            if number(c, "wait"):
+                corner["wait"] = number(c, "wait")
+            path.append(corner)
+            name = c.get("target", "").strip()
+        out.append({
+            "name": e.get("targetname", ""), "model": e["model"],
+            "origin": o,
+            "min": [box[0][i] - o[i] for i in range(3)], "max": [box[1][i] - o[i] for i in range(3)],
+            "speed": number(e, "speed"), "start_speed": number(e, "startspeed"),
+            "damage": number(e, "dmg"),
+            "solid": not int(number(e, "spawnflags")) & 8,
+            "loop": looped, "path": path,
+        })
+    return out
+
+
 def sealed_teleports(z, rule):
     """Drop the teleports aimed at a destination that is a room with no way out.
 
@@ -3944,6 +4009,9 @@ def main(argv=None):
         "push_volumes": mech["push"],
         "trigger_volumes": other,
     }
+    movers = train_movers(bsp)
+    if movers:
+        manifest["train_movers"] = movers
     for key in ("display_name", "author", "kind", "notes", "movement"):
         if key in doc:
             manifest[key] = doc[key]
