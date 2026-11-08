@@ -65,7 +65,7 @@ def brush_boxes(bsp, index, slab=None):
 GAME_MATERIAL = {
     "brick_red": ("rock", "#b0705a"), "stone_wall": ("rock", None),
     "plaster_painted": ("concrete", "#d9d2c3"), "plaster_worn": ("concrete", "#d9d2c3"), "wallpaper": ("concrete", "#d9d2c3"),
-    "ceiling": ("concrete", "#8d8b86"),
+    "ceiling": ("concrete", "#8d8b86"), "ceiling_tile": ("concrete", "#8d8b86"), "bars": ("metal", None),
     "wood_planks": ("wood", None), "door_wood": ("wood", None), "wood_floor": ("wood", None), "parquet": ("wood", None),
     "roof_tiles": ("concrete", None), "tile_floor": ("concrete", None), "carpet": ("concrete", None), "flat": ("concrete", None),
     "mud": ("mud", None), "snow": ("snow", None), "grate": ("metal", None),
