@@ -1,4 +1,4 @@
-"""dotbsp.audit's tests. Run: python3 -I tests/test_audit.py"""
+"""dotbsp.audit's tests. Run: python3 -P tests/test_audit.py"""
 
 import os
 import sys

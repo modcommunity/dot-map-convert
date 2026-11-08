@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Where a converted map's missing share of drawn world went, by stage and by place.
 
-    ZZ_DROP_TRACE=/tmp/drops.json python3 -I tools/import_bsp.py tools/bsp/<id>.json <bsp>
-    python3 -I tools/coverage_report.py tools/bsp/<id>.json <bsp> /tmp/drops.json [--extra maps/hulls/<id>.nav.json]
+    ZZ_DROP_TRACE=/tmp/drops.json python3 -P tools/import_bsp.py tools/bsp/<id>.json <bsp>
+    python3 -P tools/coverage_report.py tools/bsp/<id>.json <bsp> /tmp/drops.json [--extra maps/hulls/<id>.nav.json]
 
 completeness.py says how much of the source's drawn face area lies on a box of the document. This
 says, for the area that does not, which stage of the importer removed the box that would have covered

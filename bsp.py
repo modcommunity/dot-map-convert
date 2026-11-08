@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """The family's BSP map tool: inventory a folder of maps, or convert one to the intermediate.
 
-    python3 -I bsp.py convert <map.bsp | archive> --out <map.json> [--member NAME]
+    python3 -P bsp.py convert <map.bsp | archive> --out <map.json> [--member NAME]
             [--credit credit.json | --author A --page URL --licence L] [--faces] [--displacements]
-    python3 -I bsp.py list <dir | file>... [--json] [--markdown] [--converted ROOT] [--queue]
-    python3 -I bsp.py --list <dir>...           (the same as `list`)
-    python3 -I bsp.py unmapped <dir | file>... [--table source_textures.tsv] [--top N] [--json] [--strict]
-    python3 -I bsp.py --unmapped <dir | file>...   (the same as `unmapped`)
-    python3 -I bsp.py mesh <map.bsp | archive> --out <prefix> [--member NAME] [credit flags]
+    python3 -P bsp.py list <dir | file>... [--json] [--markdown] [--converted ROOT] [--queue]
+    python3 -P bsp.py --list <dir>...           (the same as `list`)
+    python3 -P bsp.py unmapped <dir | file>... [--table source_textures.tsv] [--top N] [--json] [--strict]
+    python3 -P bsp.py --unmapped <dir | file>...   (the same as `unmapped`)
+    python3 -P bsp.py mesh <map.bsp | archive> --out <prefix> [--member NAME] [credit flags]
             [--y0 M] [--coverage] [--allow-unknown]
-    python3 -I bsp.py classes [<dir | file>...] [--markdown | --keys]
-    python3 -I bsp.py audit <map.bsp> (--mesh <prefix> | --doc <doc.json> --y0 M) [--max-loss 0.002] [--within ..] [--band ..] [--skip ..] [--json F]
-    python3 -I bsp.py regen <hash | game/name> --out <prefix> [--game-rules DIR] [--addon-rules DIR]...
+    python3 -P bsp.py classes [<dir | file>...] [--markdown | --keys]
+    python3 -P bsp.py audit <map.bsp> (--mesh <prefix> | --doc <doc.json> --y0 M) [--max-loss 0.002] [--within ..] [--band ..] [--skip ..] [--json F]
+    python3 -P bsp.py regen <hash | game/name> --out <prefix> [--game-rules DIR] [--addon-rules DIR]...
             [--map-rules FILE] [--ratchet] [--baseline FILE] [--coverage FILE] [--root R]
-    python3 -I bsp.py store <dir | file>... [--root R] [--game G] [credit flags] | store --check | store --scripts
+    python3 -P bsp.py store <dir | file>... [--root R] [--game G] [credit flags] | store --check | store --scripts
 
 `mesh` writes the full geometry (`<prefix>.json` + `<prefix>.bin`, dotbsp/mesh.py) with the
 movers, volumes and teleport destinations (dotbsp/movers.py) and what became of every entity
@@ -28,7 +28,7 @@ floor (dotbsp/audit.py); it fails (1) when either share lost is over `--max-loss
 adapter reads. `list` prints one line a map: name, BSP version, size, entity and spawn
 counts, and the game its prefix belongs to; `--converted ROOT` marks (and `--queue` drops)
 maps a map repository under ROOT already has. Archives (.zip, .rar, .7z) are read in memory,
-never extracted. Run with `python3 -I`: the maps are downloads.
+never extracted. Run with `python3 -P`: the maps are downloads.
 """
 
 import argparse

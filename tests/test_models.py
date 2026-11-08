@@ -1,5 +1,5 @@
 """The packed-model reader: a studio model written from scratch (one triangle, one material), a
-DXT1 texture, the glb, shape matching and the pak extraction. Run: python3 -I tests/test_models.py"""
+DXT1 texture, the glb, shape matching and the pak extraction. Run: python3 -P tests/test_models.py"""
 
 import json
 import os

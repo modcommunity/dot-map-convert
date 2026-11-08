@@ -1,6 +1,6 @@
 """Builds rules/entity_defs.json, the class catalogue, from entity definition files and datamap dumps.
 
-    heavy -- python3 -I defs/build.py [--defs DIR] [--maps DIR] [--out FILE] [--check]
+    heavy -- python3 -P defs/build.py [--defs DIR] [--maps DIR] [--out FILE] [--check]
 
 Inputs live outside the repository (`$DOTBSP_DEFS`, default `~/mapsrc/defs`, holding the
 definition-file tree and `../dumps/<game>/dump_*.txt`). Only derived facts are written: class

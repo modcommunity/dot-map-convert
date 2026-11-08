@@ -1,5 +1,5 @@
 """credits_list and the store slice: what a map draws is copied, imported VRAM-compressed, named by content, stamped.
-Run: python3 -I tests/test_storepack.py
+Run: python3 -P tests/test_storepack.py
 """
 import json
 import os

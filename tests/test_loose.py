@@ -1,4 +1,4 @@
-"""Loose physics props and the breakables that hold them. Run: python3 -I tests/test_loose.py"""
+"""Loose physics props and the breakables that hold them. Run: python3 -P tests/test_loose.py"""
 
 import os
 import sys

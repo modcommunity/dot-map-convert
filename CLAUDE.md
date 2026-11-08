@@ -7,7 +7,7 @@ Read README.md first (layout, rule tiers, the lossless store, the intermediate).
 ## Rules
 
 - **One converter.** A reader fix, a table row or a class definition goes here, never into a game or map repository. Game adapters live in `adapters/<repo>/`; each map repository's `tools/<name>.py` is a launcher (`adapters/adapter_launch.py`), so edit the adapter here. `tools/README.md` lists what is where.
-- **Always `python3 -I`.** Maps are downloads.
+- **Always `python3 -P`, never `-I`.** Maps are downloads; -P keeps the safe path (no script dir or cwd on sys.path) but leaves the user site, where numpy lives for the gamedev user (-I made every suite fail with no numpy).
 - **Finding things.** Callers find this checkout as the sibling `../dot-map-convert` or `$DOTBSP_PATH` (or `$DOT_MAP_CONVERT_PATH` for the tools). This converter finds the dot-map addon (assets, `io/catalogue.json`) through `dotbsp/paths.py`: sibling `../dot-map` or `$DOT_MAP_DIR`.
 - **Output must not drift.** Changing a table or rule changes every regenerated manifest; prove a refactor with a `regen` before and after and compare hashes.
 - Mapping tables carry source, URL, author and licence per row; only CC0-1.0, MIT and public-domain replacements (`licence.check` refuses the rest).
@@ -15,7 +15,7 @@ Read README.md first (layout, rule tiers, the lossless store, the intermediate).
 
 ## Checks
 
-Each suite is `python3 -I tests/test_<name>.py` from this directory (all of them are headless and need no maps; `DOTBSP_TEST_MAPS=<dir>` adds real ones). `tests/test_defs.py` needs the entity definition checkout only for its optional case. Run the suites that cover what you touched; run all of them once before committing.
+Each suite is `python3 -P tests/test_<name>.py` from this directory (all of them are headless and need no maps; `DOTBSP_TEST_MAPS=<dir>` adds real ones). `tests/test_defs.py` needs the entity definition checkout only for its optional case. Run the suites that cover what you touched; run all of them once before committing.
 
 ## Not here
 

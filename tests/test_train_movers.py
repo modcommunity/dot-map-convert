@@ -1,5 +1,5 @@
 """Brush teleport destinations and func_tracktrain paths in the g2gfast importer.
-Run: python3 -I tests/test_train_movers.py   (needs numpy, like the importer)
+Run: python3 -P tests/test_train_movers.py   (needs numpy, like the importer)
 """
 
 import os

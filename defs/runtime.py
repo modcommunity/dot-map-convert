@@ -1,6 +1,6 @@
 """Writes addons/dot_map/io/catalogue.json, the slice of the class catalogue DotMapIO needs.
 
-    python3 -I defs/runtime.py [--out FILE] [--all]
+    python3 -P defs/runtime.py [--out FILE] [--all]
 
 Per class (bases folded in): input and output names (lower case to the written name) and each
 key's type and default. By default only the classes the scanned maps use and the classes a

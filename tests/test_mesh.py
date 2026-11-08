@@ -1,4 +1,4 @@
-"""dotbsp.mesh's tests. Run: python3 -I tests/test_mesh.py
+"""dotbsp.mesh's tests. Run: python3 -P tests/test_mesh.py
 
 Every map is written by tests/synth.py with `faces=True`, so the drawn faces are known exactly.
 """
