@@ -131,6 +131,8 @@ Each maps repository grew these on its own. They are here now, each with a test 
 
 **Plan from open walls** (`plan.extract`) is look-at-me's `bsp_layout.py` without numpy and scipy, plus: walls from brush entities of chosen classes (`func_brush` by default), explicit rectangles, and static props by model name with a footprint; and a *seal* that grows the walls before the outside is flooded, so doorways and broken windows narrower than twice the seal do not let the outside in (without it the whole building is "outside" and the plan comes back empty, which the test shows).
 
+**A converted house** (`adapters/mg-look-at-me/bsp_house.py`, numpy only) is look-at-me's whole plan, read automatically, where `plan.extract` gives walls: each storey's walkable, roofed floor is rasterised, eroded to pinch it apart at the doorways, labelled into pieces and grown back; pieces that touch are joined by the source's opening, each 4 m cell takes the piece covering most of it, and the pieces become rectangles in a tree from the player start, named from the props that stood in them. A spec in the game's repository (`tools/convert/<house>.json`) holds every choice (scale, growth, storeys, stairwells, mirror, cells carved out, renames), and the same intermediate and spec give the same layout, byte for byte. `tests/test_bsp_house.py` converts a two-room map written in the test. How the game deals it: mg-look-at-me `docs/converted-houses.md`.
+
 ### What each adapter can now delete
 
 Deleted nowhere yet: the maps repositories were being edited by conversion agents, so these are the statements for the per-repo builders.
