@@ -15,8 +15,14 @@ out.append({"paths": ["pbr-library/%s/" % n for n in amb], "licence": "CC0-1.0",
 out.append({"paths": ["pbr-library/%s/" % n for n in ph], "licence": "CC0-1.0", "author": "Poly Haven contributors", "url": "https://polyhaven.com/textures"})
 out.append({"paths": ["model-library/kenney/"], "licence": "CC0-1.0", "author": "Kenney", "url": "https://kenney.nl/assets"})
 out.append({"paths": ["model-library/own/"], "licence": "CC0-1.0", "author": "TMC (generated for dot-map)", "url": "https://github.com/modcommunity/dot-map"})
+out.append({"paths": ["model-library/dotmap/"], "licence": "CC0-1.0", "author": "TMC (generated for dot-map by dot-map-convert/tools/models)", "url": "https://github.com/modcommunity/dot-map-convert"})
 out.append({"paths": ["model-library/polyhaven/"], "licence": "CC0-1.0", "author": "Poly Haven contributors", "url": "https://polyhaven.com/models"})
 out.append({"paths": ["licence.json"], "licence": "CC0-1.0", "author": "TMC (this list)", "url": "https://github.com/zees-games/zombie-zone-maps"})
+# A new source directory must be given a licence entry above, never shipped without one.
+KNOWN = {"kenney", "own", "dotmap", "polyhaven", "sketchfab"}
+stray = sorted(set(os.listdir(os.path.join(root, "model-library"))) - KNOWN)
+if stray:
+    sys.exit("model-library/%s has no licence entry in this script: not publishing it" % ", ".join(stray))
 table = {}
 for line in open(os.path.join(os.path.dirname(__file__), "stores_sketchfab_licences.tsv")):
     if line.startswith("#") or not line.strip():
