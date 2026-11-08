@@ -818,6 +818,19 @@ def clear_join(G, solids, i, j, dy_max, reach=8.0):
     return None
 
 
+def doc_terrain_pts(doc):
+    """The terrain walk points of a finished document (what the game's graph is built on), decoded from its `terrain`; none without terrain.
+
+    A conversion has them in TERRAIN_PTS; a committed document (`--cut-links`) carries only the encoded heightfield and walk set."""
+    if TERRAIN_PTS:
+        return TERRAIN_PTS
+    t = doc.get("terrain")
+    if not t:
+        return []
+    hf, walk = dterrain.Heightfield.decode(t)
+    return dterrain.walk_points(hf, walk, 1.0)
+
+
 def cut_blocked(doc, extra, fixed):
     """Cut the links the game's physics world blocks from `doc` (and the nav [param extra] dict, if any), where the ground stays joined without them.
 
@@ -832,7 +845,7 @@ def cut_blocked(doc, extra, fixed):
     sizes = json.load(open(os.path.join(HERE, "prop_sizes.json")))["props"]
     floors = doc["nav"]["floors"] + xf
     nav = doc["nav"]
-    G = nav_emulate.Graph(list(doc["boxes"]) + list(xb), doc.get("props", []), sizes, floors, spacing=float(nav.get("spacing", 1.0)), clearance=float(nav.get("clearance", 0.35)), solid_props=doc.get("solid_props", []))
+    G = nav_emulate.Graph(list(doc["boxes"]) + list(xb), doc.get("props", []), sizes, floors, spacing=float(nav.get("spacing", 1.0)), clearance=float(nav.get("clearance", 0.35)), terrain_pts=doc_terrain_pts(doc), solid_props=doc.get("solid_props", []))
     fixed_ = {tuple(l) for l in fixed}
     bars = [b["at"] for b in doc["boxes"] if b.get("barricade")]
 
