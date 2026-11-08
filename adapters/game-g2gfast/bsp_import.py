@@ -52,6 +52,7 @@ import bsp_mechanics  # noqa: E402
 import bsp_props  # noqa: E402
 import stock_standins  # noqa: E402
 from dotbsp import mood as _mood  # noqa: E402
+from dotbsp import docboxes as _docboxes, materials as _dotmaterials  # noqa: E402
 
 LUMP_LIGHTING, LUMP_PAKFILE, LUMP_PLANES = 8, 40, 1
 ATLAS_W = 1024
@@ -1244,7 +1245,8 @@ def merge_convex_brushes(bsp, brushes):
     Bevel sides are left out of the test (vbsp adds them for its own tracing, and they
     can exclude a neighbour that the brush's real sides do not), and only brushes of
     the same contents merge, so a playerclip never swallows the solid beside it.
-    Returns [(points, offset, contents)] in the shape `build_collision` keeps.
+    A brush of another kind (see `hull_kind`: glass, fence, clip) is not merged into a solid
+    either, so a hull has one kind. Returns [(points, offset, contents, kind)].
     """
     def key(n, d):
         return (round(n[0], 3), round(n[1], 3), round(n[2], 3), round(d, 1))
@@ -1259,7 +1261,8 @@ def merge_convex_brushes(bsp, brushes):
             pl = bsp.planes[side[0]]
             planes.append(((pl[0], pl[1], pl[2]), pl[3]))
         items.append({"pts": [tuple(p) for p in bsp.brush_hull(i)], "planes": planes,
-                      "contents": contents, "alive": True})
+                      "contents": contents, "alive": True,
+                      "kind": _dotmaterials.hull_kind(_docboxes.brush_material_names(bsp, i), contents)})
 
     def behind(pts, planes, skip):
         for n, d in planes:
@@ -1290,7 +1293,7 @@ def merge_convex_brushes(bsp, brushes):
                 for b in by_plane.get(theirs, ()):
                     other = items[b]
                     if b == a or not other["alive"] or other["contents"] != it["contents"] \
-                            or theirs not in other["keys"]:
+                            or other["kind"] != it["kind"] or theirs not in other["keys"]:
                         continue
                     if not (behind(other["pts"], it["planes"], mine)
                             and behind(it["pts"], other["planes"], theirs)):
@@ -1309,7 +1312,7 @@ def merge_convex_brushes(bsp, brushes):
                     break
                 if grew:
                     break
-    return [(it["pts"], (0.0, 0.0, 0.0), it["contents"]) for it in items if it["alive"]]
+    return [(it["pts"], (0.0, 0.0, 0.0), it["contents"], it["kind"]) for it in items if it["alive"]]
 
 
 def build_collision(bsp, notes, props=()):
@@ -1350,7 +1353,8 @@ def build_collision(bsp, notes, props=()):
                 # and both are things a person wants to be told.
                 notes.append("%s brush %d has no hull (%d corners)" % (why, i, len(pts)))
                 continue
-            hulls.append((pts, offset, contents))
+            hulls.append((pts, offset, contents,
+                          _dotmaterials.hull_kind(_docboxes.brush_material_names(bsp, i), contents)))
 
     add_model(0, (0.0, 0.0, 0.0), "world")
     world_brushes = sorted(i for i in bsp.model_brushes(0)
@@ -1386,7 +1390,7 @@ def build_collision(bsp, notes, props=()):
     # question for when a map needs it.
     first_prop = len(hulls)
     for pts in props:
-        hulls.append((pts, (0.0, 0.0, 0.0), 0))
+        hulls.append((pts, (0.0, 0.0, 0.0), 0, "solid"))
 
     # No count in front of the hulls: the manifest already carries `hull_count`, and a
     # second copy of a number is a second thing that can be wrong. The block is a bare
@@ -1397,7 +1401,10 @@ def build_collision(bsp, notes, props=()):
     # from anything a player stands on (see Zoner.add), and this is the one place that
     # has already solved every brush into its corners.
     solids = []
-    for n, (pts, off, contents) in enumerate(hulls):
+    kinds = collections.defaultdict(list)
+    for n, (pts, off, contents, kind) in enumerate(hulls):
+        if kind != "solid":
+            kinds[kind].append(n)
         if n < first_prop:
             solids.append(([min(p[a] for p in pts) + off[a] for a in range(3)],
                            [max(p[a] for p in pts) + off[a] for a in range(3)]))
@@ -1441,6 +1448,11 @@ def build_collision(bsp, notes, props=()):
         "displacement_index_count": len(tris),
         "playerclip_hulls": clips,
         "prop_hulls": len(hulls) - first_prop,
+        # Hull indexes by kind, for every kind but `solid` (clip, glass, fence, sky: see
+        # dotbsp.materials.hull_kind). Absent means all solid: a manifest written before this
+        # key loads as it always did. A dict of index lists, not a list parallel to the hulls,
+        # because nearly every hull is solid and a map has thousands.
+        "hull_kinds": dict(kinds),
     }
     return bytes(blob), info, skipped, solids
 
@@ -4088,9 +4100,10 @@ def main(argv=None):
         "%s %d%%" % (r, by_role[r] * 100 // max(1, tris))
         for r in ("PLATFORM", "RAMP", "FLOOR"))))
     print("  collision: %d convex hulls (%d of them playerclip, %d from static props), "
-          "%d displacement tris"
+          "%d displacement tris; kinds %s"
           % (collision["hull_count"], collision["playerclip_hulls"], collision["prop_hulls"],
-             collision["displacement_index_count"] // 3))
+             collision["displacement_index_count"] // 3,
+             ", ".join("%s %d" % (k, len(v)) for k, v in sorted(collision["hull_kinds"].items())) or "all solid"))
     if skipped_entities:
         print("  %d brush entities left non-solid: %s"
               % (sum(skipped_entities.values()),

@@ -156,6 +156,21 @@ SEE_THROUGH = re.compile(r"CHAINLINK|CHAIN_?LINK|FENCE|WIRE|CAGE|GRATE|GRATING|G
 SOLID_FENCE = re.compile(r"WOOD|BOARD|PLANK|PICKET|BRICK|CONCRETE|STONE")
 
 
+def hull_kind(names, contents, opaque=None):
+    """The collision kind of one solid brush: `sky` / `clip` (tools-only or player-clip-only) / `glass`
+    (CONTENTS_WINDOW) / `fence` (see_through_material) / `solid`. One rule for the drawn mesh's hull
+    records and for a game adapter that writes its own hull blob, so the two cannot disagree."""
+    if all(n.startswith("TOOLS/") for n in names):
+        return "sky" if any("SKYBOX" in n for n in names) else "clip"
+    if contents & reader.CONTENTS_PLAYERCLIP and not contents & reader.CONTENTS_SOLID:
+        return "clip"
+    if contents & reader.CONTENTS_WINDOW:
+        return "glass"
+    if see_through_material(names, contents, reader.CONTENTS_GRATE, opaque):
+        return "fence"
+    return "solid"
+
+
 def see_through_material(names, contents, grate_bit=0x8, opaque=None):
     """`fence` for a brush bullets pass and bodies do not, else None. CONTENTS_GRATE says so on its
     own; otherwise every drawn side must be a fence-like texture (strict: no STAIR/BAR/MESH, which

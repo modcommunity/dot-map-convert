@@ -497,15 +497,7 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                 out.skipped["hull:sky3d"] += 1      # the sky room is scenery, never stood in
                 continue
             names = docboxes.brush_material_names(bsp, bi)
-            kind = "solid"
-            if all(n.startswith("TOOLS/") for n in names):
-                kind = "sky" if any("SKYBOX" in n for n in names) else "clip"
-            elif contents & reader.CONTENTS_PLAYERCLIP and not contents & reader.CONTENTS_SOLID:
-                kind = "clip"
-            elif contents & reader.CONTENTS_WINDOW:
-                kind = "glass"
-            elif _materials.see_through_material(names, contents, reader.CONTENTS_GRATE, res.is_opaque):
-                kind = "fence"
+            kind = _materials.hull_kind(names, contents, res.is_opaque)
             planes = []
             for (nx, ny, nz, d) in bsp.brush_planes(bi, off):
                 # n.p <= d in map units; in metres with y0, n' = (nx, nz, -ny), d' = d*s - nz*y0
