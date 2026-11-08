@@ -1,4 +1,7 @@
 # name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour
+^air_intake$	NONE	1.2	1.0	0.8	box	707070
+^cap_point_base$	NONE	1.6	0.15	1.6	cyl	6a6a6a
+^exit_mounted$	NONE	0.45	0.2	0.1	box	307840
 ^(utilitypole0|telephone_pole0)	dm_utilitypole	0.3	5.0	0.3	cyl	6a5038
 ^(light_ceiling|light_shop2?|lab_flourescentlight00|lights_florescent|prison_flourescentlight|combine_light00)	dm_lighttroffer	1.2	0.1	0.6	box	e8e8e0
 ^(lightsmallround|condo_ceilinglight|ceiling_light$)	dm_lightdisc	0.3	0.05	0.3	box	e8e8e0

@@ -2542,3 +2542,6 @@ models/weapons/w_rocket_launcher.mdl	ph_namaqualand_boulder_04	1.0237	0	0.0000	0
 models/xboxblack/xbox.mdl	ph_bull_head	0.3953	0	-0.0020	0.0003	0.0020	Poly Haven	https://polyhaven.com/a/bull_head	Tina	CC0-1.0	polyhaven/bull_head/bull_head.gltf
 models/xboxwhite/xbox.mdl	ph_lion_head	0.3878	0	-0.0020	0.0003	0.0020	Poly Haven	https://polyhaven.com/a/lion_head	Tina	CC0-1.0	polyhaven/lion_head/lion_head.gltf
 models/xqm/rails/gumball_1.mdl	ph_rubber_duck_toy	0.2069	0	0.0000	0.0000	0.0000	Poly Haven	https://polyhaven.com/a/rubber_duck_toy	Plat251	CC0-1.0	polyhaven/rubber_duck_toy/rubber_duck_toy.gltf
+models/props_farm/air_intake.mdl	own_box_120x100x80_707070	1.2000	0	0.0000	0.0000	0.0000	TMC generated model	https://github.com/modcommunity/dot-map	TMC (generated for dot-map)	CC0-1.0	own/own_box_120x100x80_707070/own_box_120x100x80_707070.glb
+models/props_gameplay/cap_point_base.mdl	own_cyl_160x15x160_6a6a6a	1.6000	0	0.0000	0.0000	0.0000	TMC generated model	https://github.com/modcommunity/dot-map	TMC (generated for dot-map)	CC0-1.0	own/own_cyl_160x15x160_6a6a6a/own_cyl_160x15x160_6a6a6a.glb
+models/props_spytech/exit_mounted.mdl	own_box_45x20x10_307840	0.4500	0	0.0000	0.0000	0.0000	TMC generated model	https://github.com/modcommunity/dot-map	TMC (generated for dot-map)	CC0-1.0	own/own_box_45x20x10_307840/own_box_45x20x10_307840.glb
