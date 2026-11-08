@@ -1,4 +1,4 @@
-"""The pass ledger: what each box pass removes, by pass. Run: python3 -I tests/test_passledger.py"""
+"""The pass ledger: what each box pass removes, by pass. Run: python3 -P tests/test_passledger.py"""
 
 import os
 import sys

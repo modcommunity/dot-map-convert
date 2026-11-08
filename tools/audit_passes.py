@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Attributes a box document's audit loss to the importer pass that removed the boxes: `python3 -I tools/audit_passes.py BSP DOC [--json OUT]`.
+"""Attributes a box document's audit loss to the importer pass that removed the boxes: `python3 -P tools/audit_passes.py BSP DOC [--json OUT]`.
 
 DOC is a document an importer wrote with DOTBSP_PASS_LEDGER=1, so `DOC.passes.json` (dotbsp/passledger.py) sits beside it. The
 document is audited as it is, then once per pass with that pass's removed boxes put back, then with every pass's boxes put back;

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Imports a community map as a course: its mesh through dot-map's converter, its moving parts as pieces.
 
-    python3 -I tools/import_world.py tools/imports/<course id>.json
+    python3 -P tools/import_world.py tools/imports/<course id>.json
 
 The import file names the source .bsp, its credit, and the parts only a person can write (start, finish,
 checkpoints, route, anything the map has no mover for). The mesh goes to worlds/<id>.{json,bin}; the course

@@ -14,16 +14,16 @@ rc=0
 for m in "${ids[@]}"; do
     f="$(find "$SRC" -maxdepth 2 -iname "*$m.bsp" | head -1)"
     [ -z "$f" ] && { echo "$m NO SOURCE"; rc=1; continue; }
-    read -r author page < <(python3 -I -c 'import json,sys
+    read -r author page < <(python3 -P -c 'import json,sys
 r,m=sys.argv[1:3]
 try:
     for e in json.load(open(r+"/maps.json"))["maps"]:
         if e["id"]==m: print(e.get("author","unknown").replace(" ","_"), e.get("source","-").replace(" ","_")); sys.exit()
 except Exception: pass
 print("unknown -")' "$ROOT" "$m")
-    python3 -I "$BSP" store "$f" --game "$GAME" --author "${author//_/ }" --page "${page//_/ }" --licence "none stated" --no-share-check "credited with removal on request" > /dev/null 2>&1
+    python3 -P "$BSP" store "$f" --game "$GAME" --author "${author//_/ }" --page "${page//_/ }" --licence "none stated" --no-share-check "credited with removal on request" > /dev/null 2>&1
     mkdir -p "$ROOT/worlds/$m"
-    ${HEAVY-heavy --} timeout 1800 python3 -I "$BSP" regen "$GAME/$(basename "$f" .bsp)" --out "$ROOT/worlds/$m/$m" --pbr-store "$ROOT/pbr-library" --model-store "$ROOT/model-library" > "${TMPDIR:-/tmp}/regen-$m.log" 2>&1 < /dev/null
+    ${HEAVY-heavy --} timeout 1800 python3 -P "$BSP" regen "$GAME/$(basename "$f" .bsp)" --out "$ROOT/worlds/$m/$m" --pbr-store "$ROOT/pbr-library" --model-store "$ROOT/model-library" > "${TMPDIR:-/tmp}/regen-$m.log" 2>&1 < /dev/null
     r=$?; [ $r -ne 0 ] && rc=1
     echo "$m exit $r"
 done

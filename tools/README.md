@@ -17,7 +17,7 @@ Everything that converts a map, a model, a texture or a sound lives in this repo
 
 ## Adapters
 
-`<repo>/tools/<name>.py` is a three-line launcher that runs `adapters/<repo>/<name>.py` here with the launcher's `__file__`, so the adapter's paths relative to the map repository (`maps/`, `world/`, `tools/bsp/`) and its sibling imports (`build_maps`, `ambient`) behave as before. Edit the adapter here, never the launcher. Run a script exactly as before: `python3 -I tools/import_bsp.py ...` from the map repository.
+`<repo>/tools/<name>.py` is a three-line launcher that runs `adapters/<repo>/<name>.py` here with the launcher's `__file__`, so the adapter's paths relative to the map repository (`maps/`, `world/`, `tools/bsp/`) and its sibling imports (`build_maps`, `ambient`) behave as before. Edit the adapter here, never the launcher. Run a script exactly as before: `python3 -P tools/import_bsp.py ...` from the map repository.
 
 | Adapter | Does |
 | --- | --- |

@@ -1,5 +1,5 @@
 """movers.pickups' tests: a source's weapon_*, item_* and ammo_* entities as the dictionaries
-dot-weapon's DotWeaponSpawner.add_entities takes. Run: python3 -I tests/test_pickups.py"""
+dot-weapon's DotWeaponSpawner.add_entities takes. Run: python3 -P tests/test_pickups.py"""
 
 import os
 import sys

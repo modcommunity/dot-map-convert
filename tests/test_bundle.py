@@ -1,5 +1,5 @@
 """bundle: a world's pack carries the library models it draws and points model_store at them.
-Run: python3 -I tests/test_bundle.py
+Run: python3 -P tests/test_bundle.py
 """
 import json
 import os
