@@ -125,6 +125,46 @@ CONFIGS = {
                     ((-81.0, -69.0), (-83.0, -75.0)), ((-63.5, -58.5), (-92.5, -88.5)),
                     ((-62.5, -59.0), (-74.3, -73.1)), ((-62.2, -58.9), (-60.0, -58.8)), ((-63.8, -62.8), (-58.0, -55.3))],
     },
+    "mallparking": {
+        "id": "pgc_mallparking",
+        "name": "Mall Parking",
+        "blurb": "A mall car park for building and wiring: the central lot and its shopfront, cut from the larger map.",
+        "author": "bean",
+        "source": "gm_mallparking, https://steamcommunity.com/sharedfiles/filedetails/?id=2619660952",
+        "spawn_at": 1,
+        "region": ((-41.6, 18.4), (-15.0, 45.0), (-1.7, 58.3)),
+        "min_size": 1.0,
+    },
+    "shambles": {
+        "id": "pgc_shambles",
+        "name": "Shambles",
+        "blurb": "A run-down settlement sandbox: the area around the author's spawn, cut from a larger map.",
+        "author": "Fartomaticatron",
+        "source": "gm_shambles, https://steamcommunity.com/sharedfiles/filedetails/?id=151544081",
+        "spawn_at": 0,
+        "region": ((82.0, 192.0), (-15.0, 45.0), (93.0, 203.0)),
+        "min_size": 0.5,
+    },
+    "valley": {
+        "id": "pgc_valley",
+        "name": "Valley",
+        "blurb": "A grassy valley sandbox: the area around the first spawn, cut from a larger valley.",
+        "author": "SuspiciouslyAwesome (Tim Richter)",
+        "source": "gm_valley, https://steamcommunity.com/sharedfiles/filedetails/?id=104483504",
+        "spawn_at": 0,
+        "region": ((57.2, 167.2), (-15.0, 45.0), (0.7, 110.7)),
+        "min_size": 0.5,
+    },
+    "deadcity": {
+        "id": "pgc_deadcity",
+        "name": "Dead City",
+        "blurb": "A ruined city block, a recreation of a level of S.T.A.L.K.E.R. (GSC Game World) by NuclearGhost: the area around the spawn, cut from the full map.",
+        "author": "NuclearGhost",
+        "source": "rp_deadcity, https://steamcommunity.com/sharedfiles/filedetails/?id=1864156937",
+        "spawn_at": 0,
+        "region": ((-42.8, 67.2), (-15.0, 45.0), (-142.2, -32.2)),
+        "min_size": 0.5,
+    },
 }
 
 WATER = 0x20
@@ -191,6 +231,8 @@ def build(bsp_path, name):
     bsp = bsp_read.Bsp(bsp_path).load()
     # Garry's Mod maps use gmod_player_start where the others use info_player_start.
     starts = [e for e in bsp.entities if e.get("classname") in ("info_player_start", "gmod_player_start")]
+    if not starts:   # TTT maps use info_player_deathmatch
+        starts = [e for e in bsp.entities if e.get("classname") == "info_player_deathmatch"]
     sp = [float(v) for v in starts[cfg["spawn_at"]]["origin"].split()]
     sp_yaw = float(starts[cfg["spawn_at"]].get("angles", "0 0 0").split()[1])
     y_off = (sp[2] - 1.0) * S
