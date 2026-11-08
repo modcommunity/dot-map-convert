@@ -78,7 +78,7 @@ class Raster:
         owner = {m["index"]: ent.get(m["entity"]) for m in doc["models"]}
         for b in doc["brushes"]:
             cls = None if b["model"] == 0 else owner.get(b["model"])
-            if b["player_solid"] and cls in WALL_CLASSES:
+            if b["player_solid"] and cls in set(spec.get("wall_classes") or WALL_CLASSES) | ({None} if spec.get("wall_classes") else set()):
                 self.walls.append((b["mins"], b["maxs"]))
         mn = np.array([w[0] for w in self.walls]) * self.S
         mx = np.array([w[1] for w in self.walls]) * self.S
@@ -587,7 +587,22 @@ def convert_mesh(doc, spec):
     def small(j):
         return j < P and pieces[j]["w"] * pieces[j]["d"] < min_cells
 
-    if spec.get("start"):
+    if spec.get("start_at"):
+        # A source whose players start in a sealed hub (a teleport away): the start is the piece
+        # under a point of the spec's, [x, y, floor] in map units, or the nearest piece on that floor.
+        ax, ay, af = spec["start_at"]
+        px, py = (ax * S - ras.x0) / RES, (ay * S - ras.y0) / RES
+        near = []
+        for f, m in pm.items():
+            if f != af:
+                continue
+            ys, xs = np.nonzero(m)
+            if ys.size:
+                d2 = (xs - px) ** 2 + (ys - py) ** 2
+                k = int(d2.argmin())
+                near.append((float(d2[k]), int(m[ys[k], xs[k]]) - 1))
+        start = min(near)[1]
+    elif spec.get("start"):
         start = cellmap[tuple(spec["start"])]
     else:
         # The source's players may start outdoors: the start is the biggest ground piece nearest them.
@@ -638,7 +653,9 @@ def convert_mesh(doc, spec):
         vals, counts = np.unique(np.round(t), return_counts=True)
         return float(vals[counts.argmax()])
 
-    base = min(y for y in (floor_y(i) for i in order if i < P and pieces[i]["floor"] == 0) if y is not None)
+    ground = [y for y in (floor_y(i) for i in order if i < P and pieces[i]["floor"] == 0) if y is not None]
+    # (a start up on a later storey: the lowest floor reached is the ground)
+    base = min(ground or [y for y in (floor_y(i) for i in order if i < P) if y is not None])
     used, rooms, name_of = {}, [], {}
     for i in order:
         if i >= P:
