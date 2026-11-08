@@ -1141,6 +1141,7 @@ models/props/de_tides/menu_stand	pbr_WoodFloor022
 models/props/de_tides/tides_sign_b	pbr_square_tiles_02	
 models/props/de_train/blackleather	pbr_Tiles108	
 models/props/de_train/light_inset	pbr_PavingStones013	
+models/props_2fort/building_farm01_wall	pbr_PaintedWood007B	
 models/props_c17/clockwood01	pbr_rusty_corrugated_iron	
 models/props_c17/furnituremattress002a	pbr_white_planks_clean	
 models/props_c17/metalladder003	pbr_Metal060C	
@@ -1534,6 +1535,8 @@ test_speakers/cuwoodm	pbr_weathered_planks
 test_speakers/door_2	pbr_laminate_floor_02	
 test_speakers/miwoodm	pbr_Wood071	
 testtext/egypt_012b	pbr_PavingStones041	
+tfcustoms/color_grey	pbr_Concrete023	
+tfcustoms/color_orange	pbr_Wood091B	
 tile/ceilingtilea	pbr_PaintedPlaster006	
 tile/infroofb	pbr_Tiles066	
 tile/marblefloor001b_phong	pbr_PavingStones087	

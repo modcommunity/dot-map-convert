@@ -1,4 +1,4 @@
-# rank<TAB>model<TAB>instances<TAB>maps<TAB>size source. 35773 instances of 3012 models over the store. bsp.py modeldims
+# rank<TAB>model<TAB>instances<TAB>maps<TAB>size source. 35776 instances of 3015 models over the store. bsp.py modeldims
 1	models/props/cs_office/light_inset.mdl	559	16	packed
 2	models/props_lab/lab_flourescentlight001a.mdl	465	5	none
 3	models/props/cs_office/vending_machine.mdl	453	32	packed
@@ -3011,3 +3011,6 @@
 3010	models/xboxwhite/xbox.mdl	1	1	packed
 3011	models/xqm/rails/gumball_1.mdl	1	1	none
 3012	models/zs_youareavirus/bone_01.mdl	1	1	packed
+3013	models/props_farm/air_intake.mdl	1	1	none
+3014	models/props_gameplay/cap_point_base.mdl	1	1	none
+3015	models/props_spytech/exit_mounted.mdl	1	1	none
