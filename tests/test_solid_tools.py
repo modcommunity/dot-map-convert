@@ -1,4 +1,4 @@
-"""Which tool-only brushes and brush entities a box document keeps. Run: python3 -I tests/test_solid_tools.py"""
+"""Which tool-only brushes and brush entities a box document keeps. Run: python3 -P tests/test_solid_tools.py"""
 
 import os
 import sys

@@ -1,6 +1,6 @@
 """Fails when a drawn world's manifest is unreadable or disagrees with its .bin, its map document or itself.
 
-    python3 -I tools/check_worlds.py [world_root]
+    python3 -P tools/check_worlds.py [world_root]
 
 Every `world/zz_world_<id>/<id>.json` must parse, be a `dot-bsp-mesh` v1 with the entity sections
 tools/build_worlds.py writes, name a .bin whose stored sha256 matches, belong to a document that

@@ -1,5 +1,5 @@
 """A zombie start behind a door closed at map start is not reachable from the player start.
-Run: python3 -I tests/test_sealed.py
+Run: python3 -P tests/test_sealed.py
 """
 
 import os

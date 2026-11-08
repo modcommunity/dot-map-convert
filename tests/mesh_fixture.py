@@ -1,6 +1,6 @@
 """Writes examples/bsp_mesh/fixture.{json,bin}, the mesh the Godot suite reads.
 
-Run: python3 -I tests/mesh_fixture.py (test_mesh.py checks the files are current).
+Run: python3 -P tests/mesh_fixture.py (test_mesh.py checks the files are current).
 A floor slab, a wall, and a door (a func_door brush entity with a targetname and a button that
 opens it), from synth.py, so the Godot side has a world, a hull per brush and a mover.
 """

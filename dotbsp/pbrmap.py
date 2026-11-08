@@ -5,7 +5,7 @@ colour inside that category. The picks are written as an `addon` rule tier (`tex
 `pbr_<set id>`, `free_textures.tsv` the set's source, URL, author and licence, kind `pbr`), and the
 importer copies the chosen set's albedo, normal, roughness and AO beside the map.
 
-    python3 -I bsp.py pbrmap [--root DIR] [--library DIR] [--out DIR]
+    python3 -P bsp.py pbrmap [--root DIR] [--library DIR] [--out DIR]
 """
 
 import csv

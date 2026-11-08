@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Write a converter spec (tools/bsp/<id>.json) from a store entry's BSP entities and credit, nothing by hand.
 
-    python3 -I tools/auto_spec.py zz/zs_lens [more store keys]
+    python3 -P tools/auto_spec.py zz/zs_lens [more store keys]
 
 The mode follows the map's prefix (`ze_` escape, anything else survival); the survivor and zombie
 spawn classes are the ones the map actually has the most of. The result is a starting point that

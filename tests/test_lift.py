@@ -1,6 +1,6 @@
 """Tests for the pieces lifted out of the maps repositories' adapters: the flood, the entity
 classifier, prop matching, lights, .gma reading, the game-lump and truncation guards, the
-open-wall plan, the 0.0254 scale and the teleport helper. Run: python3 -I tests/test_lift.py
+open-wall plan, the 0.0254 scale and the teleport helper. Run: python3 -P tests/test_lift.py
 
 Every map is written by synth.py; a .gma is written here and read by the real fastgmad (the
 test skips when it is not installed).

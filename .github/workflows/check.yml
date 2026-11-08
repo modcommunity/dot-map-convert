@@ -27,8 +27,8 @@ jobs:
               working-directory: dot-map-convert
               run: |
                   fail=0
-                  for t in tests/test_*.py; do python3 -I "$t" > /tmp/t.log 2>&1 || { echo "FAIL $t"; tail -5 /tmp/t.log; fail=1; }; done
+                  for t in tests/test_*.py; do python3 -P "$t" > /tmp/t.log 2>&1 || { echo "FAIL $t"; tail -5 /tmp/t.log; fail=1; }; done
                   exit $fail
             - name: Adapters compile
               working-directory: dot-map-convert
-              run: python3 -I -m compileall -q adapters
+              run: python3 -P -m compileall -q adapters

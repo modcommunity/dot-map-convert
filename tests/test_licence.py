@@ -1,5 +1,5 @@
 """The licence pass, the raw store, and the environment and sound data.
-Run: python3 -I tests/test_licence.py
+Run: python3 -P tests/test_licence.py
 """
 
 import json

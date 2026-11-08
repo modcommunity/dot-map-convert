@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The shared audit runner: `bsp.py audit` over a map repository's converted maps, one line per map.
 
-    python3 -I tools/audit_maps.py REPO [id ...] [--max-loss 0.002] [--json OUT] [--src DIR ...] [--passable-kind K] [--passable-class C] [--exempt FILE]
+    python3 -P tools/audit_maps.py REPO [id ...] [--max-loss 0.002] [--json OUT] [--src DIR ...] [--passable-kind K] [--passable-class C] [--exempt FILE]
 
 REPO is a map repository (a path, or a name under --godot, default ~/godot). Each map is found its source
 .bsp (the repository's `tools/ports.txt`, or a document's `attribution`, or the world's name), audited, and

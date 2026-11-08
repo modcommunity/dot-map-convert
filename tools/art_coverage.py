@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 -I
+#!/usr/bin/env python3 -P
 """How much of each converted map's art is real, and how much is a flat or stand-in surface.
 
     tools/art_coverage.py [--root DIR] [--max-default PCT] [--json PATH] [--worst N]

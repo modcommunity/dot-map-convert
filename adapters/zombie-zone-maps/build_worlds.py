@@ -1,6 +1,6 @@
 """Draw a converted map with its own geometry: one world pack per map, for the client alone.
 
-    python3 -I tools/build_worlds.py tools/bsp/<id>.json path/to/<map>.bsp [out_root]
+    python3 -P tools/build_worlds.py tools/bsp/<id>.json path/to/<map>.bsp [out_root]
 
 Writes `<out_root>/zz_world_<id>/<id>.{json,bin}` (out_root defaults to `world/`), the drawn
 mesh of the source map in dot-map's `dot-bsp-mesh` format (dot-map-convert/dotbsp/mesh.py;

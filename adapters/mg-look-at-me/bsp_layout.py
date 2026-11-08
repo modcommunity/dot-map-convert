@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 -I
+#!/usr/bin/env python3 -P
 """A thin adapter from dot-map's dotbsp intermediate JSON to a Look At Me floor skeleton.
 
 dotbsp (../dot-map-convert) reads the compiled map; this only decides what the game wants from
@@ -8,7 +8,7 @@ rooms apart, and each blob becomes rectangles on the game's 4 m grid. The result
 file (rooms, with a kind and a size) that tools/build_levels.py turns into a proven level: the
 doors, puzzles, furniture and witches are the builder's, not the source map's.
 
-    python3 -I tools/bsp_layout.py map.json --bbox -80 48 -25 102 --z 640 850 --scale 0.0254 --out tools/layouts/x.json [--plot x.png]
+    python3 -P tools/bsp_layout.py map.json --bbox -80 48 -25 102 --z 640 850 --scale 0.0254 --out tools/layouts/x.json [--plot x.png]
 
 --scale is metres per map unit. The intermediate says 0.01905 (the modelling convention); a player
 hull of 72 units is 1.83 m only at 0.0254, and at that scale the rooms come out 8 to 16 m, the

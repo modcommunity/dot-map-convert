@@ -1,5 +1,5 @@
 """A trigger_teleport with no target is dropped, not sent to the spawn.
-Run: python3 -I tests/test_targetless_teleports.py
+Run: python3 -P tests/test_targetless_teleports.py
 """
 
 import os
