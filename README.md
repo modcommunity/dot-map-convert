@@ -19,6 +19,7 @@ python3 -P tests/test_store.py             # the lossless store, repeated keys, 
 python3 -P tests/test_audit.py             # the brush and floor audit on maps written from scratch
 python3 -P bsp.py audit map.bsp --mesh world/map            # every player-solid brush and standable top vs the output's collision; exit 1 on loss
 python3 -P bsp.py audit map.bsp --doc maps/map.json --y0 5.49   # the same against a game's box document (its terrain field counts; --passable CLASS, --within, --band, --skip for what it leaves out on purpose)
+python3 -P tests/test_readers.py           # the reader plugin interface: registry, licence refusal, plugin directory, built-in bsp-map
 python3 -P tests/test_lift.py              # the pieces lifted from the adapters (flood, classifier, props, lights, plan, .gma, guards)
 DOTBSP_TEST_MAPS=~/maps python3 -P tests/test_dotbsp.py RealMaps   # and on real ones
 ```
@@ -75,6 +76,7 @@ Per-game importers are in `adapters/<repo>/` (launchers stay in each map reposit
 | `dotbsp/boxes.py` | `decompose(planes, hull)`: a brush as boxes, the union of the converters' fixes |
 | `dotbsp/docboxes.py` | the importers' shared passes over a *document's* boxes (metres, Godot axes): `within`, `classify_material`, `brush_material_names`, `majority_material`, `suburban_surface`, `widen_doors`, `drop_door_leaves`, `add_doors`, `prune_far_scenery`, `prune_pockets`, `scatter_cover` |
 | `dotbsp/intermediate.py` | `build(bsp, credit)` writes the intermediate; `summary` is what `list` prints; `check(doc)` before trusting one |
+| `dotbsp/readers.py` | the reader plugin interface: `Reader(name, kind, extensions, read)`, `register`, `read(path, licence=...)` (refuses an input without author, URL and an accepted licence; attaches the record to the result), `load_plugins` (`$DOTBSP_READERS`); built in: `bsp-map`. Model, texture, heightmap and sound readers are plugins still to write |
 | `dotbsp/sources.py` | finding maps in folders and archives; which game a prefix belongs to; which maps the `*-maps` repositories already have |
 | `dotbsp/units.py` | the two scales (`VISUAL` 0.01905, `HULL` 0.0254), `to_game`, `from_metres` |
 | `dotbsp/entities.py` | the entity classifier (`classify_entity`), the brush classifier (`classify_brush`), `teleports` / `teleport_destination` / `pad_rect` |
