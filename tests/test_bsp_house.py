@@ -32,6 +32,15 @@ SPEC = {"name": "Test", "title": "Test", "scale": 0.0254, "grow": 1.0, "storeys"
 
 
 class TestBspHouse(unittest.TestCase):
+    def test_wall_classes_lets_a_func_brush_pane_stay_open(self):
+        d = doc()
+        d["entities"].append({"index": 3, "classname": "func_brush"})
+        d["models"].append({"index": 5, "entity": 3})
+        d["brushes"].append({"model": 5, "player_solid": True, "mins": [392, 190, 0], "maxs": [408, 210, 128]})
+        shut = bsp_house.Raster(d, SPEC).walls
+        open_ = bsp_house.Raster(d, dict(SPEC, wall_classes=["func_wall"])).walls
+        self.assertEqual(len(shut) - len(open_), 1)
+
     def test_two_rooms_through_the_doorway(self):
         rooms, lost = bsp_house.convert(doc(), SPEC)
         self.assertEqual([r["name"] for r in rooms][:1], ["Hall"])
