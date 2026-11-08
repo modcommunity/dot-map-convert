@@ -1,4 +1,4 @@
-"""dotbsp's tests. Run: python3 -I tests/test_dotbsp.py
+"""dotbsp's tests. Run: python3 -P tests/test_dotbsp.py
 
 Every map here is written by tests/synth.py. Set DOTBSP_TEST_MAPS to a directory of real
 .bsp files to also convert each and check the document (slow; not run by default).

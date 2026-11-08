@@ -1,5 +1,5 @@
 """Texture density report: the repeat length of a surface and the pixels per metre a set is drawn at.
-Run: python3 -I tests/test_texquality.py
+Run: python3 -P tests/test_texquality.py
 """
 
 import os

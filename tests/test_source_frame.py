@@ -1,4 +1,4 @@
-"""dotbsp.sourceframe and tools/audit_maps.py's use of it. Run: python3 -I tests/test_source_frame.py (needs numpy, as the audit runner does)"""
+"""dotbsp.sourceframe and tools/audit_maps.py's use of it. Run: python3 -P tests/test_source_frame.py (needs numpy, as the audit runner does)"""
 
 import importlib.util
 import json

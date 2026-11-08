@@ -1,6 +1,6 @@
 """Writes examples/bsp_mesh/zm_4way_tunnel.entities.json, a real map's mover, volume and link data.
 
-Run: python3 -I tests/entities_fixture.py <zm_4way_tunnel_v2.bsp>. The map is a community
+Run: python3 -P tests/entities_fixture.py <zm_4way_tunnel_v2.bsp>. The map is a community
 download and is not in the repository; only the entity data derived from it is, so the suites
 (test_mesh.py, bsp_entities_demo.tscn) run without the map. Water and ladder volumes are left out.
 """

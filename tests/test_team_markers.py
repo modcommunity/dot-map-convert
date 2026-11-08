@@ -1,5 +1,5 @@
 """Team spawns, control points, resupply and flag spawns in the g2gfast importer.
-Run: python3 -I tests/test_team_markers.py   (needs numpy, like the importer)
+Run: python3 -P tests/test_team_markers.py   (needs numpy, like the importer)
 """
 
 import os

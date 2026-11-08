@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Convert a Source 1 .bsp into a zombie-zone map document (maps/<id>.json).
 
-    python3 -I tools/import_bsp.py tools/bsp/zs_ravenstreet.json path/to/zs_ravenstreet_v1.bsp [out_dir]
-    python3 -I tools/import_bsp.py tools/bsp/zs_ravenstreet.json zs_ravenstreet.json [out_dir]
+    python3 -P tools/import_bsp.py tools/bsp/zs_ravenstreet.json path/to/zs_ravenstreet_v1.bsp [out_dir]
+    python3 -P tools/import_bsp.py tools/bsp/zs_ravenstreet.json zs_ravenstreet.json [out_dir]
 
 The second form reads the family's intermediate document (dot-map-convert/bsp.py
 convert`) instead of the map; the first builds that document in memory. Either way this file

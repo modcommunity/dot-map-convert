@@ -8,7 +8,7 @@ drawn from the small fallback albedo beside the map (`licence.SMALL_PX`, 64 unti
 original's density (texels over the metres one repeat of its uv spans) is listed to show the replacement is
 not the blurrier of the two. Worst sets by drawn area come first.
 
-    python3 -I bsp.py texquality <mesh prefix> [--store DIR] [--json F] [--top N] [--target 256]
+    python3 -P bsp.py texquality <mesh prefix> [--store DIR] [--json F] [--top N] [--target 256]
 """
 
 import collections
