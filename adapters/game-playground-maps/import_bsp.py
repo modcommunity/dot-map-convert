@@ -35,6 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402  (also puts dot-map-convert on sys.path)
 from dotbsp import boxes as boxes_lib, docboxes, texturemap  # noqa: E402  (the passes and the texture list the map repositories share)
+from dotbsp import gaps  # noqa: E402  (closes the cracks the survey reads as slots)
 from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the ground shift, for the audit)
 
 S = 0.01905
@@ -130,6 +131,7 @@ CONFIGS = {
         "name": "Mall Parking",
         "blurb": "A mall car park for building and wiring: the central lot and its shopfront, cut from the larger map.",
         "author": "bean",
+        "close_gaps": True, "slab": 15.0,
         "source": "gm_mallparking, https://steamcommunity.com/sharedfiles/filedetails/?id=2619660952",
         "spawn_at": 1,
         "region": ((-41.6, 18.4), (-15.0, 45.0), (-1.7, 58.3)),
@@ -140,26 +142,45 @@ CONFIGS = {
         "name": "Shambles",
         "blurb": "A run-down settlement sandbox: the area around the author's spawn, cut from a larger map.",
         "author": "Fartomaticatron",
+        "close_gaps": True, "slab": 15.0,
         "source": "gm_shambles, https://steamcommunity.com/sharedfiles/filedetails/?id=151544081",
         "spawn_at": 0,
         "region": ((82.0, 192.0), (-15.0, 45.0), (93.0, 203.0)),
         "min_size": 0.5,
     },
     "valley": {
+        "declared": [
+            {"min": [112.0, 1.9, 41.5], "max": [139.5, 15.0, 61.0], "why": "the gallery, stair tower and flat roof of the central hall"},
+            {"min": [112.0, 1.9, 74.5], "max": [116.5, 2.9, 76.5], "why": "a ledge on the hall's far side"},
+        ],
+        "fill": [{"min": [105.6, -8.0, 38.4], "max": [107.4, -3.5, 39.6]}],
         "id": "pgc_valley",
         "name": "Valley",
         "blurb": "A grassy valley sandbox: the area around the first spawn, cut from a larger valley.",
         "author": "SuspiciouslyAwesome (Tim Richter)",
+        "close_gaps": True, "slab": 15.0,
         "source": "gm_valley, https://steamcommunity.com/sharedfiles/filedetails/?id=104483504",
         "spawn_at": 0,
         "region": ((57.2, 167.2), (-15.0, 45.0), (0.7, 110.7)),
         "min_size": 0.5,
     },
     "deadcity": {
+        "declared": [
+            {"min": [53.0, 0.9, -98.6], "max": [67.6, 18.0, -84.6], "why": "the far tower block: stair flights, landings and roof, whose risers this converter cuts too tall to climb"},
+            {"min": [53.0, 0.9, -64.6], "max": [67.6, 18.0, -50.6], "why": "the near tower block: stair flights, landings and roof"},
+            {"min": [-9.0, 9.0, -46.0], "max": [16.2, 12.0, -19.2], "why": "the raised deck above the plaza"},
+            {"min": [-31.0, -0.3, -54.0], "max": [-26.5, 0.6, -15.0], "why": "a walled service strip"},
+            {"min": [36.2, 2.0, -50.0], "max": [42.0, 2.9, -28.2], "why": "a ledge over the street"},
+            {"min": [58.0, -0.2, -33.0], "max": [61.5, 0.5, -32.0], "why": "a sliver of kerb"},
+            {"min": [36.0, -0.2, -28.6], "max": [37.0, 0.5, -27.5], "why": "a sliver of kerb"},
+            {"min": [-16.0, -2.8, -68.3], "max": [-14.8, -2.0, -66.8], "why": "a drain corner"},
+        ],
+        "fill": [{"min": [46.8, -4.0, -68.4], "max": [48.1, -0.5, -39.0]}],
         "id": "pgc_deadcity",
         "name": "Dead City",
         "blurb": "A ruined city block, a recreation of a level of S.T.A.L.K.E.R. (GSC Game World) by NuclearGhost: the area around the spawn, cut from the full map.",
         "author": "NuclearGhost",
+        "close_gaps": True, "slab": 15.0,
         "source": "rp_deadcity, https://steamcommunity.com/sharedfiles/filedetails/?id=1864156937",
         "spawn_at": 0,
         "region": ((-42.8, 67.2), (-15.0, 45.0), (-142.2, -32.2)),
@@ -278,9 +299,17 @@ def build(bsp_path, name):
         rb = (xs[0] / S, xs[1] / S, -zs[1] / S, -zs[0] / S, (ys[0] + y_off) / S, (ys[1] + y_off) / S,
               (ys[0] - 0.4 + y_off) / S, math.degrees(math.atan((ys[1] - ys[0]) / (xs[1] - xs[0]))), "x", 1)
         boxes.append(ramp_document_box(rb, "concrete", "#b9b4aa", y_off))
+    for f in cfg.get("fill", []):
+        # Solid filler (document frame, metres) that lifts a pit floor level with its surroundings.
+        lo, hi = f["min"], f["max"]
+        boxes.append({"at": [round((lo[i] + hi[i]) / 2, 3) for i in range(3)],
+                      "size": [round(hi[i] - lo[i], 3) for i in range(3)],
+                      "material": "concrete", "colour": "#8a8780"})
     for (x0, x1), (z0, z1) in cfg.get("exclude", []):
         boxes = [b for b in boxes if not (x0 <= b["at"][0] <= x1 and z0 <= b["at"][2] <= z1)]
     boxes = [snap(b) for b in boxes]
+    if cfg.get("close_gaps"):
+        print("  tilted-only cracks left after closing gaps:", gaps.close_gaps(boxes))
     if cfg.get("spawn_pad"):
         # The author's start stood on displacement terrain this converter leaves out.
         boxes.append({"at": [round(sp[0] * S, 3), -0.15, round(-sp[1] * S, 3)], "size": [4.0, 0.3, 4.0], "material": "concrete", "colour": "#b9b4aa"})
