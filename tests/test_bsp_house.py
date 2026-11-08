@@ -48,6 +48,18 @@ class TestBspHouse(unittest.TestCase):
         area = lambda rooms: sum(r["w"] * r["d"] for r in rooms)
         self.assertGreater(area(two), 3 * area(one))
 
+    def test_mesh_mode_keeps_the_doorway(self):
+        # The door is the source's own doorway (x 400, y 200, 40 units), where the pack's origin puts it.
+        spec = dict(SPEC, mode="mesh", cell=2.0, pack="test", pack_metres_per_unit=0.01905)
+        rooms, lost, world = bsp_house.convert_mesh(doc(), spec)
+        self.assertEqual([r["name"] for r in rooms], ["Hall", "Ward"])
+        door = rooms[1]["door"]
+        self.assertEqual(door["side"], "e")
+        self.assertAlmostEqual(door["w"], 40 * 0.0254, delta=0.3)
+        self.assertAlmostEqual(door["c"][0], 400 * 0.0254 + world["origin"][0], delta=0.5)
+        self.assertAlmostEqual(door["c"][1], world["origin"][2] - 200 * 0.0254, delta=0.5)
+        self.assertAlmostEqual(world["scale"], 0.0254 / 0.01905, places=4)
+        self.assertEqual(bsp_house.convert_mesh(doc(), spec), (rooms, lost, world))
 
 if __name__ == "__main__":
     unittest.main()
