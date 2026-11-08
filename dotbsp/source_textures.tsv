@@ -546,3 +546,15 @@ SPONGEBOB/BOX*	wood_planks
 NATURE/CANAL_REEDS*	foliage_card
 PROPS/PAPERMAP*	flat	0.85,0.8,0.7
 FORK/BLACKFADE	flat	0.05,0.05,0.05
+# --- gm_balkans (Lg), gm_vyten (Jake, Sir Zacko): terrain blends, fog sprite, stairs, small props
+*/BLEND_TERRE0*	mud
+*/BLEND_HERBE0*	grass
+*/BLEND_ROCHE0*	rock
+GM_VYTEN/FOG_GRADIENT	flat	0.8,0.85,0.9
+*/VYTEN_STAIR00*	concrete
+PROPS/PLASTICPOPMACHINE001A	metal
+CS_HAVANA/ICEILB01	ceiling
+NATURE/INFTREELINEA	foliage_card
+LG/WARLAND/LASER_TRAIT	flat	0.9,0.1,0.1
+LG/WARLAND/OVERVIEW_MILITAIRE*	flat	0.4,0.45,0.35
+NYKO18/PHYS_DRYDOCK/SIGN_DANGER*	flat	0.9,0.75,0.1
