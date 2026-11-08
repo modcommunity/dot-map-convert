@@ -1,4 +1,4 @@
-"""The lossless store and the two parser losses it fixes. Run: python3 -I tests/test_store.py"""
+"""The lossless store and the two parser losses it fixes. Run: python3 -P tests/test_store.py"""
 
 import json
 import os

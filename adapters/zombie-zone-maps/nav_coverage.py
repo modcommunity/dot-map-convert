@@ -2,7 +2,7 @@
 
     ZZ_DEBUG_POINTS=pts.json import_bsp.py spec.json map.bsp outdir     # writes the graph's points
     ZZ_DEBUG_PROPS=props.json (same run, optional)
-    python3 -I nav_coverage.py map.nav pts.json [y0] [--props props.json]
+    python3 -P nav_coverage.py map.nav pts.json [y0] [--props props.json]
 
 Area-weighted share of the .nav's areas with a main-ground point within 1.6 m (and 1.2 m of height); y0 is the spec's metres of floor offset.
 build_nav's wide pass leaves cells round decor props (tables, beds, cars) off limits, so with --props the report gives the

@@ -1,5 +1,5 @@
 """The importer detector: a map or game repository ships no BSP geometry, entity or texture logic of its own.
-Run: python3 -I tests/test_detector.py [REPO_DIR ...]
+Run: python3 -P tests/test_detector.py [REPO_DIR ...]
 
 Scans the `tools/*.py` of the sibling map repositories (`*-maps`, plus the games that convert maps) for
   1. code that reads the VBSP format (the magic, a lump table, lump index constants), and

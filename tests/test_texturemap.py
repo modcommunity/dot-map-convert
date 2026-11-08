@@ -1,5 +1,5 @@
 """Tests for the shared source texture list (dotbsp/source_textures.tsv, dotbsp/texturemap.py) and the
-`unmapped` report. Run: python3 -I tests/test_texturemap.py"""
+`unmapped` report. Run: python3 -P tests/test_texturemap.py"""
 
 import io
 import os
