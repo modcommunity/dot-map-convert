@@ -107,6 +107,12 @@ class RegenTests(unittest.TestCase):
         with open(self.out + ".coverage.json") as f:
             return json.load(f)
 
+    def test_a_link_to_a_name_the_source_never_defined_is_listed_apart(self):
+        from dotbsp import coverage
+        rows = coverage.dangling()
+        self.assertTrue(any(r.fullmatch("func_door.OnFullyOpen->stop_sound_room7") for r in rows))
+        self.assertFalse(any(r.fullmatch("zz_brand_new_class.OnTrigger->nobody") for r in rows))
+
     def test_fallbacks_are_listed_not_dropped(self):
         self.assertIn(self.run_regen(), (0, 4))
         lists = self.report()["lists"]

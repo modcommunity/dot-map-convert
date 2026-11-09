@@ -508,6 +508,7 @@ EFFECTS/*BEAM*	shield
 
 # --- overlays and cards that are nothing as a surface
 *DECAL*	invisible
+OVERLAYS/APERTURE_*	invisible
 *FOOTPRINT*	invisible
 *FAKE_FOG*	invisible
 *FOREST_FOG*	invisible
