@@ -207,7 +207,7 @@ class Adapters(unittest.TestCase):
             with open(os.path.join(ROOT, "adapters", name, "import_bsp.py")) as f:
                 src = f.read()
             self.assertIn("docboxes.budget_flag(a, box_budget)", src, name)
-            self.assertIn("docboxes.apply_cap(doc, box_budget)", src, name)
+            self.assertIn("docboxes.apply_cap(doc, box_budget", src, name)
             self.assertLess(src.index("docboxes.apply_budget(doc"), src.index("docboxes.apply_cap(doc"), name)
             self.assertLess(src.index("docboxes.apply_cap(doc"), src.index('f.write(json.dumps(doc, indent=1)', src.index("docboxes.apply_cap(doc")), name)
             self.assertIn("--max-boxes=", src.split("import ")[0], name)
@@ -243,6 +243,29 @@ class Wire(unittest.TestCase):
         before = copy.deepcopy(d)
         D.apply_cap(d, {})
         self.assertEqual(d, before)
+
+
+class DropUnsupportedProps(unittest.TestCase):
+    def test_hanging_and_buried_props_go_standing_ones_stay(self):
+        size_of = lambda pid: (0.4, 0.4, 0.4)
+        footprint = lambda pid, yaw: (0.4, 0.4)
+        floor = box(-5, 5, -0.2, 0.0, -5, 5)
+        table = box(1, 2, 0.0, 0.7, 1, 2)
+        d = doc_of([floor, table], props=[
+            {"id": "on_floor", "at": [-3.0, 0.0, -3.0]},
+            {"id": "on_table", "at": [1.5, 0.7, 1.5]},
+            {"id": "on_prop", "at": [-3.0, 0.4, -3.0]},
+            {"id": "hanging", "at": [3.0, 1.0, -3.0]},
+            {"id": "buried", "at": [1.5, 0.3, 1.5]},
+        ])
+        n, out = quiet(D.drop_unsupported_props, d, size_of, footprint)
+        self.assertEqual(n, 2)
+        self.assertEqual(sorted(q["id"] for q in d["props"]), ["on_floor", "on_prop", "on_table"])
+
+    def test_only_with_a_budget_flag(self):
+        d = doc_of([box(-5, 5, -0.2, 0.0, -5, 5)], props=[{"id": "hanging", "at": [0.0, 2.0, 0.0]}])
+        D.apply_cap(d, {}, size_of=lambda p: (1, 1, 1), footprint=lambda p, y: (1, 1))
+        self.assertEqual(len(d["props"]), 1)
 
 
 if __name__ == "__main__":

@@ -1365,12 +1365,72 @@ def fit_wire(doc, budget, log=print):
     return total
 
 
-def apply_cap(doc, opts, log=print):
-    """Runs the opt-in --max-boxes cap, then the --max-wire fit, last of the passes that add or remove boxes; nothing happens without the flags."""
+def drop_unsupported_props(doc, size_of, footprint, log=print):
+    """Removes the props a budget left without ground or buried; returns how many went.
+
+    The budget cuts small boxes, and a prop set on a cut tread, sill or table-top then hangs in the air (the game's
+    audit casts nine rays down from the base, from 0.04 m inside to 0.12 m below) or has the centre of its body in
+    a wall. Lowest first, so a lamp on a kept table stays; a prop standing on another kept prop counts as supported."""
+    solid = [b for b in doc["boxes"] if b.get("solid", True)]
+    cell = 2.0
+    grid = {}
+
+    def reach(b):
+        hx, hz = b["size"][0] / 2, b["size"][2] / 2
+        return (math.hypot(hx, hz),) * 2 if b.get("yaw") else (hx, hz)
+
+    for b in solid:
+        hx, hz = reach(b)
+        for xi in range(int((b["at"][0] - hx) // cell), int((b["at"][0] + hx) // cell) + 1):
+            for zi in range(int((b["at"][2] - hz) // cell), int((b["at"][2] + hz) // cell) + 1):
+                grid.setdefault((xi, zi), []).append(b)
+
+    def hit(x, z, y0, y1):
+        """True when a solid box covers (x, z) at some height between y0 and y1."""
+        for b in grid.get((int(x // cell), int(z // cell)), ()):
+            hx, hz = reach(b)
+            if abs(x - b["at"][0]) <= hx and abs(z - b["at"][2]) <= hz and b["at"][1] - b["size"][1] / 2 <= y1 and b["at"][1] + b["size"][1] / 2 >= y0:
+                return True
+        return False
+
+    kept = []
+    gone = []
+    for q in sorted(doc["props"], key=lambda q: q["at"][1]):
+        x, y, z = q["at"]
+        fw, fd = footprint(q["id"], q.get("yaw", 0.0))
+        sy = size_of(q["id"])[1]
+        if hit(x, z, y + sy * 0.5 - 0.01, y + sy * 0.5 + 0.01):
+            gone.append(q)
+            continue
+        ok = "ceiling" in q["id"] or "lily" in q["id"]
+        for dx in (-0.3, 0.0, 0.3):
+            for dz in (-0.3, 0.0, 0.3):
+                if ok:
+                    break
+                px, pz = x + dx * fw, z + dz * fd
+                ok = hit(px, pz, y - 0.12, y + 0.04) or any(
+                    abs(px - k[0]) <= k[3] / 2 and abs(pz - k[2]) <= k[4] / 2 and y - 0.12 <= k[1] + k[5] <= y + 0.04 for k in kept)
+        if ok:
+            kept.append((x, y, z, fw, fd, sy))
+        else:
+            gone.append(q)
+    if gone:
+        ids = set(map(id, gone))
+        doc["props"][:] = [q for q in doc["props"] if id(q) not in ids]
+        log("budget: %d props left hanging or buried by the cut boxes removed" % len(gone))
+    return len(gone)
+
+
+def apply_cap(doc, opts, log=print, size_of=None, footprint=None):
+    """Runs the opt-in --max-boxes cap, then the --max-wire fit, last of the passes that add or remove boxes; nothing happens without the flags.
+
+    With `size_of` and `footprint` (the adapter's prop tables) the props the cut left hanging or buried are removed after."""
     if "max" in opts:
         cap_boxes(doc, opts["max"], log)
     if "wire" in opts:
         fit_wire(doc, opts["wire"], log)
+    if size_of and footprint and ("max" in opts or "wire" in opts):
+        drop_unsupported_props(doc, size_of, footprint, log)
 
 
 def lend_starts(spawns, src, dst, want=3):
