@@ -18,9 +18,11 @@ each function is tested against them on real documents (`tests/test_lift.py`, `D
 `flood.Flood`, which is multi-storey; see the README before swapping.
 """
 
+import json
 import math
 import random
 import re
+import zlib
 
 from . import passledger
 from . import audit as _audit, classes as _classes, flood as _flood_mod, reader, terrain as _terrain
@@ -887,7 +889,7 @@ def drop_other_terrain(doc, material="grass", min_cells=2000, log=print):
 
 
 def budget_flag(arg, opts):
-    """Reads --merge-boxes, --min-box-volume=<m3>, --min-box-thickness=<m>, --max-boxes=<n>, --drop-sky-slab and --keep-reach into opts; True when arg was one."""
+    """Reads --merge-boxes, --min-box-volume=<m3>, --min-box-thickness=<m>, --max-boxes=<n>, --max-wire=<bytes>, --drop-sky-slab and --keep-reach into opts; True when arg was one."""
     if arg == "--merge-boxes":
         opts["merge"] = True
     elif arg.startswith("--min-box-volume="):
@@ -896,6 +898,8 @@ def budget_flag(arg, opts):
         opts["thickness"] = float(arg.split("=", 1)[1])
     elif arg.startswith("--max-boxes="):
         opts["max"] = int(arg.split("=", 1)[1])
+    elif arg.startswith("--max-wire="):
+        opts["wire"] = int(arg.split("=", 1)[1])
     elif arg == "--drop-sky-slab":
         opts["sky"] = True
     elif arg == "--keep-reach":
@@ -1310,10 +1314,62 @@ def place_hiders(doc, per_level=4, spacing=3.0, seeker_gap=4.0, min_area=4.0, lo
     return out
 
 
+def wire_size(doc):
+    """Bytes the document takes on the wire: compact JSON, deflated (what the games' WIRE_LIMIT counts)."""
+    return len(zlib.compress(json.dumps(doc, separators=(",", ":")).encode()))
+
+
+def fit_wire(doc, budget, log=print):
+    """Cuts the smallest unprotected boxes until the document deflates to `budget` bytes or fewer (--max-wire); returns how many were cut.
+
+    A game sends a map in one WebSocket message with a hard size limit, and the box count alone does not hold a
+    detailed map under it (gm_villa: 5500 boxes are 88 KB deflated). Boxes are rounded to centimetres first, then
+    the box cap (`cap_boxes`, so floors, stairs, door frames and the ground under anchors stay and lost reach is
+    restored) is run to the largest count that fits, found by bisection on the cut count."""
+    for b in doc["boxes"]:
+        b["at"] = [round(v, 2) for v in b["at"]]
+        b["size"] = [round(max(v, 0.01), 2) for v in b["size"]]
+    start = wire_size(doc)
+    if start <= budget:
+        return 0
+    keep = cap_protected(doc)
+    boxes = doc["boxes"]
+    order = sorted((i for i in range(len(boxes)) if i not in keep), key=lambda i: (boxes[i]["size"][0] * boxes[i]["size"][1] * boxes[i]["size"][2], i))
+    base = dict(doc)
+
+    def size_cutting(n):
+        gone = set(order[:n])
+        base["boxes"] = [b for i, b in enumerate(boxes) if i not in gone]
+        return wire_size(base)
+
+    lo, hi = 0, len(order)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if size_cutting(mid) > budget:
+            lo = mid + 1
+        else:
+            hi = mid
+    if size_cutting(lo) > budget:
+        log("wire budget: STILL OVER: %d bytes with every cuttable box gone (budget %d)" % (size_cutting(lo), budget))
+    total = 0
+    n = len(boxes) - lo
+    while True:
+        total += cap_boxes(doc, n, log)
+        # cap_boxes restores boxes a route needs, so the result can be a few over: tighten and repeat.
+        now = wire_size(doc)
+        if now <= budget or len(doc["boxes"]) <= len(keep) or n <= 0:
+            break
+        n = len(doc["boxes"]) - max(1, (now - budget) // 8)
+    log("wire budget: %d -> %d bytes deflated (--max-wire=%d), %d boxes left" % (start, wire_size(doc), budget, len(doc["boxes"])))
+    return total
+
+
 def apply_cap(doc, opts, log=print):
-    """Runs the opt-in --max-boxes cap, last of the passes that add or remove boxes; nothing happens without the flag."""
+    """Runs the opt-in --max-boxes cap, then the --max-wire fit, last of the passes that add or remove boxes; nothing happens without the flags."""
     if "max" in opts:
         cap_boxes(doc, opts["max"], log)
+    if "wire" in opts:
+        fit_wire(doc, opts["wire"], log)
 
 
 def lend_starts(spawns, src, dst, want=3):

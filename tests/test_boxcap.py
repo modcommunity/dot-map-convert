@@ -213,5 +213,37 @@ class Adapters(unittest.TestCase):
             self.assertIn("--max-boxes=", src.split("import ")[0], name)
 
 
+class Wire(unittest.TestCase):
+    def noisy(self, n):
+        import random
+        r = random.Random(3)
+        return [box(5 + 2 * i, 5 + 2 * i + r.uniform(0.05, 0.6), 1.0, 1.0 + r.uniform(0.05, 0.6), 30, 30 + r.uniform(0.05, 0.6)) for i in range(n)]
+
+    def test_parsed(self):
+        o = {}
+        self.assertTrue(D.budget_flag("--max-wire=57000", o))
+        self.assertEqual(o, {"wire": 57000})
+
+    def test_fits_the_budget_and_keeps_the_floor(self):
+        d = doc_of(self.noisy(800) + [box(0, 4, -0.2, 0, 0, 4)])
+        budget = 5000
+        D.fit_wire(d, budget, log=lambda m: None)
+        self.assertLessEqual(D.wire_size(d), budget)
+        self.assertIn(4.0, [b["size"][0] for b in d["boxes"]])
+        self.assertLess(len(d["boxes"]), 801)
+
+    def test_under_budget_only_rounds(self):
+        d = doc_of([box(0, 4.0004, -0.2, 0, 0, 4)])
+        D.fit_wire(d, 10 ** 6, log=lambda m: None)
+        self.assertEqual(len(d["boxes"]), 1)
+        self.assertEqual(d["boxes"][0]["size"][0], 4.0)
+
+    def test_no_flag_no_change(self):
+        d = doc_of(self.noisy(50))
+        before = copy.deepcopy(d)
+        D.apply_cap(d, {})
+        self.assertEqual(d, before)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community .bsp (VBSP 19/20) into a murder_map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--hang-doorways] [--dress=N] [--no-doors] [--slide-doors] [--floor=m] [--min-size=m] [--terrain[=material]] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--dusk] [--skip-start=N] [--skip-door=x,z] [--one-way=x,z] [--cover=N] [--cover-gap=m] [--blurb=text] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--hang-doorways] [--dress=N] [--no-doors] [--slide-doors] [--floor=m] [--min-size=m] [--terrain[=material]] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--dusk] [--skip-start=N] [--skip-door=x,z] [--one-way=x,z] [--cover=N] [--cover-gap=m] [--blurb=text] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--max-wire=bytes]
 
 --merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> shrink a trim-heavy map under the 6000-box limit: touching
 same-material boxes join, then detail boxes below that size go (a panel a metre long stays). Off by default; counts are printed.
---max-boxes=N is a hard budget, run last: the smallest boxes go until N are left, keeping floors, stairs, door frames and the ground under a spawn, prop or light; the count cut, the largest cut and the spawns' reach before and after are printed. Off by default.
+--max-boxes=N is a hard budget, run last: the smallest boxes go until N are left, keeping floors, stairs, door frames and the ground under a spawn, prop or light; the count cut, the largest cut and the spawns' reach before and after are printed. --max-wire=<bytes> then cuts further, smallest first with the same protections, until the document deflates to that size (the games' 60000-byte wire limit; 57000 leaves room for the header). Off by default.
 
 Adapted from hide-n-seek-maps' importer (copied, not linked): one spawn group, `players`, from the author's starts plus the clearest open floor up to 24.
 
@@ -390,6 +390,9 @@ def hang_doorways(m, doc, log=print):
             floor_y = a["at"][1] - a["size"][1] / 2
             if any(abs(d["at"][axis] - mid) < 0.3 and abs(d["at"][cross] - a["at"][cross]) < 0.3 for d in doc["doors"]):
                 continue
+            at = (mid, a["at"][cross]) if axis == 0 else (a["at"][cross], mid)
+            if any(abs(at[0] - sx) < 0.8 and abs(at[1] - sz) < 0.8 for sx, sz in SKIP_DOORS):
+                continue   # --skip-door: left open, as add_doors does
             # The author's own leaf, left standing in the opening in whatever material (dot-map's
             # drop_door_leaves only takes wood): a door-high slab, under 15 cm thick, inside the gap.
             leaves = [b for b in doc["boxes"] if b is not a and b is not c and 1.9 <= b["size"][1] <= 2.3 and min(b["size"][0], b["size"][2]) < 0.15
