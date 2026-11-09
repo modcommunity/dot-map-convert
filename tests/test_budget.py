@@ -75,6 +75,19 @@ class DoorOrder(unittest.TestCase):
             at = src.index("docboxes.apply_budget(doc[")
             self.assertGreater(at, src.index(mark, src.index("docboxes.add_doors(")), name)
 
+    def test_one_way_pins_doors_hang_doorways_made(self):
+        with open(os.path.join(ROOT, "adapters", "murder-mystery-maps", "import_bsp.py")) as fh:
+            src = fh.read()
+        self.assertGreater(src.index("    pin_one_way(doc)"), src.index("        hang_doorways(m, doc)\n"))
+        self.assertLess(src.index("    pin_one_way(doc)"), src.index("docboxes.apply_budget(doc["))
+        fn = src[src.index("def pin_one_way"):src.index("def hang_doorways")]
+        ns = {"ONE_WAY": [(2.0, 3.0)]}
+        exec(fn, ns)
+        doc = {"doors": [{"at": [2.0, 0.0, 3.0]}, {"at": [9.0, 0.0, 3.0]}]}
+        self.assertEqual(ns["pin_one_way"](doc), 1)
+        self.assertIs(doc["doors"][0]["away"], False)
+        self.assertNotIn("away", doc["doors"][1])
+
 
 class LendStarts(unittest.TestCase):
     def test_hunters_filled_from_props(self):

@@ -555,6 +555,15 @@ def swap_terrain(doc, tris, mat, tint, budget=24000, scale=0.01905, skirt=True):
         for x0, x1, z0, z1, top in tops:
             if x0 <= x <= x1 and z0 <= z <= z1 and abs(y - top) < 0.12:
                 h = ground.height(x, z)
+                if h is None:
+                    # Over a hole (the field's step was solid there, the heightfield is not): the nearest ground.
+                    for r in (0.5, 1.0, 1.5, 2.0, 3.0, 4.0):
+                        ring = [(x + dx * r, z + dz * r) for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))]
+                        ring = [(nx, nz, ground.height(nx, nz)) for nx, nz in ring]
+                        ring = [n for n in ring if n[2] is not None]
+                        if ring:
+                            x, z, h = ring[0]
+                            break
                 if h is not None:
                     o["at"] = [x, round(h, 3), z]
                     counts[tag] = counts.get(tag, 0) + 1
