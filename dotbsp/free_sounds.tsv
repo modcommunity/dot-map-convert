@@ -4,6 +4,7 @@ npc/|vo/|scream|voice|monk|child|radiovoice|zombie|growl|moan
 door.*(close|stop|shut)|doors\.(full)?close|gate_close	door_close	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
 door|elevator|lift	door_open	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
 button|switch|lever|click|combine_camera|combinecamera	button	Kenney Interface Sounds	https://kenney.nl/assets/interface-sounds	Kenney	CC0-1.0
+lowammo|quickinfo	button	Kenney Interface Sounds	https://kenney.nl/assets/interface-sounds	Kenney	CC0-1.0
 explo|c4|bomb|grenade	explosion	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
 flush|toilet	flush	Kenney Foley Sounds	https://kenney.nl/assets/foley-sounds	Kenney	CC0-1.0
 drip	drip	Kenney Foley Sounds	https://kenney.nl/assets/foley-sounds	Kenney	CC0-1.0

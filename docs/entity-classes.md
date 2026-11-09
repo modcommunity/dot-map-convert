@@ -176,6 +176,7 @@ What a class becomes:
 | `color_correction_volume` | 2 | a colour grade inside a volume; its lookup file is the source's own and never shipped | `data` |  |
 | `env_citadel_energy_core` | 2 | an energy effect | `point`: an effect position |  |
 | `env_screenoverlay` | 2 | puts an overlay on the screen | `data`: logic; its material is never shipped | `DotMapEffect` |
+| `vgui_slideshow_display` | 1 | a screen in the world that cycles through a folder of images | `data`: kept as data (its size and image folder); the images are the author's own art and are never shipped | `DotMapEntity` |
 | `env_texturetoggle` | 2 | switches a brush's texture frame | `data`: logic |  |
 | `func_bomb_target` | 2 | a bomb site of a round-based shooter; another game's objective | `dropped` |  |
 | `func_hostage_rescue` | 2 | a hostage rescue zone; another game's objective | `dropped` |  |

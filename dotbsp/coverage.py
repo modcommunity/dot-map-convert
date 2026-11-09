@@ -32,6 +32,14 @@ def handled(path=None):
     return out
 
 
+def dangling(path=None):
+    """[link regex] from `links_dangling.tsv`: links whose target the source map never defined (nothing to convert)."""
+    import re
+    path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "links_dangling.tsv")
+    with open(path, encoding="utf-8") as f:
+        return [re.compile(l.split("\t")[0], re.I) for l in f.read().splitlines() if l.strip() and not l.startswith("#")]
+
+
 def catalogue(path=None):
     """{class: set of key names} from `rules/entity_defs.json`, or None when it is not there.
     Inherited keys are followed through `bases`."""
@@ -90,8 +98,11 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
                     continue
                 if (known is None or k.lower() not in known) and not any(c.fullmatch(e.get("classname", "")) and kk.fullmatch(k) for c, kk in hand):
                     keys.setdefault(c, set()).add(k)
-    unresolved = sorted({"%s.%s->%s" % (k["from_class"], k["output"], k["target"])
-                         for k in links if not k["to"] and not k["special"]})
+    missing = sorted({"%s.%s->%s" % (k["from_class"], k["output"], k["target"])
+                      for k in links if not k["to"] and not k["special"]})
+    gone = dangling()
+    unresolved = [m for m in missing if not any(r.fullmatch(m) for r in gone)]
+    in_source = [m for m in missing if m not in unresolved]
     lists = {
         "textures_unmapped": sorted(n for n, t in used["textures"].items() if t is None),
         "textures_flat": flat,
@@ -107,6 +118,8 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
                                    if {"translucent", "alpha_test", "additive"} & set(s.get("material_flags", ()))
                                    and not s.get("glass") and not s.get("water")}),
     }
+    if in_source:    # only when present, so a map without any keeps its report byte for byte
+        lists["links_dangling"] = in_source
     return {
         "format": FORMAT, "version": VERSION, "map": name, "sha256": sha256,
         "textures": {"looked_up": len(used["textures"]), "drawn": sum(len(t.get("sources", [])) for t in lic), "by_tier": _tiers(used["textures"]),
