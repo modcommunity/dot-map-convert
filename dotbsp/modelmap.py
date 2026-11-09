@@ -96,31 +96,75 @@ def distance(target, lib, turn_margin=0.15):
     return best
 
 
-def own_model(root, kind, size, colour):
-    """Writes the generated model and returns its manifest record."""
-    import trimesh
-    w, h, d = (max(round(v, 2), 0.02) for v in size)
-    ident = "own_%s_%dx%dx%d_%s" % (kind, w * 100, h * 100, d * 100, colour)
-    folder = os.path.join(root, "own", ident)
+def box_glb(w, h, d, rgb):
+    """A box glb (base on y=0, centred on x and z) written with the standard library alone, so a box stand-in can be
+    regenerated on any machine; the same layout the trimesh export gave (8 corners, 12 triangles, one flat colour)."""
+    import struct
+    xs, zs = (-w / 2, w / 2), (-d / 2, d / 2)
+    corners = [(x, y, z) for x in xs for y in (0.0, h) for z in zs]       # index = x*4 + y*2 + z
+    quads = ((0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3))   # outward-facing, counter-clockwise
+    idx = [i for q in quads for i in (q[0], q[1], q[2], q[0], q[2], q[3])]
+    blob = struct.pack("<%dI" % len(idx), *idx) + b"".join(struct.pack("<3f", *c) for c in corners)
+    lo = [min(c[i] for c in corners) for i in range(3)]
+    hi = [max(c[i] for c in corners) for i in range(3)]
+    doc = {"scene": 0, "scenes": [{"nodes": [0]}], "asset": {"version": "2.0", "generator": "dot-map-convert modelmap"},
+           "accessors": [{"componentType": 5125, "type": "SCALAR", "bufferView": 0, "count": len(idx), "max": [7], "min": [0]},
+                         {"componentType": 5126, "type": "VEC3", "byteOffset": 0, "bufferView": 1, "count": 8, "max": hi, "min": lo}],
+           "meshes": [{"name": "box", "primitives": [{"attributes": {"POSITION": 1}, "indices": 0, "mode": 4, "material": 0}]}],
+           "materials": [{"pbrMetallicRoughness": {"baseColorFactor": [v / 255 for v in rgb] + [1.0], "roughnessFactor": 0.8, "metallicFactor": 0.0}}],
+           "nodes": [{"name": "box", "mesh": 0}], "buffers": [{"byteLength": len(blob)}],
+           "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 4 * len(idx)}, {"buffer": 0, "byteOffset": 4 * len(idx), "byteLength": 96}]}
+    js = json.dumps(doc, separators=(",", ":")).encode()
+    js += b" " * (-len(js) % 4)
+    return (struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(js) + 8 + len(blob)) + struct.pack("<I4s", len(js), b"JSON") + js
+            + struct.pack("<I4s", len(blob), b"BIN\0") + blob)
+
+
+def _write_own(folder, ident, kind, w, h, d, colour):
+    """Writes the generated glb and its model.json into the library's own/ folder."""
+    os.makedirs(folder, exist_ok=True)
+    rgb = [int(colour[i:i + 2], 16) for i in (0, 2, 4)]
     path = os.path.join(folder, ident + ".glb")
-    if not os.path.isfile(path):
-        os.makedirs(folder, exist_ok=True)
-        if kind == "cyl":
-            m = trimesh.creation.cylinder(radius=0.5, height=1.0, sections=24)
-            m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [1, 0, 0]))
-        else:
-            m = trimesh.creation.box((1, 1, 1))
+    if kind == "cyl":
+        import trimesh      # only a cylinder needs it; boxes are written without
+        m = trimesh.creation.cylinder(radius=0.5, height=1.0, sections=24)
+        m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [1, 0, 0]))
         m.apply_scale((w, h, d))
         m.apply_translation((0, h / 2, 0))
-        rgb = [int(colour[i:i + 2], 16) for i in (0, 2, 4)]
         m.visual = trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
             baseColorFactor=rgb + [255], metallicFactor=0.0, roughnessFactor=0.8))
         m.export(path)
-        with open(os.path.join(folder, "model.json"), "w") as f:
-            json.dump({"id": ident, "source": "TMC generated model", "url": OWN_URL, "author": OWN_AUTHOR, "licence": "CC0-1.0",
-                       "tags": "own,%s" % kind, "dims": [w, h, d], "files": ["own/%s/%s.glb" % (ident, ident)]}, f)
+    else:
+        with open(path, "wb") as f:
+            f.write(box_glb(w, h, d, rgb))
+    with open(os.path.join(folder, "model.json"), "w") as f:
+        json.dump({"id": ident, "source": "TMC generated model", "url": OWN_URL, "author": OWN_AUTHOR, "licence": "CC0-1.0",
+                   "tags": "own,%s" % kind, "dims": [w, h, d], "files": ["own/%s/%s.glb" % (ident, ident)]}, f)
+
+
+def own_model(root, kind, size, colour):
+    """Writes the generated model and returns its manifest record."""
+    w, h, d = (max(round(v, 2), 0.02) for v in size)
+    ident = "own_%s_%dx%dx%d_%s" % (kind, w * 100, h * 100, d * 100, colour)
+    folder = os.path.join(root, "own", ident)
+    if not os.path.isfile(os.path.join(folder, ident + ".glb")):
+        _write_own(folder, ident, kind, w, h, d, colour)
     return {"id": ident, "source": "TMC generated model", "url": OWN_URL, "author": OWN_AUTHOR, "licence": "CC0-1.0",
             "dims": (w, h, d), "file": "own/%s/%s.glb" % (ident, ident), "own": True}
+
+
+OWN_ID = re.compile(r"^own_(box|cyl)_(\d+)x(\d+)x(\d+)_([0-9a-f]{6})$")
+
+
+def ensure_own(root, ident):
+    """Regenerates a generated stand-in (`own_box_42x14x43_303030`) the library lacks, from its id alone: the
+    picks name it, and the library is not tracked, so a fresh machine rebuilds it rather than copying it."""
+    m = OWN_ID.match(ident)
+    path = os.path.join(root, "own", ident, ident + ".glb")
+    if m and not os.path.isfile(path):
+        w, h, d = (int(m.group(i)) / 100 for i in (2, 3, 4))
+        _write_own(os.path.join(root, "own", ident), ident, m.group(1), w, h, d, m.group(5))
+    return path
 
 
 def _jitter(model):
@@ -261,6 +305,8 @@ def ship(row, store, root=None):
     root = root or library_root()
     rel = row["file"]
     src = os.path.join(root, rel)
+    if rel.startswith("own/"):
+        ensure_own(root, os.path.basename(rel)[:-len(".glb")])
     dst = os.path.join(store, rel)
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     if rel.endswith(".gltf"):

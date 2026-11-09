@@ -64,6 +64,19 @@ class ModelMap(unittest.TestCase):
             self.assertEqual(modelmap.ship(r, store, root), r["file"])
             self.assertTrue(os.path.isfile(os.path.join(store, r["file"])))
 
+    def test_own_box_regenerates_from_its_id_without_trimesh(self):
+        import json, struct
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as store:
+            row = {"file": "own/own_box_42x14x43_303030/own_box_42x14x43_303030.glb"}
+            self.assertEqual(modelmap.ship(row, store, root), row["file"])
+            g = open(os.path.join(store, row["file"]), "rb").read()
+            n = struct.unpack("<I", g[12:16])[0]
+            doc = json.loads(g[20:20 + n])
+            self.assertEqual(struct.unpack("<I", g[8:12])[0], len(g))
+            self.assertEqual(doc["accessors"][1]["max"], [0.21, 0.14, 0.215])
+            self.assertEqual(doc["accessors"][1]["min"], [-0.21, 0.0, -0.215])
+            self.assertTrue(os.path.isfile(os.path.join(root, "own", "own_box_42x14x43_303030", "model.json")))
+
 
 if __name__ == "__main__":
     unittest.main()
