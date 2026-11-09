@@ -1389,9 +1389,17 @@ def prune_extra(extra, floors):
     return [b for b in extra if not small(b) and not low_on_floor(b)]
 
 
+def clip_ceilings():
+    """The invisible low clip slabs `drop_lids` took out of the document (a player-clip ceiling over a floor, 3.6 m up on the manor).
+    The bake and the wire do without them, but the hull physics has them, and the server's horde graph and its stuck pruning
+    must too: a body under one has no room to be lifted. They go in the nav extra."""
+    keep = ("at", "size", "mat", "visible", "kind")
+    return [{k: b[k] for k in keep if k in b} for stage, b in DROPS if stage == "drop_lids" and b.get("kind") == "clip"]
+
+
 def write_nav_extra(path, full):
-    """`hulls/<id>.nav.json`, server-only beside the hulls: the whole map's boxes the budget dropped, and
-    its floors and links, which the horde's graph is built from (the wire document keeps the budgeted ones)."""
+    """`hulls/<id>.nav.json`, server-only beside the hulls: the whole map's boxes the budget dropped, the clip ceilings
+    `drop_lids` removed, and its floors and links, which the horde's graph is built from (the wire document keeps the budgeted ones)."""
     with open(path) as f:
         doc = json.load(f)
     out = os.path.join(os.path.dirname(path), "hulls", doc["id"] + ".nav.json")
@@ -1399,10 +1407,13 @@ def write_nav_extra(path, full):
         os.remove(out)
     if not doc.get("world_collision"):
         return
-    if not full:    # nothing was dropped by the budget: the hulls alone, and an empty extra so the server does not warn
+    ceilings = clip_ceilings()
+    if not full:    # nothing was dropped by the budget: the hulls and the clip ceilings, and an extra even when empty so the server does not warn
         os.makedirs(os.path.dirname(out), exist_ok=True)
         with open(out, "w") as f:
-            f.write('{"boxes":[],"floors":[],"links":[]}\n')
+            json.dump({"boxes": ceilings, "floors": [], "links": []}, f, separators=(",", ":"))
+            f.write("\n")
+        print("  nav extra: %d clip ceiling(s) in hulls/%s.nav.json" % (len(ceilings), doc["id"]))
         return
     have = collections.Counter(json.dumps(b, sort_keys=True) for b in doc["boxes"])
     extra = []
@@ -1413,7 +1424,7 @@ def write_nav_extra(path, full):
         else:
             extra.append(b)
     nav = full["nav"]
-    extra = prune_extra(extra, nav["floors"] + doc["nav"]["floors"])
+    extra = prune_extra(extra, nav["floors"] + doc["nav"]["floors"]) + ceilings
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w") as f:
         json.dump({"boxes": extra, "floors": nav["floors"], "links": nav["links"]}, f, separators=(",", ":"))
