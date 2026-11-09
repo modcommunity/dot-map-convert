@@ -268,6 +268,27 @@ class TestSwapTerrain(unittest.TestCase):
         self.assertEqual(doc["props"][1]["at"], [x, y + 9, z], "a prop in the air stays")
         self.assertEqual(doc["spawns"]["a"][0]["at"], [x, h, z])
 
+    def test_spawn_over_a_hole_moves_to_ground(self):
+        doc, _, (x, y, z) = self.doc()
+        real = terrain.fit
+
+        def holed(*a, **k):
+            hf, size = real(*a, **k)
+            for k2 in range(len(hf.h)):
+                px, pz = hf.sample_pos(k2 % hf.nx, k2 // hf.nx)
+                if abs(px - x) < 1.6 and abs(pz - z) < 1.6:
+                    hf.h[k2] = None
+            return hf, size
+        terrain.fit = holed
+        try:
+            ground = terrain.swap_terrain(doc, self.tris, "grass", None)
+        finally:
+            terrain.fit = real
+        self.assertIsNone(ground.height(x, z), "the fixture punched a hole under the spawn")
+        sx, sy, sz = doc["spawns"]["a"][0]["at"]
+        self.assertIsNotNone(ground.height(sx, sz), "the spawn is not over a hole")
+        self.assertAlmostEqual(sy, ground.height(sx, sz), places=2)
+
     def test_wrong_material_or_no_field_refuses(self):
         doc, _, _ = self.doc()
         with self.assertRaises(SystemExit):

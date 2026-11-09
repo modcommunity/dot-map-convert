@@ -355,6 +355,16 @@ OFFICE_DRESS = ("furniture_potted_plant", "furniture_plant_small1", "furniture_p
                 "furniture_trashcan", "furniture_lounge_sofa", "furniture_coat_rack_standing", "furniture_plant_small2")
 
 
+def pin_one_way(doc):
+    """--one-way=x,z: the door whose centre is there swings one way only. Returns how many were pinned."""
+    n = 0
+    for d in doc["doors"]:
+        if any(abs(d["at"][0] - a) < 0.1 and abs(d["at"][2] - b) < 0.1 for a, b in ONE_WAY):
+            d["away"] = False
+            n += 1
+    return n
+
+
 def hang_doorways(m, doc, log=print):
     """A door in every doorway the author left open (--hang-doorways). This map's meeting rooms and
     offices are bare openings, not door entities, so add_doors finds nothing; the doorway is the
@@ -1192,13 +1202,11 @@ def main(argv):
         if len(kept_d) != len(doc["doors"]):
             print("doors: %d double-hung doorways kept as one leaf" % (len(doc["doors"]) - len(kept_d)))
             doc["doors"][:] = kept_d
-        for d in doc["doors"]:
-            if any(abs(d["at"][0] - a) < 0.1 and abs(d["at"][2] - b) < 0.1 for a, b in ONE_WAY):
-                d["away"] = False
     if widen:
         print("widened %d doorways to 1.4 m" % docboxes.widen_doors(doc["boxes"], doors=doc["doors"]))
     if hang:
         hang_doorways(m, doc)
+    pin_one_way(doc)   # after --hang-doorways: the doors it hung are pinned too
     # The budget runs after the doors are hung and widened: they look for the author's narrow, untrimmed slabs.
     docboxes.apply_budget(doc["boxes"], box_budget)
     if dress_walls_n or spread_n:
