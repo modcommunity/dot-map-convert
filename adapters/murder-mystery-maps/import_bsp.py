@@ -909,7 +909,7 @@ def main(argv):
     passledger.reset()
     bsp = bsp_read.Bsp(bsp_path).load()
     m = build_maps.Map(
-        mid, name, blurb or "Converted from %s by %s (%s)." % (os.path.basename(bsp_path), author, url),
+        mid, name, blurb or "A map converted from a community original by %s (%s)." % (author, url),
         dict(build_maps.DUSK) if dusk else {"sky_top": [0.32, 0.52, 0.82], "sky_horizon": [0.72, 0.82, 0.92], "ground": [0.35, 0.33, 0.30],
          "sun_pitch": -55, "sun_yaw": 30, "sun_energy": 1.0, "ambient": [0.62, 0.66, 0.72], "ambient_energy": 0.5},
         kill_y=-20.0)
@@ -1224,7 +1224,7 @@ def main(argv):
         raise SystemExit("the document no longer shares the map's lists: settle the spawns from the document")
     if terrain:
         swap_terrain(doc, tris, terrain, TERRAIN_TINT if terrain == "grass" else None, budget)
-    docboxes.apply_cap(doc, box_budget)
+    docboxes.apply_cap(doc, box_budget, size_of=build_maps.size_of, footprint=build_maps.footprint)
     sourceframe.record(doc, bsp_path, S, (ox, oy + FLOOR, oz), None)
     out_path = out_path or os.path.join(build_maps.ROOT, "maps", mid + ".json")
     passledger.finish(out_path=out_path)
