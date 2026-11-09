@@ -1,4 +1,33 @@
 # name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour
+# re-render-judge-2 (2026-11-08): picks that rendered as the wrong kind of thing; specific rows go first
+^(doll\d*|huladoll\d*)$|companion_doll	fxplushdoll	0.3	0.6	0.2	box	e0b0c0
+^shoe\d	boot|shoe	0.28	0.12	0.1	box	6a4a30
+watermelon	watermelon|crop_melon	0.3	0.25	0.3	cyl	407040
+bananna|banana(_|[0-9]|s|$)	banana|bananas	0.2	0.12	0.2	box	d8c040
+coffee_?mug|cofe_cup	mug|cup_coffee|coffee_mug	0.1	0.1	0.1	cyl	8a6a50
+bucket	bucket	0.3	0.3	0.3	cyl	808890
+woodbarrel|wine_barrel|pallet_barrels	pirate_kit_barrel|survival_kit_barrel|barrel	0.6	0.9	0.6	cyl	7a5a38
+^bench_indoor	bench	1.8	0.5	0.5	box	6a5a50
+gravestone|tombstone	gravestone	0.5	1.0	0.15	box	8a8a82
+cannon_base	cannon_mobile|cannon	1.0	0.6	1.0	box	4a4a48
+cannon_gun	NONE	0.4	0.4	1.8	cyl	3a3a38
+mailbox	NONE	0.25	1.2	0.25	cyl	4a5a8a
+^radiator	radiator	0.9	0.6	0.1	box	b0b0a8
+^clock\d*$	wall_clock|mantel_clock|clock	0.3	0.3	0.05	cyl	a09080
+pottery	vase|jar|urn	0.4	0.6	0.4	cyl	8a6a50
+metalpot|^pot\d	food_kit_pot|pot_stew|pot	0.3	0.2	0.3	cyl	707880
+sinkkitchen	kitchen_sink|sink	0.8	0.3	0.5	box	c8c8c0
+^bicycle	bicycle	1.7	1.0	0.5	box	606870
+extinguisher	extinguisher	0.15	0.5	0.15	cyl	c02020
+cabbage	cabbage	0.25	0.2	0.25	cyl	70a050
+sosis|sausage	sausage|meat_sausage	0.15	0.04	0.04	cyl	b05040
+glassbottle|water_bottle|^bottle\d	bottle	0.08	0.25	0.08	cyl	4a7a50
+harpoon	NONE	0.06	0.06	1.6	cyl	6a5a48
+sawblade	NONE	0.3	0.02	0.3	cyl	8a8a90
+trafficcone|traffic_cone	traffic_cone|cone	0.4	0.7	0.4	cyl	d86020
+^trashcan\d	furniture_kit_trashcan|trash_can|trashcan	0.4	0.6	0.4	cyl	4a5a4a
+furnitureshelf	shelf|shelves	0.9	1.5	0.4	box	8a6a48
+kitchen_stove	kitchen_stove|electric_stove|gas_stove	0.8	0.9	0.6	box	c8c8c0
 ^air_intake$	NONE	1.2	1.0	0.8	box	707070
 ^cap_point_base$	NONE	1.6	0.15	1.6	cyl	6a6a6a
 ^exit_mounted$	NONE	0.45	0.2	0.1	box	307840
