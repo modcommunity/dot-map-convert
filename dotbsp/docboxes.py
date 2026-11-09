@@ -1292,7 +1292,7 @@ def place_hiders(doc, per_level=4, spacing=3.0, seeker_gap=4.0, min_area=4.0, lo
         floor = ts[len(ts) // 2]
         have = [h for h in hiders if abs(h["at"][1] - 0.05 - floor) < 0.8]
         out[round(floor, 2)] = len(have)
-        flat = {(xi, zi) for xi, zi, t in cells if abs(t - floor) <= 0.3}
+        flat = {(xi, zi): t for xi, zi, t in cells if abs(t - floor) <= 0.3}
         want = per_level - len(have)
         if want <= 0:
             continue
@@ -1306,7 +1306,8 @@ def place_hiders(doc, per_level=4, spacing=3.0, seeker_gap=4.0, min_area=4.0, lo
             if any((x - q[0]) ** 2 + (z - q[2]) ** 2 < seeker_gap ** 2 for q in seekers) \
                     or any((x - q[0]) ** 2 + (z - q[2]) ** 2 < spacing ** 2 and abs(q[1] - floor - 0.05) < 1.0 for q in pts):
                 continue
-            hiders.append({"at": [round(x, 3), round(floor + 0.05, 3), round(z, 3)], "yaw": 0.0})
+            # on the cell's own walkable height, not the storey's median: a carpet or rug 5 cm up is a box a start at the median stands in
+            hiders.append({"at": [round(x, 3), round(flat[(xi, zi)] + 0.05, 3), round(z, 3)], "yaw": 0.0})
             pts.append(hiders[-1]["at"])
             out[round(floor, 2)] += 1
             want -= 1
