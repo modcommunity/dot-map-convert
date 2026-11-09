@@ -1701,3 +1701,16 @@ zgmrvn/vertzigomarvin	pbr_Fabric070
 zgmrvn/violetzigomarvin	pbr_velour_velvet	
 zs_lodge/adverthere	pbr_white_stucco	
 zs_plaza/forlease	pbr_Wallpaper002A	
+props_housing/env/brush/floors/floor_pool_blue	pbr_blue_floor_tiles_01	
+props_housing/env/brush/floors/floor_prison_shower	pbr_square_tiles	
+props_housing/env/brush/walls/wall_jailshower	pbr_long_white_tiles	
+props_housing/env/brush/walls/wall_pool_blue	pbr_blue_floor_tiles_01	
+props_housing/env/brush/walls/wall_restroombshower	pbr_long_white_tiles	
+props_housing/env/brush/walls/wall_shower_paleblue	pbr_blue_plaster_wall	
+props_housing/env/brush/walls/wall_toffee_high	pbr_patterned_clay_plaster	
+props_sims2/simstexnightlife/walls/intwall/wall_curtain_grey	pbr_Fabric001	
+prop_idbs/open_source_bb	pbr_PaintedPlaster006	
+prop_idbs_housing/toko/gorden	pbr_Fabric048	
+prop_idbs_housing/toko/gorden2	pbr_Fabric048	
+quality/e8trim_dark	pbr_Metal028	
+cs_italy/wallpap04b	pbr_Wallpaper002B	
