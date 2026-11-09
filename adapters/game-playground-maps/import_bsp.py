@@ -25,6 +25,12 @@ What it does, and why each choice:
 - Tool brushes (skybox, clip, trigger, hint, nodraw-only) are dropped. A water brush becomes a
   water volume. Displacements are not carried (a document has no meshes); the brush under one is.
 - The ground is shifted so the spawn's floor is y = 0.
+- A config may hold what a converter cannot read out of the brushes: `stairs` (a file stairs/<name>.json of
+  flights, each a run of box steps that carves its way through the boxes in its headroom; a staircase of
+  the original is a tilted or sliced brush the survey cannot climb), `ramps`, `fill` (solid filler for a
+  pit with no way out), `remove` (whole boxes standing where the original has a door or a beam that was
+  not carried) and `declared` (ground meant to be out of reach). Upright boxes that meet with a hairline
+  between them are welded (`weld_hairlines`), so the survey does not read the rounding as a slot.
 """
 import json
 import math
@@ -132,9 +138,16 @@ CONFIGS = {
         "blurb": "A mall car park for building and wiring: the central lot and its shopfront, cut from the larger map.",
         "author": "bean",
         "close_gaps": True, "slab": 15.0,
+        "remove": [
+            {"min": [-24.1, -1.3, 35.0], "max": [-14.3, -0.5, 35.7], "why": "beams hung from the floor grating across the pit, which split it in two"},
+            {"min": [9.7, -9.8, 40.2], "max": [10.1, -7.3, 42.3], "why": "a gate leaf standing shut across the lower tunnel"},
+        ],
         "source": "gm_mallparking, https://steamcommunity.com/sharedfiles/filedetails/?id=2619660952",
         "spawn_at": 1,
         "region": ((-41.6, 18.4), (-15.0, 45.0), (-1.7, 58.3)),
+        "fill": [{"min": [-45.0, -10.5, 0.0], "max": [15.0, -4.88, 50.0]},
+                 {"min": [-2.3, -4.88, -0.1], "max": [2.3, -1.2, 9.8]}, {"min": [-34.6, -4.88, 34.1], "max": [-25.7, -1.2, 37.7]}],
+        "declared": [{"min": [-30.0, -5.5, 28.0], "max": [-25.0, -4.0, 29.5], "why": "a sump alcove beside the lower car park"}],
         "min_size": 1.0,
     },
     "shambles": {
@@ -146,6 +159,10 @@ CONFIGS = {
         "source": "gm_shambles, https://steamcommunity.com/sharedfiles/filedetails/?id=151544081",
         "spawn_at": 0,
         "region": ((82.0, 192.0), (-15.0, 45.0), (93.0, 203.0)),
+        "fill": [{"min": [129.5, -6.5, 96.5], "max": [137.0, -2.0, 149.0], "why": "a cellar trench with no way out"},
+                 {"min": [115.3, 0.5, 93.5], "max": [124.0, 2.5, 107.0], "why": "small rooms whose doors are not carried over"}],
+        "declared": [{"min": [156.0, 7.8, 127.5], "max": [157.3, 8.6, 130.0], "why": "a roof ledge"},
+                     {"min": [145.5, 7.8, 94.3], "max": [147.0, 8.6, 95.8], "why": "a roof ledge"}],
         "min_size": 0.5,
     },
     "valley": {
@@ -247,8 +264,104 @@ def snap(b, grid=0.01):
     return b
 
 
+def stair_boxes(fl):
+    """A flight of real steps (document frame, metres) that joins two levels the author joined with
+    something the document cannot carry: a door, a displacement ramp, a prop. `from` is the top
+    surface of the higher level at its edge, `dir` the horizontal way the flight runs (one of
+    (+-1, 0) or (0, +-1)), `steps` how many, each `riser` lower and `tread` longer than the last,
+    `width` across, and `base` the level every step is built down to (the lower floor, so the
+    flight stands on it and does not hang over a drop)."""
+    x, y, z = fl["from"]
+    dx, dz = fl["dir"]
+    w, riser, tread, base = fl["width"], fl["riser"], fl["tread"], fl["base"]
+    out = []
+    for k in range(1, fl["steps"] + 1):
+        top = y - k * riser
+        c0, c1 = 0.125 + (k - 1) * tread, 0.125 + k * tread
+        if dx:
+            a, b = sorted((x + dx * c0, x + dx * c1))
+            lo, hi = [a, base, z - w / 2], [b, top, z + w / 2]
+        else:
+            a, b = sorted((z + dz * c0, z + dz * c1))
+            lo, hi = [x - w / 2, base, a], [x + w / 2, top, b]
+        out.append(snap({"at": [round((lo[i] + hi[i]) / 2, 3) for i in range(3)],
+                         "size": [round(hi[i] - lo[i], 3) for i in range(3)],
+                         "material": "concrete", "colour": "#a8a49a"}))
+    return out
+
+
+def _carve(b, lo, hi):
+    """The pieces of an upright box b left when the volume lo..hi is taken out of it."""
+    bl = [b["at"][i] - b["size"][i] / 2 for i in range(3)]
+    bh = [b["at"][i] + b["size"][i] / 2 for i in range(3)]
+    if any(bl[i] >= hi[i] - 1e-6 or bh[i] <= lo[i] + 1e-6 for i in range(3)):
+        return [b]
+    pieces, cl, ch = [], list(bl), list(bh)
+    for i in range(3):
+        for (a, c) in ((bl[i], lo[i]), (hi[i], bh[i])):
+            if c - a > 0.02:
+                pl, ph = list(cl), list(ch)
+                pl[i], ph[i] = a, c
+                p = dict(b)
+                p["at"] = [round((pl[k] + ph[k]) / 2, 3) for k in range(3)]
+                p["size"] = [round(ph[k] - pl[k], 3) for k in range(3)]
+                pieces.append(p)
+        cl[i], ch[i] = max(cl[i], lo[i]), min(ch[i], hi[i])
+    return pieces
+
+
+def add_stairs(boxes, flights):
+    """Builds the flights and cuts each one's head room out of the upright boxes it passes through
+    (a stair that goes down through a floor has a stairwell). Tilted boxes are never cut."""
+    steps = [stair_boxes(fl) for fl in flights]
+    for fl, flight in zip(flights, steps):
+        for st in flight:
+            lo = [st["at"][i] - st["size"][i] / 2 for i in range(3)]
+            hi = [st["at"][i] + st["size"][i] / 2 for i in range(3)]
+            lo[1], hi[1] = hi[1] + 0.05, hi[1] + 1.9
+            cut = []
+            for b in boxes:
+                cut.extend(_carve(b, lo, hi) if not (b.get("turn") and b["turn"][3]) else [b])
+            boxes = cut
+    for flight in steps:
+        boxes.extend(flight)
+    return boxes
+
+
+def weld_hairlines(boxes, eps=0.03):
+    """Two upright boxes that meet at a corner or a face with a hairline between them (a rounding of a
+    few thousandths of a metre) read to the survey as a slot. Grow the second across the hairline."""
+    up = [b for b in boxes if "turn" not in b]
+    for i, a in enumerate(up):
+        for b in up[i + 1:]:
+            lo_a = [a["at"][k] - a["size"][k] / 2 for k in range(3)]
+            hi_a = [a["at"][k] + a["size"][k] / 2 for k in range(3)]
+            lo_b = [b["at"][k] - b["size"][k] / 2 for k in range(3)]
+            hi_b = [b["at"][k] + b["size"][k] / 2 for k in range(3)]
+            if min(hi_a[1], hi_b[1]) - max(lo_a[1], lo_b[1]) <= 0.4:
+                continue
+            for k in (0, 2):
+                g = max(lo_b[k] - hi_a[k], lo_a[k] - hi_b[k])
+                other = 2 - k
+                og = max(lo_b[other] - hi_a[other], lo_a[other] - hi_b[other])
+                if 0 < g < eps and og < eps:
+                    # grow b toward a along k
+                    if lo_b[k] >= hi_a[k]:
+                        lo_b[k] -= g + 0.004
+                    else:
+                        hi_b[k] += g + 0.004
+                    b["at"][k] = round((lo_b[k] + hi_b[k]) / 2, 4)
+                    b["size"][k] = round(hi_b[k] - lo_b[k], 4)
+
+
 def build(bsp_path, name):
-    cfg = CONFIGS[name]
+    cfg = dict(CONFIGS[name])
+    # The flights live beside this adapter (stairs/<config>.json), wherever the launcher runs from.
+    stairs_file = os.path.join(os.path.dirname(os.path.abspath(sys.modules["adapter_launch"].__file__)),
+                               "game-playground-maps", "stairs", name + ".json") if "adapter_launch" in sys.modules else ""
+    if stairs_file and os.path.exists(stairs_file):
+        with open(stairs_file) as f:
+            cfg["stairs"] = json.load(f)
     bsp = bsp_read.Bsp(bsp_path).load()
     # Garry's Mod maps use gmod_player_start where the others use info_player_start.
     starts = [e for e in bsp.entities if e.get("classname") in ("info_player_start", "gmod_player_start")]
@@ -307,9 +420,17 @@ def build(bsp_path, name):
                       "material": "concrete", "colour": "#8a8780"})
     for (x0, x1), (z0, z1) in cfg.get("exclude", []):
         boxes = [b for b in boxes if not (x0 <= b["at"][0] <= x1 and z0 <= b["at"][2] <= z1)]
+    for r in cfg.get("remove", []):
+        # Whole boxes the author's map does not have in the way they stand here (a door's plug, a
+        # beam hung across a pit), named by a document-frame volume that wholly holds each.
+        lo, hi = r["min"], r["max"]
+        boxes = [b for b in boxes if not all(lo[i] - 0.02 <= b["at"][i] - b["size"][i] / 2 and b["at"][i] + b["size"][i] / 2 <= hi[i] + 0.02 for i in range(3))]
     boxes = [snap(b) for b in boxes]
+    if cfg.get("stairs"):
+        boxes = add_stairs(boxes, cfg["stairs"])
     if cfg.get("close_gaps"):
         print("  tilted-only cracks left after closing gaps:", gaps.close_gaps(boxes))
+    weld_hairlines(boxes)
     if cfg.get("spawn_pad"):
         # The author's start stood on displacement terrain this converter leaves out.
         boxes.append({"at": [round(sp[0] * S, 3), -0.15, round(-sp[1] * S, 3)], "size": [4.0, 0.3, 4.0], "material": "concrete", "colour": "#b9b4aa"})
