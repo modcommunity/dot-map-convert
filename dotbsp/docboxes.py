@@ -1260,6 +1260,95 @@ def reach_report(doc, boxes=None, cell=0.25, step=0.45, head=1.7):
     return len(spawns) - len(lost), len(spawns), lost
 
 
+def _reach_from(places, start, step):
+    """The set of (xi, zi, top) walkable from the place `start` over `places` (_flood's walk, on places already built)."""
+    seen = {start}
+    stack = [start]
+    while stack:
+        xi, zi, t = stack.pop()
+        for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            for t2 in places.get((xi + dx, zi + dz), ()):
+                key = (xi + dx, zi + dz, round(t2, 3))
+                if abs(t2 - t) <= step and key not in seen:
+                    seen.add(key)
+                    stack.append(key)
+    return seen
+
+
+def join_spawns(doc, cell=0.25, step=0.45, head=1.7, gap=1.2, prop_gap=1.0, footprint=None, room=0.5, log=print):
+    """Moves every spawn that stands on floor cut off from the others onto the walkable component holding most of them; returns how many moved.
+
+    The flood is reach_report's (boxes and the terrain heightfield, `step` and `head`). The home component is the
+    one with the most spawns (seekers count first on a tie, then floor area). A stranded start, or one on nothing,
+    goes to the home cell nearest it that is flat open floor (a half metre of home floor within 0.3 m of its height
+    all round), `gap` m from every other start and clear of every prop: `room` m outside its turned footprint when
+    `footprint(prop_id, yaw)` -> (w, d) is given (the game's capsule is 0.4 m round), else `prop_gap` m from its origin. A converter that stood a
+    start on an importer pad in a terrain hole (hs_mountainresort's seekers, 3 m below the deck their teammates
+    stand on) or on a cut-off ledge leaves bots that can never meet; snap_spawns only fixes height."""
+    spawns = [(side, o) for side, lst in doc.get("spawns", {}).items() for o in lst]
+    if not spawns:
+        return 0
+    ground = _terrain_tops(doc["terrain"], cell) if doc.get("terrain") else None
+    places, _, find = _flood(doc["boxes"], spawns[0][1]["at"], cell, step, head, ground)
+    comps, owner = [], []
+    for _, o in spawns:
+        f = find(o["at"])
+        key = None if f is None else (f[0], f[1], round(f[2], 3))
+        n = next((i for i, c in enumerate(comps) if key in c), None) if key else None
+        if key and n is None:
+            comps.append(_reach_from(places, key, step))
+            n = len(comps) - 1
+        owner.append(n)
+    if not comps:
+        return 0
+    votes = {}
+    for (side, _), n in zip(spawns, owner):
+        if n is not None:
+            votes[n] = votes.get(n, 0) + (1.001 if side == "seekers" else 1)
+    home = max(votes, key=lambda n: (round(votes[n]), votes[n], len(comps[n])))
+    tops = {}
+    for xi, zi, t in comps[home]:
+        tops.setdefault((xi, zi), []).append(t)
+    r = int(math.ceil(0.5 / cell))
+    open_cells = [(xi, zi, t) for xi, zi, t in comps[home]
+                  if all(any(abs(t2 - t) <= 0.3 for t2 in tops.get((xi + dx, zi + dz), ())) for dx in range(-r, r + 1) for dz in range(-r, r + 1))]
+    props = []
+    for q in doc.get("props", []):
+        if footprint is None:
+            props.append((q["at"], None))
+            continue
+        # The prop's turned footprint as an axis box: build_maps' footprint only turns by right angles.
+        w, d = footprint(q["id"], 0.0)
+        a = math.radians(q.get("yaw", 0.0))
+        props.append((q["at"], ((abs(w * math.cos(a)) + abs(d * math.sin(a))) / 2 + room,
+                                (abs(w * math.sin(a)) + abs(d * math.cos(a))) / 2 + room)))
+    moved = 0
+    for (side, o), n in zip(spawns, owner):
+        if n == home:
+            continue
+        x, y, z = o["at"]
+        others = [s["at"] for _, s in spawns if s is not o]
+        best = None
+        for xi, zi, t in open_cells:
+            cx, cz = (xi + 0.5) * cell, (zi + 0.5) * cell
+            d = (cx - x) ** 2 + (cz - z) ** 2 + (t - y) ** 2
+            if best is not None and d >= best[0]:
+                continue
+            if any((cx - q[0]) ** 2 + (cz - q[2]) ** 2 < gap * gap and abs(q[1] - t) < 1.5 for q in others) \
+                    or any(abs(q[1] - t) < 1.5 and ((cx - q[0]) ** 2 + (cz - q[2]) ** 2 < prop_gap * prop_gap if h is None
+                                                    else abs(cx - q[0]) < h[0] and abs(cz - q[2]) < h[1]) for q, h in props):
+                continue
+            best = (d, [round(cx, 3), round(t + 0.05, 3), round(cz, 3)])
+        if best is None:
+            log("join spawns: no open floor left on the home component for %s at %s" % (side, o["at"]))
+            continue
+        log("join spawns: %s at %s -> %s (%.1f m)" % (side, o["at"], best[1], math.sqrt(best[0])))
+        o["at"] = best[1]
+        moved += 1
+    log("join spawns: home component %.0f m2 holds %d of %d starts, moved %d onto it" % (len(comps[home]) * cell * cell, sum(1 for n in owner if n == home), len(spawns), moved))
+    return moved
+
+
 @passledger.tracked("box_cap", lambda doc, *a, **k: doc["boxes"])
 def cap_boxes(doc, limit, log=print):
     """Cuts the least important boxes until `limit` or fewer are left (--max-boxes); returns how many were cut.
