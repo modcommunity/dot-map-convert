@@ -53,6 +53,14 @@ class EntityBrushes(unittest.TestCase):
         self.assertEqual(len(docboxes.world_brushes(self.world("func_brush", {"Solidity": "1"}))), 1)
         self.assertEqual(len(docboxes.world_brushes(self.world("func_breakable"))), 2)
 
+    def test_never_solid_is_solidity_1_only(self):
+        self.assertTrue(docboxes.entity_never_solid({"classname": "func_brush", "Solidity": "1"}))
+        self.assertFalse(docboxes.entity_never_solid({"classname": "func_brush", "Solidity": "2"}))
+        # An output may enable a StartDisabled brush (a walkway that appears), so it is hidden but not never solid.
+        self.assertFalse(docboxes.entity_never_solid({"classname": "func_brush", "StartDisabled": "1"}))
+        self.assertFalse(docboxes.entity_never_solid({"classname": "func_wall", "Solidity": "1"}))
+        self.assertTrue(docboxes.entity_starts_hidden({"classname": "func_brush", "Solidity": "1"}))
+
 
 if __name__ == "__main__":
     unittest.main()

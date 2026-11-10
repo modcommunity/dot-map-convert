@@ -1747,6 +1747,10 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
         gate = cls in spec.get("gate_classes", [])
         if cls == spec.get("barricade_class"):
             continue
+        # A never-solid brush (the fade pane of a portal window) is drawn but holds nobody: as a box or a hull
+        # it was an invisible wall across a doorway, and the horde's graph was cut there (Roy Highway's spawn).
+        if not gate and docboxes.entity_never_solid(e):
+            continue
         if not gate and (cls in spec.get("solid_classes", []) or dclasses.treatment(cls)[0] == "world"):
             mb = model_boxes(bs, int(m[1:]), y0)
             if cls in BREAKABLE and cls not in spec.get("solid_classes", []):
