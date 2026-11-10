@@ -771,6 +771,7 @@ def main(argv):
             shift(doc.get(key))
         passledger.rebase(-ox, -oy, -oz)
     print("ground pads under %d spawn groups with no floor" % docboxes.pad_spawns(doc, list(doc["spawns"])))
+    print("spawns snapped onto their floor: %d" % docboxes.snap_spawns(doc))
     if pockets:
         print("pruned %d props that left a pocket the bots cannot leave" % docboxes.prune_pockets(doc, build_maps.size_of, build_maps.footprint))
     # Spots are found beside props, so taking the prop away takes the spot: for a place the

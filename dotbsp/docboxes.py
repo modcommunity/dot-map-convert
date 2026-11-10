@@ -268,6 +268,26 @@ def drop_small(boxes, min_size):
     return n
 
 
+def snap_spawns(doc, sides=None, rise=0.35):
+    """Raises each spawn that stands sunk in a floor to that floor's top, and returns how many it moved.
+
+    A start recorded at the author's feet can sit inside the slab the converter drew (a floor of
+    several boxes, a pool's glass over a tile): a capsule stood there overlaps the slab's top and a
+    physics check calls it a wall. The ground is the highest solid top under (x, z) at most `rise`
+    metres above the spawn; a spawn already at or above it stays."""
+    solid = [b for b in doc["boxes"] if b.get("solid", True)]
+    moved = 0
+    for side in (sides or list(doc.get("spawns", {}))):
+        for o in doc.get("spawns", {}).get(side, []):
+            x, y, z = o["at"]
+            tops = [b["at"][1] + b["size"][1] / 2 for b in solid
+                    if b["at"][1] + b["size"][1] / 2 <= y + rise and within(b, x, z)]
+            if tops and max(tops) > y + 0.005:
+                o["at"] = [x, round(max(tops) + 0.01, 3), z]
+                moved += 1
+    return moved
+
+
 def pad_spawns(doc, sides, mat="concrete", pad=2.5, reach=0.4):
     """Lays a flat pad under each spawn that has no solid top within `reach` metres below it (a start
     the author stood on terrain this converter leaves out), one pad per pad-sized cell, and returns the count."""

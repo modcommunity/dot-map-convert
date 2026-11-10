@@ -36,6 +36,7 @@ def main(argv):
     doc = json.load(open(path))
     print("before: %d boxes, %d props, %d bytes on the wire" % (len(doc["boxes"]), len(doc["props"]), docboxes.wire_size(doc)))
     docboxes.apply_cap(doc, budget, size_of=build_maps.size_of, footprint=build_maps.footprint)
+    print("spawns snapped onto their floor: %d" % docboxes.snap_spawns(doc))
     print("after: %d boxes, %d props, %d bytes on the wire" % (len(doc["boxes"]), len(doc["props"]), docboxes.wire_size(doc)))
     with open(out, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")
