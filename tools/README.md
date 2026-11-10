@@ -35,5 +35,6 @@ Everything that converts a map, a model, a texture or a sound lives in this repo
 - `bsp_read.py` shims: they only name the reader for the adapter.
 - `relight.sh`, `solid_props.sh`, `publish*.sh`, `g2gmaps.py`: a game's pipeline and publishing around the converter, not conversion.
 - `mg-deathrun-maps` `apply_theme.py`: a table of per-map looks written into specs (the game's own data).
+- `arena-dm-maps`, `arena-surf-dm-maps`, `hide-n-seek-maps` `tools/regen_worlds.sh`: launchers (or, for hide-n-seek, a `worlds.tsv` loop) over the shared script; `stage_packs.sh` differs per repository in its publish rule and stays.
 - `zombie-zone-maps` `regen_all.sh`, `ship_*.sh`: they read that game's `convert/ship.tsv`, specs and ship lists; the generic loop is `tools/regen_worlds.sh` here.
 - `dot-map/tools/*.gd|sh`: need a Godot project (screenshots, benches, occluder bake).
