@@ -78,5 +78,18 @@ class ModelMap(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(root, "own", "own_box_42x14x43_303030", "model.json")))
 
 
+    def test_portable_stairs_are_a_staircase_not_a_table(self):
+        # cp_orange_x3 (owner 2026-11-10): the trainyard's portable stairs are the climb to the wall top. The free
+        # name table's `table` matched "portable" and drew a bench; the library pick is a staircase as tall as that wall.
+        from dotbsp import standins
+        free = standins.models()
+        self.assertIsNone(free.get("props_trainyard/portable_stairs001.mdl"))
+        self.assertEqual(free.get("props_c17/furnituretable001a.mdl")["stand_in"], "table")
+        pick = standins.picks()["models/props_trainyard/portable_stairs001.mdl"]
+        self.assertEqual(pick["stand_in"], "lib/kenney_prototype-kit_stairs")
+        self.assertGreaterEqual(pick["size"], 4.5)
+        self.assertEqual(pick["row"]["licence"], "CC0-1.0")
+
+
 if __name__ == "__main__":
     unittest.main()

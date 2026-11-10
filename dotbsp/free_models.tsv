@@ -47,7 +47,7 @@ chair_office|officechair	office_chair	Kenney Furniture Kit	https://kenney.nl/ass
 chair|seat	chair	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 bench	bench	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 desk|workbench	desk	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
-table	table	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+(?<!por)(?<!collec)table	table	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 bookcase|bookshelf|shelf|shelves|storagecloset|locker|wardrobe	bookcase	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 cabinet|dresser	cabinet	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 (^|[/_])bed|mattress|bunk	bed	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
