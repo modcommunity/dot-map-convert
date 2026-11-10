@@ -107,14 +107,20 @@ def stops_player(bsp, index, names=None):
     return bool(contents & reader.MASK_PLAYERSOLID) and _audit.contents_kind(contents, names) in TOOL_SOLIDS
 
 
+def entity_never_solid(e):
+    """Whether a brush entity holds no body whatever the map's logic does: a func_brush with Solidity 1. Unlike
+    StartDisabled, which an output may switch on (a walkway that appears), this one is safe to leave out of any
+    collision; mappers use it for the fade pane of a portal window standing in a doorway."""
+    return e.get("classname") == "func_brush" and str(e.get("Solidity", "0")).strip() == "1"
+
+
 def entity_starts_hidden(e):
     """Whether a brush entity starts not solid or not there: `rendermode 10`, StartDisabled, a func_brush with
     Solidity 1 (never solid), or a func_wall_toggle that starts off (spawnflag 1)."""
     def flag(k):
         return str(e.get(k, "0")).strip()
     cls = e.get("classname")
-    return (flag("rendermode") == "10" or flag("StartDisabled") == "1"
-            or (cls == "func_brush" and flag("Solidity") == "1")
+    return (flag("rendermode") == "10" or flag("StartDisabled") == "1" or entity_never_solid(e)
             or (cls == "func_wall_toggle" and flag("spawnflags").isdigit() and int(flag("spawnflags")) & 1 == 1))
 
 
