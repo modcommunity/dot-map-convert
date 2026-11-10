@@ -1609,6 +1609,7 @@ def main(argv):
     # The author gave six starts; a prop hunt wants six hiding starts and three hunter ones (dotbsp.spawntopup).
     # A map with no hunter start gets three; one with one or two only with --topup-hunters.
     spawntopup.top_up(m, hunters_always=topup_hunters)
+    have = [(sp["at"][0], sp["at"][2]) for side in m.spawns.values() for sp in side]  # the toys keep clear of every start
     docboxes.lend_starts(m.spawns, "props", "hunters")
     hy = sorted(sp["at"][1] for sp in m.spawns["hunters"])
     fy = round(hy[len(hy) // 2] - 0.05, 3) if hy else 0.0
