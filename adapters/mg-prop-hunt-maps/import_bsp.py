@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt .bsp (VBSP 19/20) into a mg-prop-hunt map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--start-island] [--dress=N] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--floor=m] [--min-size=m] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--max-wire=bytes] [--bounds=x0,y0,z0,x1,y1,z1]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=players_per_hunter=4] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--start-island] [--dress=N] [--prune-pockets] [--widen-doors] [--widen-thick-doors] [--prune-levels] [--pocket-margin=0.07] [--floor=m] [--min-size=m] [--terrain] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--max-wire=bytes] [--bounds=x0,y0,z0,x1,y1,z1] [--topup-hunters]
 
 --field=<name>=<number> sets a document number the map's own band wants (players_per_hunter, round_seconds,
 hide_seconds), found by headless_bots, so a rerun of the importer keeps it.
@@ -15,6 +15,10 @@ author walled in with counters too tall for a bot to step over, where one prop a
 
 --prune-pockets drops every floor prop that leaves a sliver of floor the bots' mesh cuts off (a small flat's
 beds and bookcases a hand off a wall), by a flood fill over a grid, instead of one --drop-beside at a time.
+
+Start top-up (dotbsp/spawntopup.py): props are topped up to 8 on the floor level(s) the author's starts stand on (not y = 0, so a
+raised floor works). A map with no hunter start gets three (otherwise the build crashes); a map with one or two hunter starts keeps
+them unless --topup-hunters asks for three.
 
 --widen-doors widens a flat's metre-wide doorways to the game's 1.4 m, which the bots' mesh can pass.
 
@@ -68,6 +72,7 @@ sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402  (a shim over dot-map's shared reader; it puts dotbsp on sys.path)
 from dotbsp import boxes as dboxes, docboxes, passledger  # noqa: E402  (the shared passes over a document's boxes)
 from dotbsp import models as bsp_models  # noqa: E402  (the models a map packs in its pakfile)
+from dotbsp import spawntopup  # noqa: E402  (props/hunters start top-up)
 from dotbsp import standins  # noqa: E402
 from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the origin shift and bounds, for the audit)
 import build_maps  # noqa: E402
@@ -1336,6 +1341,7 @@ def main(argv):
     terrain_args = {}
     box_budget = {}
     bounds = None
+    topup_hunters = False
     for a in argv[1:]:
         if a.startswith("--floor="):
             FLOOR = float(a[8:])
@@ -1360,6 +1366,8 @@ def main(argv):
             bounds = [float(t) for t in a[9:].split(",")]
             if len(bounds) != 6:
                 sys.exit("--bounds wants x0,y0,z0,x1,y1,z1")
+        elif a == "--topup-hunters":
+            topup_hunters = True
         elif a.startswith("--dress="):
             dress = int(a[8:])
         elif a == "--start-island":
@@ -1598,35 +1606,9 @@ def main(argv):
         if not m._floored(gx, sy - 0.05, gz):
             continue
         m.spawn("props" if i % 2 == 0 else "hunters", gx, gz, yaw=ang[1] - 90.0, y=(max(gy, 0.0) if floor is None else floor) + 0.05)
-    # The author gave six starts; a prop hunt wants six hiding starts and three hunter ones.
-    # More are taken from the clearest open floor, at least 3 m from any other start.
-    have = [(sp["at"][0], sp["at"][2]) for side in m.spawns.values() for sp in side]
-    # With one author start the level it stands on (a raised terrace) is the level to look on, not zero.
-    floor_y = round(m.spawns["props"][0]["at"][1] - 0.05, 3) if m.spawns["props"] and not m.spawns["hunters"] else 0.0
-    for size, x, z in m.spots(y=floor_y, step=1.5, top=60):
-        if len(m.spawns["props"]) >= 8:
-            break
-        if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
-            m.spawn("props", x, z, yaw=0.0, y=floor_y + 0.05)
-            have.append((x, z))
-    # One author start deals nothing to the hunters: top them up to the game's three the same way.
-    for size, x, z in m.spots(y=floor_y, step=1.5, top=60):
-        if len(m.spawns["hunters"]) >= 3:
-            break
-        if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
-            m.spawn("hunters", x, z, yaw=0.0, y=floor_y + 0.05)
-            have.append((x, z))
-    # Still short (the author's starts mostly stood on terrain left out, so there is no floor at floor_y): the nearest
-    # clear floor to the hiders' starts gives them the three they need and keeps both joined.
-    if m.spawns["props"] and len(m.spawns["hunters"]) < 3:
-        cx = sum(sp["at"][0] for sp in m.spawns["props"]) / len(m.spawns["props"])
-        cz = sum(sp["at"][2] for sp in m.spawns["props"]) / len(m.spawns["props"])
-        for size, x, z in sorted(m.spots(step=1.5, top=60), key=lambda t: (t[1] - cx) ** 2 + (t[2] - cz) ** 2):
-            if len(m.spawns["hunters"]) >= 3:
-                break
-            if all((x - a) ** 2 + (z - b) ** 2 >= 9.0 for a, b in have):
-                m.spawn("hunters", x, z, yaw=0.0)
-                have.append((x, z))
+    # The author gave six starts; a prop hunt wants six hiding starts and three hunter ones (dotbsp.spawntopup).
+    # A map with no hunter start gets three; one with one or two only with --topup-hunters.
+    spawntopup.top_up(m, hunters_always=topup_hunters)
     docboxes.lend_starts(m.spawns, "props", "hunters")
     hy = sorted(sp["at"][1] for sp in m.spawns["hunters"])
     fy = round(hy[len(hy) // 2] - 0.05, 3) if hy else 0.0
