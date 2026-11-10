@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Fits a COMMITTED box document to a budget, in place: the importer's --max-boxes / --max-wire passes without a re-import.
 
-    python3 -P tools/fit_doc.py MAPS_REPO_TOOLS_DIR DOC.json [--max-boxes=N] [--max-wire=BYTES] [--out=FILE]
+    python3 -P tools/fit_doc.py MAPS_REPO_TOOLS_DIR DOC.json [--max-boxes=N] [--max-wire=BYTES] [--join-spawns] [--out=FILE]
 
 MAPS_REPO_TOOLS_DIR is the map repository's `tools/` (its build_maps.py gives the prop sizes and footprints, which the props the cut
 boxes leave hanging or buried are dropped by). A re-import throws a tuned map's props, balance and fixes away; this keeps them and
 only cuts the smallest unprotected boxes (floors, stairs, door frames and the ground under an anchor stay, lost reach is restored),
 rounding to centimetres first. Prints the box count, the wire size and the spawns' reach before and after.
+--join-spawns moves the starts that stand cut off from the rest onto the walkable component holding most of them
+(docboxes.join_spawns: a seeker on a pad in a terrain hole, a hider on a ledge); it runs without a budget too.
 """
 import json
 import os
@@ -24,19 +26,26 @@ def main(argv):
     tools, path = args
     out = path
     budget = {}
+    join = False
     for a in argv[1:]:
         if a.startswith("--out="):
             out = a[6:]
+        elif a == "--join-spawns":
+            join = True
         elif a.startswith("--") and not docboxes.budget_flag(a, budget):
             sys.exit("unknown flag %s" % a)
-    if not budget:
-        sys.exit("give --max-boxes and/or --max-wire")
+    if not budget and not join:
+        sys.exit("give --max-boxes, --max-wire and/or --join-spawns")
     sys.path.insert(0, tools)
     import build_maps  # noqa: E402
     doc = json.load(open(path))
     print("before: %d boxes, %d props, %d bytes on the wire" % (len(doc["boxes"]), len(doc["props"]), docboxes.wire_size(doc)))
-    docboxes.apply_cap(doc, budget, size_of=build_maps.size_of, footprint=build_maps.footprint)
+    if budget:
+        docboxes.apply_cap(doc, budget, size_of=build_maps.size_of, footprint=build_maps.footprint)
     print("spawns snapped onto their floor: %d" % docboxes.snap_spawns(doc))
+    if join:
+        print("spawns joined to the others' floor: %d" % docboxes.join_spawns(doc, footprint=build_maps.footprint))
+        print("spawns reachable from the first: %d of %d" % docboxes.reach_report(doc)[:2])
     print("after: %d boxes, %d props, %d bytes on the wire" % (len(doc["boxes"]), len(doc["props"]), docboxes.wire_size(doc)))
     with open(out, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")

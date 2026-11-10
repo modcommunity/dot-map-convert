@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community prop-hunt or hide-and-seek .bsp (VBSP 19/20) into a hide-n-seek map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--no-doors] [--floor=m] [--min-size=m] [--terrain] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--slide-doors] [--scale=k] [--drop-door=x,z] [--cover=N] [--cover-gap=m] [--lobby=r,gap] [--cover-seed=N] [--seekers-at=x,z] [--anchor=N] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--max-wire=bytes] [--thin-small=m3[,m]] [--drop-sky-slab] [--keep-reach] [--reach-hiders[=N]]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--no-doors] [--floor=m] [--min-size=m] [--terrain] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--slide-doors] [--scale=k] [--drop-door=x,z] [--cover=N] [--cover-gap=m] [--lobby=r,gap] [--cover-seed=N] [--seekers-at=x,z] [--anchor=N] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--max-wire=bytes] [--thin-small=m3[,m]] [--drop-sky-slab] [--keep-reach] [--reach-hiders[=N]] [--join-spawns]
 
 --merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> shrink a trim-heavy map under the 6000-box limit: touching
 same-material boxes join, then detail boxes below that size go (a panel a metre long stays). Off by default; counts are printed.
@@ -11,6 +11,7 @@ same-material boxes join, then detail boxes below that size go (a panel a metre 
 --drop-sky-slab drops the author's unseen sky ceiling (a thin, map-wide, solid slab over every start, prop and light); the unseen side walls stay.
 --keep-reach (with the trim flags) measures where the seekers' first start can walk before and after the trim and puts back the trimmed boxes a lost route needs (a spiral stair's thin steps, so the top floor stays joined).
 --reach-hiders[=N] drops hider starts the seekers cannot walk to and tops every storey of reachable floor up to N (default 4) hider starts; the per-storey counts are printed.
+--join-spawns (last, after the terrain is laid) moves every start cut off from the rest onto the walkable component holding most of them (docboxes.join_spawns; the importer's pads in terrain holes stranded hs_mountainresort's seekers).
 
 --field=<name>=<number> sets a document number the map's own band wants (round_seconds, hide_seconds), found by headless_bots, so a rerun of the importer keeps it.
 
@@ -386,6 +387,7 @@ def main(argv):
     pockets = False
     box_budget = {}
     reach_hiders = 0
+    join = False
     widen = False
     no_doors = False
     slide = False
@@ -457,6 +459,8 @@ def main(argv):
             pass
         elif a == "--reach-hiders" or a.startswith("--reach-hiders="):
             reach_hiders = int(a.partition("=")[2] or 4)
+        elif a == "--join-spawns":
+            join = True
         elif a == "--prune-pockets":
             pockets = True
         elif a.startswith("--style="):
@@ -828,6 +832,8 @@ def main(argv):
         raise SystemExit("the document no longer shares the map's lists: settle the spawns from the document")
     if terrain:
         swap_terrain(doc, tris, "grass", TERRAIN_TINT, budget)
+    if join:
+        print("spawns joined to the others' floor: %d" % docboxes.join_spawns(doc, footprint=build_maps.footprint))
     docboxes.apply_cap(doc, box_budget)
     # The frame a world pack regenerated at this scale is drawn in (tools/worlds.tsv, regen_worlds.sh): the shift above, undone.
     doc["world"] = {"pack": "hs_world_" + mid, "metres_per_unit": round(S, 6), "offset": [round(-ox, 5), round(-oy, 5), round(-oz, 5)]}
