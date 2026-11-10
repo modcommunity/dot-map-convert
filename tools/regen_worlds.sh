@@ -20,10 +20,14 @@ try:
     for e in json.load(open(r+"/maps.json"))["maps"]:
         if e["id"]==m: print(e.get("author","unknown").replace(" ","_"), e.get("source","-").replace(" ","_")); sys.exit()
 except Exception: pass
+try:
+    for e in json.load(open(r+"/maps/"+m+"/licence.json")):
+        if e.get("author") and e.get("source_url"): print(e["author"].replace(" ","_"), e["source_url"]); sys.exit()
+except Exception: pass
 print("unknown -")' "$ROOT" "$m")
     python3 -P "$BSP" store "$f" --game "$GAME" --author "${author//_/ }" --page "${page//_/ }" --licence "none stated" --no-share-check "credited with removal on request" > /dev/null 2>&1
     mkdir -p "$ROOT/worlds/$m"
-    ${HEAVY-heavy --} timeout 1800 python3 -P "$BSP" regen "$GAME/$(basename "$f" .bsp)" --out "$ROOT/worlds/$m/$m" --pbr-store "$ROOT/pbr-library" --model-store "$ROOT/model-library" > "${TMPDIR:-/tmp}/regen-$m.log" 2>&1 < /dev/null
+    ${HEAVY-heavy --} timeout 1800 python3 -P "$BSP" regen "$GAME/$(basename "$f" .bsp | tr A-Z a-z)" --out "$ROOT/worlds/$m/$m" --pbr-store "$ROOT/pbr-library" --model-store "$ROOT/model-library" > "${TMPDIR:-/tmp}/regen-$m.log" 2>&1 < /dev/null
     r=$?; [ $r -ne 0 ] && rc=1
     echo "$m exit $r"
 done
