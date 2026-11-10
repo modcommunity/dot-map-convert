@@ -1683,6 +1683,7 @@ def main(argv):
             print("dropped %d door trim posts" % drop_trim_posts(doc["boxes"]))
         print("widened %d doorways to 1.4 m" % n_doors)
     print("ground pads under %d spawn groups with no floor" % docboxes.pad_spawns(doc, list(doc["spawns"])))
+    print("spawns snapped onto their floor: %d" % docboxes.snap_spawns(doc))
     docboxes.apply_budget(doc["boxes"], box_budget)
     if start_island:
         moved = docboxes.restart_on_largest_island(doc, build_maps.size_of, build_maps.footprint)
