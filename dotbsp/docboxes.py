@@ -915,7 +915,7 @@ def drop_other_terrain(doc, material="grass", min_cells=2000, log=print):
 
 
 def budget_flag(arg, opts):
-    """Reads --merge-boxes, --min-box-volume=<m3>, --min-box-thickness=<m>, --max-boxes=<n>, --max-wire=<bytes>, --drop-sky-slab and --keep-reach into opts; True when arg was one."""
+    """Reads --merge-boxes, --min-box-volume=<m3>, --min-box-thickness=<m>, --max-boxes=<n>, --max-wire=<bytes>, --thin-small=<m3>[,<m>], --drop-sky-slab and --keep-reach into opts; True when arg was one."""
     if arg == "--merge-boxes":
         opts["merge"] = True
     elif arg.startswith("--min-box-volume="):
@@ -926,6 +926,9 @@ def budget_flag(arg, opts):
         opts["max"] = int(arg.split("=", 1)[1])
     elif arg.startswith("--max-wire="):
         opts["wire"] = int(arg.split("=", 1)[1])
+    elif arg.startswith("--thin-small="):
+        v, _, d = arg.split("=", 1)[1].partition(",")
+        opts["thin_small"] = (float(v), float(d or 2.2))
     elif arg == "--drop-sky-slab":
         opts["sky"] = True
     elif arg == "--keep-reach":
@@ -940,16 +943,33 @@ def apply_budget(boxes, opts, doc=None):
 
     --drop-sky-slab needs `doc` (it looks at the spawns, props and lights). --keep-reach (needs `doc` too)
     measures where the spawns can walk before and after, and puts back the trimmed boxes a lost route needs."""
-    if not any(k in opts for k in ("merge", "volume", "thickness", "sky")):
+    if not any(k in opts for k in ("merge", "volume", "thickness", "sky", "thin_small")):
         return
     before = len(boxes)
     sky = drop_sky_slab(doc, boxes) if opts.get("sky") and doc is not None else 0
     snapshot = list(boxes) if opts.get("keep_reach") and doc is not None else None
     merged = merge_touching(boxes) if opts.get("merge") else 0
     trimmed = drop_trim(boxes, opts.get("volume", 0.0), opts.get("thickness", 0.0))
+    if "thin_small" in opts and doc is not None and doc["boxes"] is boxes:
+        trimmed += thin_small(doc, *opts["thin_small"])
     print("box budget: %d boxes, sky slab %d, merged %d, dropped %d trim, %d left" % (before, sky, merged, trimmed, len(boxes)))
     if snapshot is not None and (merged or trimmed):
         keep_reach(doc, boxes, snapshot)
+
+
+@passledger.tracked("thin_small", lambda doc, *a, **k: doc["boxes"])
+def thin_small(doc, max_volume=0.5, max_dim=2.2):
+    """Drops every box under `max_volume` m3 and shorter than `max_dim` m on every side, except the ones
+    `cap_protected` names: a floor or stair, a door's frame, the ground under a spawn, prop or light.
+
+    The thinning a 13,000-box import needs to fit the wire (deco_mansion's hand-run rule: 0.5 m3, 2.2 m).
+    A lost route is put back by --keep-reach, which runs after. Returns how many went."""
+    boxes = doc["boxes"]
+    keep = cap_protected(doc)
+    n = len(boxes)
+    boxes[:] = [b for i, b in enumerate(boxes)
+                if i in keep or b["size"][0] * b["size"][1] * b["size"][2] >= max_volume or max(b["size"]) >= max_dim]
+    return n - len(boxes)
 
 
 @passledger.tracked("drop_sky_slab", lambda doc, boxes=None, **k: doc["boxes"] if boxes is None else boxes)

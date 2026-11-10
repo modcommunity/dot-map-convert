@@ -66,6 +66,39 @@ class SkySlab(unittest.TestCase):
         self.assertEqual(len(d["boxes"]), 1)
 
 
+class ThinSmall(unittest.TestCase):
+    def test_flag(self):
+        o = {}
+        self.assertTrue(D.budget_flag("--thin-small=0.5,2.2", o))
+        self.assertEqual(o, {"thin_small": (0.5, 2.2)})
+        o = {}
+        D.budget_flag("--thin-small=0.3", o)
+        self.assertEqual(o["thin_small"], (0.3, 2.2))
+
+    def test_small_clutter_goes_and_structure_stays(self):
+        clutter = box(2, 2.4, 1, 1.4, 8, 8.4)
+        long_bar = box(2, 4.4, 1, 1.1, 8, 8.1)
+        d = doc_of(two_storeys() + [clutter, long_bar])
+        floor = d["boxes"][0]
+        D.apply_budget(d["boxes"], {"thin_small": (0.5, 2.2)}, d)
+        self.assertNotIn(clutter, d["boxes"])
+        self.assertIn(long_bar, d["boxes"])
+        self.assertIn(floor, d["boxes"])
+
+    def test_ground_under_a_prop_stays(self):
+        under = box(2, 2.4, 0.5, 1.0, 8, 8.4)
+        d = doc_of(two_storeys() + [under])
+        d["props"].append({"id": "x", "at": [2.2, 1.0, 8.2]})
+        D.thin_small(d)
+        self.assertIn(under, d["boxes"])
+
+    def test_with_keep_reach_the_stair_comes_back(self):
+        d = doc_of(two_storeys())
+        want = D._reach_keys(d["boxes"], (1.0, 0.05, 1.0))
+        D.apply_budget(d["boxes"], {"thin_small": (0.5, 2.2), "keep_reach": True}, d)
+        self.assertEqual(D._reach_keys(d["boxes"], (1.0, 0.05, 1.0)), want)
+
+
 class KeepReach(unittest.TestCase):
     def test_flag(self):
         o = {}
@@ -127,6 +160,7 @@ class Adapter(unittest.TestCase):
         self.assertIn('docboxes.apply_budget(doc["boxes"], box_budget, doc)', src)
         self.assertIn("docboxes.place_hiders(doc, per_level=reach_hiders)", src)
         self.assertIn('"--reach-hiders"', src)
+        self.assertIn("--thin-small", src)
 
 
 if __name__ == "__main__":
