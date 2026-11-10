@@ -1133,9 +1133,22 @@ def cap_protected(doc, grid=2.0):
     return keep
 
 
-def _flood(boxes, start_pt, cell, step, head):
+def _terrain_tops(terrain, cell):
+    """{(xi, zi): ground height} on the `cell` grid for a document's `terrain` block (holes and outside left out)."""
+    hf, _ = _terrain.Heightfield.decode(terrain)
+    tops = {}
+    for xi in range(int((hf.x0 + 0.01) // cell), int((hf.x0 + (hf.nx - 1) * hf.cell) // cell) + 1):
+        for zi in range(int((hf.z0 + 0.01) // cell), int((hf.z0 + (hf.nz - 1) * hf.cell) // cell) + 1):
+            h = hf.height((xi + 0.5) * cell, (zi + 0.5) * cell)
+            if h is not None:
+                tops[(xi, zi)] = h
+    return tops
+
+
+def _flood(boxes, start_pt, cell, step, head, ground=None):
     """(places, seen, find): the standing places per grid column, the set of (xi, zi, top) reached from
-    `start_pt`, and find(point) -> the (xi, zi, top) a point stands on or None."""
+    `start_pt`, and find(point) -> the (xi, zi, top) a point stands on or None. `ground` is {(xi, zi): height}
+    of the terrain heightfield: a column gets its ground as a place unless a box top is already at that height."""
     cols = _intervals(boxes, cell)
     places = {}
     for k, iv in cols.items():
@@ -1147,6 +1160,9 @@ def _flood(boxes, start_pt, cell, step, head):
             else:
                 merged.append([lo, hi])
         places[k] = [m[1] for n, m in enumerate(merged) if n + 1 == len(merged) or merged[n + 1][0] - m[1] >= head]
+    for k, h in (ground or {}).items():
+        if not any(abs(t - h) <= 0.02 for t in places.get(k, ())):
+            places.setdefault(k, []).append(h)
 
     def find(p):
         xi, zi = int(p[0] // cell), int(p[2] // cell)
@@ -1179,13 +1195,15 @@ def reach_report(doc, boxes=None, cell=0.25, step=0.45, head=1.7):
 
     A multi-storey flood on a `cell` grid: a column's standing places are the tops of its solid boxes with
     `head` metres clear above, and two neighbouring places join when their tops differ by `step` or less.
-    Props and body radius are left out (prune_pockets owns those): this is for comparing a document
-    before and after boxes are cut. Returns (reached, total, unreached spawn indices in list order)."""
+    The document's terrain heightfield counts as ground (a body walks it, by `step`). Props and body radius
+    are left out (prune_pockets owns those; prop sizes live in the games' tables): this is for comparing a
+    document before and after boxes are cut. Returns (reached, total, unreached spawn indices in list order)."""
     boxes = doc["boxes"] if boxes is None else boxes
     spawns = [s["at"] for lst in doc.get("spawns", {}).values() for s in lst]
     if not spawns:
         return 0, 0, []
-    places, seen, find = _flood(boxes, spawns[0], cell, step, head)
+    ground = _terrain_tops(doc["terrain"], cell) if doc.get("terrain") else None
+    places, seen, find = _flood(boxes, spawns[0], cell, step, head, ground)
     if find(spawns[0]) is None:
         return 0, len(spawns), list(range(len(spawns)))
     lost = []

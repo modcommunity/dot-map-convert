@@ -268,5 +268,17 @@ class DropUnsupportedProps(unittest.TestCase):
         self.assertEqual(len(d["props"]), 1)
 
 
+class TerrainReach(unittest.TestCase):
+    def test_spawn_across_a_heightfield_is_reached(self):
+        from dotbsp.terrain import Heightfield
+        hf = Heightfield(10.0, 0.0, 2.0, 6, 4, [0.0] * 24)
+        floor = box(-3, 3, -0.2, 0.0, -3, 3)
+        d = doc_of([floor], spawns={"players": [{"at": [0.0, 0.0, 0.0], "yaw": 0}, {"at": [15.0, 0.0, 3.0], "yaw": 0}]})
+        self.assertEqual(D.reach_report(d)[2], [1])
+        d["boxes"].append(box(2.5, 10.5, -0.2, 0.0, -1, 1))
+        d["terrain"] = hf.encode()
+        self.assertEqual(D.reach_report(d)[2], [])
+
+
 if __name__ == "__main__":
     unittest.main()
