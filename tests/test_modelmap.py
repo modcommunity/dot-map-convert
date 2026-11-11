@@ -86,7 +86,8 @@ class ModelMap(unittest.TestCase):
         self.assertIsNone(free.get("props_trainyard/portable_stairs001.mdl"))
         self.assertEqual(free.get("props_c17/furnituretable001a.mdl")["stand_in"], "table")
         pick = standins.picks()["models/props_trainyard/portable_stairs001.mdl"]
-        self.assertEqual(pick["stand_in"], "lib/kenney_prototype-kit_stairs")
+        # Eleven treads, not the prototype kit's four: a 1.2 m step reads as a block, not a climb.
+        self.assertEqual(pick["stand_in"], "lib/kenney_furniture-kit_stairs")
         self.assertGreaterEqual(pick["size"], 4.5)
         self.assertEqual(pick["row"]["licence"], "CC0-1.0")
 
