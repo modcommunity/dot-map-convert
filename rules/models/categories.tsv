@@ -15,6 +15,18 @@
 ^wooden_barrier01$	NONE	2.0	1.0	0.2	box	8a6a40
 ^vuvuzela(blue|red|yellow)$	NONE	0.1	0.1	0.6	cyl	4060c0
 ^(a|clo|win\d?|error)$	NONE	0.5	0.5	0.5	box	c0c0c0
+# zombie-zone-maps rough stand-ins (2026-11-11): playground gear was a fence gate and a chair, the transport helicopter a flatbed truck; own CC0 models (tools/models/playground.py, helicopter.py)
+^playground_swingset	dm_swingset	3.6	2.4	1.8	box	807860
+^playgroundslide	dm_slide	3.0	2.0	0.8	box	807860
+^playground_jungle_gym	dm_junglegym	2.4	2.0	2.4	box	807860
+^playground_teetertoter_seat	dm_teeterplank	2.4	0.63	0.3	box	807860
+^playground_teetertoter_stan	dm_teeterstand	0.1	0.48	0.35	box	807860
+^playground_carousel	dm_carousel	2.4	0.9	2.4	cyl	807860
+^playgroundtick-tack-toe_post	dm_tictactoepost	0.3	1.4	0.3	cyl	807860
+^playgroundtick-tack-toe_block	dm_tictactoeblock	0.52	0.52	0.52	box	807860
+^mh-53j$	dm_helifuselage	27.7	6.2	8.5	box	606870
+^mh-53j_rotor	dm_helirotor	27.0	0.06	27.0	box	303030
+^mh-53j_tail	dm_helitailrotor	4.2	0.06	4.2	box	303030
 # sunken_resort (2026-11-09): lab machinery and wall panels that had no category; plain generated fixtures (CC0, TMC) where no library model reads as the same thing
 ^128_fuse_set	NONE	0.3	2.1	2.1	box	708070
 ^claw_	NONE	0.2	1.0	0.4	box	808890
