@@ -14,7 +14,8 @@ STORES="$ROOT"; [ -d "$ROOT/.stores" ] && STORES="$ROOT/.stores"
 ids=("$@"); [ ${#ids[@]} -eq 0 ] && ids=($(ls "$ROOT/maps"))
 rc=0
 for m in "${ids[@]}"; do
-    f="$(find "$SRC/" -maxdepth 2 -iname "*$m.bsp" | head -1)"
+    # A map id is hyphenated (cp-orange-x3) while its source BSP may keep the underscores (cp_orange_x3.bsp).
+    f="$(find "$SRC/" -maxdepth 2 \( -iname "*$m.bsp" -o -iname "*${m//-/_}.bsp" \) | head -1)"
     [ -z "$f" ] && { echo "$m NO SOURCE"; rc=1; continue; }
     read -r author page < <(python3 -P -c 'import json,sys
 r,m=sys.argv[1:3]
