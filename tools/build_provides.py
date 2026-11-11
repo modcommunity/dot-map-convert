@@ -8,6 +8,8 @@ A repo's tools/build_provides.py is a thin config that imports this and calls `r
     pack="single": one provides.json at the root, one `map` entry per document in `directory`
     pack="each":   maps/<id>/provides.json and licence.json per folder (each folder is its own pack), entry scene = <id>.json
 
+A document with a source/source_url that no licence.json entry covers fails (both modes).
+
 Run with --check to exit 1 on a stale file, a bad id or a scene the pack lacks. Entries come from the
 documents on disk, so a map added by the builders is listed with no second edit. `scene` is relative to
 the pack root, as the publisher requires.
@@ -24,8 +26,29 @@ def _entry(mid, name, scene, map_kind):
     return {"kind": "map", "id": mid.replace("-", "_"), "name": name, "scene": scene, "map_kind": map_kind}
 
 
+def _covers(entry_paths, rel):
+    # "" is the base entry for original content; a credited map needs a path of its own (file, folder or prefix).
+    return any(p and (rel == p or rel.startswith(p if p.endswith("/") else p + "/")) for p in entry_paths)
+
+
+def _unlicensed(root, rel):
+    """Problem text when the document at `rel` names a source/source_url but no licence.json entry covers its path."""
+    try:
+        doc = json.load(open(os.path.join(root, rel)))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(doc, dict) or not (doc.get("source") or doc.get("source_url")):
+        return None
+    src = os.path.join(root, "licence.json")
+    entries = json.load(open(src)) if os.path.isfile(src) else []
+    if any(_covers(e.get("paths", []), rel) for e in entries):
+        return None
+    return rel + " has a source but no licence.json entry covers it"
+
+
 def _single(root, title, games, directory, doc_kind, map_kind, argv):
     entries = []
+    lic_bad = []
     for name in sorted(os.listdir(os.path.join(root, directory))):
         if not name.endswith(".json"):
             continue
@@ -34,11 +57,14 @@ def _single(root, title, games, directory, doc_kind, map_kind, argv):
         if doc_kind is not None and doc.get("kind") != doc_kind:
             continue
         mid = name[:-5]
+        miss = _unlicensed(root, directory + "/" + name)
+        if miss:
+            lic_bad.append(miss)
         kind = map_kind(doc) if callable(map_kind) else map_kind
         entries.append(_entry(mid, doc.get("name") or mid, directory + "/" + name, kind))
     doc = {"schema": 1, "title": title, "kinds": ["map"], "games": games, "entries": entries}
 
-    bad = []
+    bad = list(lic_bad)
     seen = set()
     for e in entries:
         if not re.fullmatch(r"[a-z0-9_]+", e["id"]) or e["id"] in seen:
@@ -106,6 +132,9 @@ def _each(root, games, skip, map_kind, argv, worlds=False):
         if not os.path.isfile(os.path.join(folder, mid + ".json")):
             bad.append("missing " + mid + "/" + mid + ".json")
             continue
+        miss = _unlicensed(root, "maps/" + mid + "/" + mid + ".json")
+        if miss:
+            bad.append(miss)
         name = " ".join(w if w.isdigit() else w.capitalize() for w in re.split("[_-]", mid))
         doc = {"schema": 1, "title": name, "kinds": ["map"], "games": games,
                "entries": [_entry(mid, name, mid + ".json", map_kind(mid))]}
