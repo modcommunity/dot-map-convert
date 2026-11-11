@@ -2,3 +2,5 @@
 func_door\.OnFully(Open|Closed)->stop_sound_room\d+	the door's PlaySound output stops sound entities (stop_sound_room1..12) that the compiled map does not contain; the door still plays its own sounds
 trigger_once\.OnStartTouch->physboom1	the trigger points at a physboom1 entity that was never placed in the map
 prop_physics\.OnBreak->crate_10_grenade_maker	the crate points at a grenade maker that was never placed in the map
+team_control_point_master\.OnWonByTeam[12]->counter_(red|blu)_win	the round master points at red and blue win counters that were never placed in the map
+trigger_capture_area\.OnCapTeam[12]->prop_cap_3	the capture areas point at a prop_cap_3 that was never placed in the map

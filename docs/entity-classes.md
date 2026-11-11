@@ -281,3 +281,6 @@ What a class becomes:
 | `trigger_*` | 0 (0) | a trigger | `data`: logic |
 | `env_*` | 0 (0) | an effect or screen logic | `data` |
 | `point_*` | 0 (0) | point logic | `data` |
+| `team_control_point` | 0 | a Team Fortress 2 capture point -- the importer reads its index, name and owner into the objective markers | `point` |  |
+| `team_control_point_master` | 0 | the Team Fortress 2 control point round rules -- the converted game runs its own mode | `data` |  |
+| `func_regenerate` | 0 | a Team Fortress 2 resupply cabinet -- the importer reads its brush box into the resupply volumes | `volume` |  |
