@@ -338,12 +338,20 @@ def repo_importer(repo):
     tools = os.path.dirname(path)
     sys.path.insert(0, tools)
     sys.modules.pop("build_maps", None)
+    # The launcher finds the converter as its sibling ../dot-map-convert, which a worktree under ~/wt does not have;
+    # point it at the checkout under test so the result does not depend on where the maps repository sits.
+    saved = os.environ.get("DOTBSP_PATH")
+    os.environ["DOTBSP_PATH"] = os.path.dirname(HERE)
     try:
         spec = importlib.util.spec_from_file_location("copy_" + repo.replace("-", "_"), path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
     finally:
         sys.path.remove(tools)
+        if saved is None:
+            os.environ.pop("DOTBSP_PATH", None)
+        else:
+            os.environ["DOTBSP_PATH"] = saved
     return mod
 
 
