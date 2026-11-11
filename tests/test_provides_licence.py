@@ -1,0 +1,58 @@
+"""build_provides refuses a document with a source that no licence.json entry covers.
+Run: python3 -P tests/test_provides_licence.py
+"""
+
+import json
+import os
+import sys
+import tempfile
+import unittest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "tools"))
+
+import build_provides  # noqa: E402
+
+
+def _pack(docs, licence):
+    root = tempfile.mkdtemp()
+    os.makedirs(os.path.join(root, "maps"))
+    for name, doc in docs.items():
+        json.dump(doc, open(os.path.join(root, "maps", name + ".json"), "w"))
+    if licence is not None:
+        json.dump(licence, open(os.path.join(root, "licence.json"), "w"))
+    return root
+
+
+def _run(root):
+    return build_provides.run(root, ["g/x"], title="T", directory="maps", map_kind="k", argv=["--check"])
+
+
+BASE = {"paths": [""], "licence": "MIT"}
+
+
+class T(unittest.TestCase):
+    def test_original_without_source_is_covered_by_base(self):
+        root = _pack({"a": {"name": "A"}}, [BASE])
+        self.assertIsNone(build_provides._unlicensed(root, "maps/a.json"))
+
+    def test_source_with_only_base_fails(self):
+        root = _pack({"a": {"name": "A", "source": "https://x"}}, [BASE])
+        self.assertIn("no licence.json entry", build_provides._unlicensed(root, "maps/a.json"))
+        self.assertEqual(_run(root), 1)
+
+    def test_source_without_licence_file_fails(self):
+        root = _pack({"a": {"source_url": "https://x"}}, None)
+        self.assertIsNotNone(build_provides._unlicensed(root, "maps/a.json"))
+
+    def test_exact_and_prefix_paths_cover(self):
+        c = build_provides._covers
+        self.assertTrue(c(["maps/a.json"], "maps/a.json"))
+        self.assertTrue(c(["maps/b"], "maps/b/b.json"))
+        self.assertTrue(c(["maps/b/"], "maps/b/b.json"))
+        self.assertFalse(c(["maps/a"], "maps/ab.json"))
+        self.assertFalse(c([""], "maps/a.json"))
+
+
+if __name__ == "__main__":
+    unittest.main()
