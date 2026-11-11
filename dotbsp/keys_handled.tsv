@@ -29,3 +29,6 @@ func_breakable	gibmodel	ignored	the original's gib model; breakage debris is cos
 worldspawn	no_decomp	ignored	decompiler marker, not a map setting
 env_projectedtexture	(lightcolor|texturename)	ignored	the original's projected texture; the converted lamp has no projection
 point_servercommand	(sv_.*|phys_.*)	ignored	a console command written as a key by the decompiler (gravity, friction, air acceleration, push scale); the class is dropped, a map does not run commands on this server
+func_tracktrain	(sounds|style)	ignored	move sound number and path style of the original train; the stand-in mover has one sound and a fixed path follow
+.*	zhlt_lightflags	ignored	compile-time lighting flag of the original tools
+worldspawn	MaxRange	ignored	far view distance of the original engine; the converted camera uses its own
