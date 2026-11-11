@@ -61,7 +61,7 @@ Always `python3 -P` (never `-I`, which hides the user-site numpy): the maps are 
 
 ## Why here, and why not in the games
 
-Six copies of the reader and five box converters had grown in the map repositories and in game-g2gfast, each with a fix the others lacked (the table below). A reader fix reached one game. It lives in its own repository, apart from the dot-map addon, so no converter code ships in an addon copy or a pack and the addon holds only what a game runs at load. A game finds it as the sibling checkout `../dot-map-convert` that dot-bootstrap makes, or at `$DOTBSP_PATH`. The converter finds the addon it writes into and reads data from (`addons/dot_map`: the stand-in models, sounds and surfaces, `io/catalogue.json`) as the sibling `../dot-map`, or at `$DOT_MAP_DIR`.
+Six copies of the reader and five box converters had grown in the map repositories and in game-airdrift, each with a fix the others lacked (the table below). A reader fix reached one game. It lives in its own repository, apart from the dot-map addon, so no converter code ships in an addon copy or a pack and the addon holds only what a game runs at load. A game finds it as the sibling checkout `../dot-map-convert` that dot-bootstrap makes, or at `$DOTBSP_PATH`. The converter finds the addon it writes into and reads data from (`addons/dot_map`: the stand-in models, sounds and surfaces, `io/catalogue.json`) as the sibling `../dot-map`, or at `$DOT_MAP_DIR`.
 
 The split is: dot-map reads the format and cuts brushes into boxes; the game decides what an entity means (which class is a spawn, which brush entity is a gate, which material is glass) and writes its own document. That is the adapter, and it is the only per-game part.
 
@@ -101,13 +101,13 @@ Per-game importers are in `adapters/<repo>/` (launchers stay in each map reposit
 | --- | --- |
 | Leaf size by the file's version (56 bytes in v19, 32 from v20), not by which size divides the lump | every copy of `bsp_read.py` |
 | A v21 lump directory can be stored version, offset, length; both orders are tried and the one that fits the file wins | new here: a v21 map read the plain way slices plausible bytes from the wrong place |
-| Texture names are Latin-1, not ASCII | game-g2gfast `bsp_read.py` |
-| Packed zip read entry by entry, so one bad entry costs that entry; names decoded as the mapper's codepage, not cp437 | game-g2gfast `bsp_import.py` |
+| Texture names are Latin-1, not ASCII | game-airdrift `bsp_read.py` |
+| Packed zip read entry by entry, so one bad entry costs that entry; names decoded as the mapper's codepage, not cp437 | game-airdrift `bsp_import.py` |
 | Bevel sides skipped in hulls and planes | every copy |
-| Static props from the `sprp` game lump, v4 to v11 | game-g2gfast `bsp_props.py` |
+| Static props from the `sprp` game lump, v4 to v11 | game-airdrift `bsp_props.py` |
 | A brush turned about the vertical is one box: every upright side's angle tried, corners within 1.5 units | mg-prop-hunt-maps and hide-n-seek-maps (zombie-zone-maps tried one angle at 0.5) |
 | An upright prism (a column, a curved wall's segment) is one turned box | mg-prop-hunt-maps; here only when its plan fills 80% of the box, because the box round a triangular column is twice the column |
-| A single-slope ramp as one tilted box, for a document that can tilt one (`tilt=True`) | game-playlot-maps |
+| A single-slope ramp as one tilted box, for a document that can tilt one (`tilt=True`) | playlot-maps |
 | Slabs cut along the slope, each spanning the brush's own cross-section at its middle | zombie-zone-maps (the others cut along the longer axis, across the bounding box) |
 | A wedge is not a box: an axis box wants all eight corners | new here, found by the tests; three copies wrote a ramp as a block because a wedge's six corners are all box corners |
 
@@ -146,7 +146,7 @@ Deleted nowhere yet: the maps repositories were being edited by conversion agent
 | hide-n-seek-maps `tools/import_bsp.py` | `planes_of`, `z_range`, `box_in_frame`, `turned_box`, `prism_box`, `brush_boxes`, `terrain_boxes` (`boxes.terrain_cells`); `prune_pockets`'s flood after a trial on `flood.Flood`; the prop-model lookup (`PropTable`); the light loop; the `prop_door_rotating`/door class tests (`entities`) |
 | mg-prop-hunt-maps `tools/import_bsp.py`, `bsp_read.py` | the same as hide-n-seek-maps (the two are copies); `bsp_read.py` becomes the shim |
 | murder-mystery-maps `tools/import_bsp.py` | the box helpers (`dboxes.decompose`); `--max-lights` thinning (`lights.thin`); the start filter (`Flood.keep_starts`); `prune_pockets`; the prop lookups; the light loop |
-| game-playlot-maps `tools/import_bsp.py` | `planes_of`, `z_range`, `box_in_frame`, `turned_box`, `prism_box`, `ramp_box`, `brush_boxes` (to `boxes.decompose(tilt=True)`); light conversion; entity class tests |
+| playlot-maps `tools/import_bsp.py` | `planes_of`, `z_range`, `box_in_frame`, `turned_box`, `prism_box`, `ramp_box`, `brush_boxes` (to `boxes.decompose(tilt=True)`); light conversion; entity class tests |
 | mg-wipeout-maps | no importer yet (`tools/build.py` only): start from `gamebox`, `entities`, `props`, `lights`; `bsp.py convert` takes the workshop `.gma` directly |
 | mg-look-at-me (a game, not a maps repo) | `tools/bsp_layout.py` becomes a call to `plan.extract` (and `plan.ascii_plan` for `--ascii`); numpy and scipy go |
 
@@ -176,7 +176,7 @@ One JSON object. Map units and map axes throughout (Z up, 1 unit = 0.01905 m, Go
 | Game | Converter | State |
 | --- | --- | --- |
 | game-zombie-zone | `zombie-zone-maps/tools/import_bsp.py`, an adapter reading a `.bsp` or an intermediate `.json` | migrated 2026-10-19; Nuke and Run For Your Life re-convert with identical floors, spawns, routes and props and better boxes (below) |
-| game-g2gfast | `game-g2gfast/tools/bsp_import.py` (a mesh, lightmap and texture pipeline); its `bsp_read.py` is now a shim over `dotbsp.reader` | migrated at reader level 2026-10-19; six maps (v19, v20, LZMA) import byte-identical |
+| game-airdrift | `game-g2gfast/tools/bsp_import.py` (a mesh, lightmap and texture pipeline); its `bsp_read.py` is now a shim over `dotbsp.reader` | migrated at reader level 2026-10-19; six maps (v19, v20, LZMA) import byte-identical |
 | mg-prop-hunt, game-hide-n-seek, game-playlot, mg-deathrun | their own `import_bsp.py` / `bsp_to_course.py` and a copy of `bsp_read.py` in the map repository | not migrated (see the note) |
 
 Zombie-zone's re-conversion against the committed maps: Nuke differs only in the last digit of 19 boxes (planes now pass through the document's rounding) and a few boxes turned under half a degree written square; Run For Your Life's invisible boundary walls, turned about one degree, were 129 saw-tooth slabs and are now 14 turned boxes. Nav floors, spawns, routes, items and props are unchanged, and game-zombie-zone's `headless_maps` gives the same result on both. Raven Street re-converts with one box 1 mm taller and was left as it was, because its committed lightmap is hashed against the document; it moves with its next bake.
@@ -200,15 +200,15 @@ Sourcing rule (2026-10-19): maps from the community map sites may be converted i
 
 | # | Map | Target | MB | Brushes | Notes | Page | Author | Licence | Do-not-share note |
 | ---: | --- | --- | ---: | ---: | --- | --- | --- | --- | --- |
-| 1 | surf_greatriver_awesome | game-g2gfast | 1.6 | 362 | no displacements or props; the `.rar` copy (0.5 MB) is truncated, use `pending/surf_greatriver_awesome.bsp` | https://gamebanana.com/mods/122168 | Stavros Xanthis (key author), submitted by Spoz; original by Ace of spades13 and Monkeydie | CC BY-NC-ND 4.0 | checked, none |
-| 2 | bhop_grove_backwards | game-g2gfast | 13.2 | 698 | the reversed layout of bhop_grove, which g2gfast already ships (same page); 144 displacements, 328 props | https://gamebanana.com/mods/125167 | tmontana | CC BY-NC-ND 4.0 | checked, none ("you may add both versions to your server") |
-| 3 | surf_buck-wild | game-g2gfast | 17.4 | 3202 | 28 props; 20 spawns a side | https://gamebanana.com/mods/121787 | BuckNasty | CC BY-NC-ND 4.0 | checked, none |
-| 4 | bhop_mario_fxd | game-g2gfast | 121.4 | 5604 | 20 displacements, 13 props; page lists it as bhop_mario | https://gamebanana.com/mods/125494 | DroN | CC BY-NC-ND 4.0 | checked, none |
-| 5 | bhop_woodenspace | game-g2gfast | 121.9 | 3499 | 230 displacements, 204 props; one spawn | https://gamebanana.com/mods/126357 | FlowBhop, Rem, loshadkaxd, Antosha | CC BY-NC-ND 4.0 | checked, none |
-| 6 | bhop_zelda_final | game-g2gfast | 267.2 | 6437 | no displacements or props: brushes only, the size is its packed textures | https://gamebanana.com/mods/126396 | Whimsy | CC BY-NC-ND 4.0 | checked, none |
-| 7 | bhop_umbra | game-g2gfast | 251.7 | 7894 | 305 displacements, 350 props | https://gamebanana.com/mods/126278 | Ntag | CC BY-NC-ND 4.0 | checked, none |
-| 8 | bhop_lost_world_v2 | game-g2gfast | 236.3 | 7977 | 470 displacements, 699 props, 1704 packed files | https://gamebanana.com/mods/125470 | teh_grave | CC BY-NC-ND 4.0 | checked, none |
-| 9 | bhop_shutdown2 | game-g2gfast | 308.8 | 6576 | 480 displacements, 1173 props, 3337 packed files: the largest | https://gamebanana.com/mods/125964 | sodawater, Benchmarked, wet | CC BY-NC-ND 4.0 | checked, none |
+| 1 | surf_greatriver_awesome | game-airdrift | 1.6 | 362 | no displacements or props; the `.rar` copy (0.5 MB) is truncated, use `pending/surf_greatriver_awesome.bsp` | https://gamebanana.com/mods/122168 | Stavros Xanthis (key author), submitted by Spoz; original by Ace of spades13 and Monkeydie | CC BY-NC-ND 4.0 | checked, none |
+| 2 | bhop_grove_backwards | game-airdrift | 13.2 | 698 | the reversed layout of bhop_grove, which g2gfast already ships (same page); 144 displacements, 328 props | https://gamebanana.com/mods/125167 | tmontana | CC BY-NC-ND 4.0 | checked, none ("you may add both versions to your server") |
+| 3 | surf_buck-wild | game-airdrift | 17.4 | 3202 | 28 props; 20 spawns a side | https://gamebanana.com/mods/121787 | BuckNasty | CC BY-NC-ND 4.0 | checked, none |
+| 4 | bhop_mario_fxd | game-airdrift | 121.4 | 5604 | 20 displacements, 13 props; page lists it as bhop_mario | https://gamebanana.com/mods/125494 | DroN | CC BY-NC-ND 4.0 | checked, none |
+| 5 | bhop_woodenspace | game-airdrift | 121.9 | 3499 | 230 displacements, 204 props; one spawn | https://gamebanana.com/mods/126357 | FlowBhop, Rem, loshadkaxd, Antosha | CC BY-NC-ND 4.0 | checked, none |
+| 6 | bhop_zelda_final | game-airdrift | 267.2 | 6437 | no displacements or props: brushes only, the size is its packed textures | https://gamebanana.com/mods/126396 | Whimsy | CC BY-NC-ND 4.0 | checked, none |
+| 7 | bhop_umbra | game-airdrift | 251.7 | 7894 | 305 displacements, 350 props | https://gamebanana.com/mods/126278 | Ntag | CC BY-NC-ND 4.0 | checked, none |
+| 8 | bhop_lost_world_v2 | game-airdrift | 236.3 | 7977 | 470 displacements, 699 props, 1704 packed files | https://gamebanana.com/mods/125470 | teh_grave | CC BY-NC-ND 4.0 | checked, none |
+| 9 | bhop_shutdown2 | game-airdrift | 308.8 | 6576 | 480 displacements, 1173 props, 3337 packed files: the largest | https://gamebanana.com/mods/125964 | sodawater, Benchmarked, wet | CC BY-NC-ND 4.0 | checked, none |
 
 Nothing in the two folders belongs to zombie-zone, prop-hunt, hide-n-seek, deathrun or playlot that is not already converted; a new batch for those starts with a new download and `list --converted`.
 
@@ -230,7 +230,7 @@ hide-n-seek-maps, mg-prop-hunt-maps and murder-mystery-maps carried copies of th
 | Function | Replaces (in) | Parameters where the copies differ |
 | --- | --- | --- |
 | `within(box, x, z, slack)` | `within` (all three) | none |
-| `classify_material`, `brush_material_names`, `majority_material(names, table, default)` | `classify`, `brush_material`, `pick_material` (all three; `classify` and the same majority pick also in game-playlot-maps' `material_for`) | the table and the default: `("flat", None)` or a config's own. The pick is `classify(max(sorted(set(pool)), key=pool.count))`: a tie follows the sorted name, not the hash seed |
+| `classify_material`, `brush_material_names`, `majority_material(names, table, default)` | `classify`, `brush_material`, `pick_material` (all three; `classify` and the same majority pick also in playlot-maps' `material_for`) | the table and the default: `("flat", None)` or a config's own. The pick is `classify(max(sorted(set(pool)), key=pool.count))`: a tie follows the sorted name, not the hash seed |
 | `suburban_surface(at, size, palette)` | `suburban_surface` and its five colour constants (all three) | `palette` |
 | `widen_doors(boxes, want, doors)` | `widen_doors` (all three) | prop-hunt's has no `doors`; the default `()` is its behaviour |
 | `drop_door_leaves(boxes)` | `drop_door_leaves` (all three) | takes `m.boxes`, not the map |
@@ -254,6 +254,6 @@ Every importer carried its own `TEXTURE_MAP` (a substring table in its own file)
 
 `texturemap.load()` returns a `TextureMap`; `docboxes.majority_material(names, table, default)` takes it where it took the old list. `python3 -P bsp.py unmapped <maps...>` (`--top N`, `--json`, `--strict`) lists every texture of the given maps that hits no row, with face counts and the maps it is in. A texture that turns up there gets a row in the list, not a line in an importer.
 
-Used by murder-mystery-maps' `import_bsp.py`. **Next (not done): the other importers keep their own `TEXTURE_MAP`s and still work** (hide-n-seek-maps, mg-prop-hunt-maps, mg-deathrun-maps, mg-wipeout-maps, zombie-zone-maps, g2gfast-maps, game-playlot-maps), because each names its own game's material ids (`paint`, `plaster`, `tile`...). Moving one is a mapping from the generic ids to that game's ids in its adapter, then deleting its table; `test_material_helpers_match_every_copy` compares the old tables, so it goes with them.
+Used by murder-mystery-maps' `import_bsp.py`. **Next (not done): the other importers keep their own `TEXTURE_MAP`s and still work** (hide-n-seek-maps, mg-prop-hunt-maps, mg-deathrun-maps, mg-wipeout-maps, zombie-zone-maps, airdrift-maps, playlot-maps), because each names its own game's material ids (`paint`, `plaster`, `tile`...). Moving one is a mapping from the generic ids to that game's ids in its adapter, then deleting its table; `test_material_helpers_match_every_copy` compares the old tables, so it goes with them.
 
 Hull kinds (`solid`, `clip`, `glass`, `sky`, `fence`): `fence` is a brush with CONTENTS_GRATE or only fence, chain-link, grate, vent, cage or jail textures (`materials.see_through_material`; wood, brick and concrete words veto it). It stops bodies and is meant to pass shots, so the runtime puts it on its own layer; `kind` is the only field, nothing per map.

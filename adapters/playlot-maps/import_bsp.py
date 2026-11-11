@@ -358,7 +358,7 @@ def build(bsp_path, name):
     cfg = dict(CONFIGS[name])
     # The flights live beside this adapter (stairs/<config>.json), wherever the launcher runs from.
     stairs_file = os.path.join(os.path.dirname(os.path.abspath(sys.modules["adapter_launch"].__file__)),
-                               "game-playlot-maps", "stairs", name + ".json") if "adapter_launch" in sys.modules else ""
+                               "playlot-maps", "stairs", name + ".json") if "adapter_launch" in sys.modules else ""
     if stairs_file and os.path.exists(stairs_file):
         with open(stairs_file) as f:
             cfg["stairs"] = json.load(f)

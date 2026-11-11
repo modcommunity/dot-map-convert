@@ -178,7 +178,7 @@ def converted(root):
 
 # A map's prefix is the genre it was built for, which is the game in this family that plays it.
 TARGETS = (
-    (("surf_", "bhop_", "kz_", "bunnyhop_", "xc_", "climb_"), "game-g2gfast"),
+    (("surf_", "bhop_", "kz_", "bunnyhop_", "xc_", "climb_"), "game-airdrift"),
     (("ze_", "zs_", "zm_", "zps_", "zr_"), "game-zombie-zone"),
     (("ph_",), "mg-prop-hunt"),
     (("hns_", "hs_"), "game-hide-n-seek"),
@@ -186,17 +186,17 @@ TARGETS = (
     (("ttt_", "mm_", "md_"), "game-murder-mystery"),
     (("gm_", "sb_", "rp_"), "game-playlot"),
     (("mg_",), "game-playlot"),
-    (("dm_", "aim_", "awp_", "fy_", "de_", "cs_", "ctf_", "tdm_", "jb_", "ba_"), "game-arena"),
+    (("dm_", "aim_", "awp_", "fy_", "de_", "cs_", "ctf_", "tdm_", "jb_", "ba_"), "game-fatal-contact"),
 )
 
 # Which of those games has a working converter today (tools/ in the game or its map repo).
 CONVERTER = {
-    "game-g2gfast": "game-g2gfast/tools/bsp_import.py (mesh)",
+    "game-airdrift": "game-airdrift/tools/bsp_import.py (mesh)",
     "game-zombie-zone": "zombie-zone-maps/tools/import_bsp.py (dotbsp)",
     "mg-prop-hunt": "mg-prop-hunt-maps/tools/import_bsp.py",
     "game-hide-n-seek": "hide-n-seek-maps/tools/import_bsp.py",
     "mg-deathrun": "mg-deathrun-maps/tools/bsp_to_course.py",
-    "game-playlot": "game-playlot-maps/tools/import_bsp.py",
+    "game-playlot": "playlot-maps/tools/import_bsp.py",
 }
 
 

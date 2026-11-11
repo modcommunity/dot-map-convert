@@ -3854,8 +3854,8 @@ def main(argv=None):
 
     out_dir = a.out_dir
     if doc.get("kind") == "arena" and os.path.basename(os.path.normpath(out_dir)) == "imported":
-        # A combat map is not a course and is not kept in g2gfast-maps (2026-10-17): it goes
-        # to the repository game-arena links at its own maps/imported, so the .import
+        # A combat map is not a course and is not kept in airdrift-maps (2026-10-17): it goes
+        # to the repository game-fatal-contact links at its own maps/imported, so the .import
         # markers written here still match the path they are mounted at.
         out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
                                "arena-surf-dm-maps", "maps")

@@ -22,7 +22,7 @@ Everything that converts a map, a model, a texture or a sound lives in this repo
 | Adapter | Does |
 | --- | --- |
 | `zombie-zone-maps/import_bsp.py`, `build_worlds.py`, `auto_spec.py`, `completeness.py`, `coverage_report.py`, `check_worlds.py`, `make_stores_licence.py` | Zombie Zone document, drawn world, spec from a store entry, and the checks on them |
-| `hide-n-seek-maps/import_bsp.py`, `murder-mystery-maps/import_bsp.py`, `game-playlot-maps/import_bsp.py` | those games' box documents |
+| `hide-n-seek-maps/import_bsp.py`, `murder-mystery-maps/import_bsp.py`, `playlot-maps/import_bsp.py` | those games' box documents |
 | `mg-prop-hunt-maps/import_bsp.py`, `bsp_environment.py` | prop-hunt document and its environment pass |
 | `mg-wipeout-maps/import_world.py` | wipeout course from a regenerated world |
 | `mg-deathrun-maps/bsp_to_course.py`, `plan_route.py`, `draft_spec.py` | deathrun course from a spec, the route planner over the document the importer would write, and the first spec for a community map |
@@ -35,6 +35,6 @@ Everything that converts a map, a model, a texture or a sound lives in this repo
 - `bsp_read.py` shims: they only name the reader for the adapter.
 - `relight.sh`, `solid_props.sh`, `publish*.sh`, `g2gmaps.py`: a game's pipeline and publishing around the converter, not conversion.
 - `mg-deathrun-maps` `apply_theme.py`: a table of per-map looks written into specs (the game's own data).
-- `arena-dm-maps`, `arena-surf-dm-maps`, `hide-n-seek-maps` `tools/regen_worlds.sh`: launchers (or, for hide-n-seek, a `worlds.tsv` loop) over the shared script; `stage_packs.sh` differs per repository in its publish rule and stays.
+- `fc-dm-maps`, `fc-surf-dm-maps`, `hide-n-seek-maps` `tools/regen_worlds.sh`: launchers (or, for hide-n-seek, a `worlds.tsv` loop) over the shared script; `stage_packs.sh` differs per repository in its publish rule and stays.
 - `zombie-zone-maps` `regen_all.sh`, `ship_*.sh`: they read that game's `convert/ship.tsv`, specs and ship lists; the generic loop is `tools/regen_worlds.sh` here.
 - `dot-map/tools/*.gd|sh`: need a Godot project (screenshots, benches, occluder bake).
