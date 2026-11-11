@@ -3,3 +3,5 @@ dev/dev_measuregeneric01b	kenney_prototype_dark_01	grey dev grid: the dark Kenne
 dev/dev_measuregeneric01	kenney_prototype_orange_03	orange dev grid: the orange Kenney grid
 tfcustoms/color_grey	kenney_prototype_light_02	flat grey block-out: the light Kenney grid
 tfcustoms/color_orange	kenney_prototype_orange_03	flat orange block-out: the orange Kenney grid
+ground/blendsnow_asphault	Snow007C	snow-blended road: snow, not the gravel its colour picked
+ground/blendsnow_tracks_wvt_patch	Snow007C	snow with tyre tracks: snow, not gravel
