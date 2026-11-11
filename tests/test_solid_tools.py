@@ -61,6 +61,13 @@ class EntityBrushes(unittest.TestCase):
         self.assertFalse(docboxes.entity_never_solid({"classname": "func_wall", "Solidity": "1"}))
         self.assertTrue(docboxes.entity_starts_hidden({"classname": "func_brush", "Solidity": "1"}))
 
+    def test_mesh_hides_a_wall_toggle_that_starts_off(self):
+        from dotbsp import mesh
+        self.assertTrue(mesh.hidden({"classname": "func_wall_toggle", "spawnflags": "1"}))
+        self.assertFalse(mesh.hidden({"classname": "func_wall_toggle", "spawnflags": "0"}))
+        self.assertFalse(mesh.hidden({"classname": "func_wall_toggle"}))
+        self.assertTrue(mesh.hidden({"classname": "func_brush", "StartDisabled": "1"}))
+
 
 if __name__ == "__main__":
     unittest.main()
