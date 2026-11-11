@@ -640,3 +640,97 @@ MY_LEGO1/WHITE*	plaster_painted	0.95,0.95,0.95
 # gg-lego-arena: two embedded shop-sign textures (a brand logo each, not reproduced): painted plaster in the brand colour, guessed by name
 CUSTOMS/KK	plaster_painted	0.85,0.65,0.20
 CUSTOMS/MCK	plaster_painted	0.80,0.12,0.12
+# welcometomexicov6: Havana concrete floors, a gun-shop poster (average colour)
+CS_HAVANA/FLOOR02	concrete
+CS_HAVANA/FLOOR03	concrete
+CUSTOMTEXT/GUNS	flat	0.35,0.30,0.25
+# gg-woods: the river card of a riverbank prop, drawn as water
+MODELS/PROPS/CS_MILITIA/RIVER01	water
+# dm-hot-cn-v1: Mustafar sci-fi station (lava world): plating by default, lava as an orange flat, lights and logos flat
+MUSTAFAR/*	metal
+COMPLEX/DYS_*	metal
+TUNNEL/CN3	concrete
+MUSTAFAR/OUTBUILDINGS6	concrete
+MUSTAFAR/COLDSTAIRS	concrete
+MUSTAFAR/ROUGE	metal	0.75,0.15,0.10
+MUSTAFAR/VERT	metal	0.25,0.55,0.30
+MUSTAFAR/BLACKBARREL	metal	0.10,0.10,0.10
+MUSTAFAR/YELHAZ2DIF	metal	0.90,0.75,0.10
+MUSTAFAR/LAVA*	flat	1.0,0.40,0.05
+MUSTAFAR/BLUELASER	shield
+MUSTAFAR/*LIGHT*	flat	0.90,0.95,1.0
+COMPLEX/DYS_*LIGHT	flat	0.90,0.95,1.0
+MUSTAFAR/SCIFISCREEN*	flat	0.20,0.45,0.60
+MUSTAFAR/EXTCABLE_D	flat	0.08,0.08,0.08
+MUSTAFAR/SC_LOGO	flat	0.45,0.45,0.50
+MUSTAFAR/ATLANTIS	flat	0.45,0.45,0.50
+MUSTAFAR/DAY	flat	0.45,0.45,0.50
+MUSTAFAR/INFERNUM	flat	0.45,0.45,0.50
+MUSTAFAR/MUSTAFAR	flat	0.45,0.45,0.50
+MUSTAFAR/COLONY	flat	0.45,0.45,0.50
+MUSTAFAR/ENCOMPASS	flat	0.45,0.45,0.50
+MUSTAFAR/CUSTOMNIGHTMARE2	flat	0.45,0.45,0.50
+MUSTAFAR/PICON	flat	0.45,0.45,0.50
+# gg-simpsons-x: a cartoon town (shops, houses, a power plant); signs and logos as flat average colours, walls as painted plaster
+SIMPSONS/{BRANCH1	foliage_card
+SIMPSONS/{SIMPLADDER	ladder
+SIMPSONS/{BOWLPOST	metal
+SIMPSONS/{BOWLSIGN	flat	0.85,0.30,0.20
+SIMPSONS/{COMICSTOREAWN	plaster_painted	0.80,0.20,0.20
+SIMPSONS/{99STORE	flat	0.90,0.80,0.20
+SIMPSONS/{JAVASERVER	flat	0.40,0.35,0.30
+SIMPSONS/{PLEXFLASH	flat	0.95,0.85,0.30
+SIMPSONS/{SPACESHIP	metal
+SIMPSONS/GARBAGETOP	metal
+SIMPSONS/GARBAGE	metal	0.20,0.40,0.25
+SIMPSONS/BROWN	wood_planks
+SIMPSONS/TREEBARK	wood_planks	0.45,0.32,0.22
+SIMPSONS/BUS	metal	0.90,0.75,0.10
+SIMPSONS/CAR*	metal
+SIMPSONS/STREET	concrete	0.35,0.35,0.37
+SIMPSONS/LIGHT	flat	0.95,0.95,0.85
+SIMPSONS/TIRES	plaster_painted	0.06,0.06,0.06
+SIMPSONS/DONUTS	plaster_painted	0.95,0.60,0.70
+SIMPSONS/PURPLE	plaster_painted	0.50,0.25,0.60
+SIMPSONS/REDBLAZER	plaster_painted	0.80,0.15,0.15
+SIMPSONS/*CHIMNEY	brick_red
+SIMPSONS/NUKECAN	metal	0.35,0.60,0.30
+SIMPSONS/NUCWALL	concrete
+SIMPSONS/NUKEOUTSIDE	concrete
+SIMPSONS/NUKEHALLS	concrete
+SIMPSONS/*PIPE*	metal
+SIMPSONS/*MACHINE*	metal
+SIMPSONS/SODA*	metal	0.80,0.20,0.20
+SIMPSONS/*SIGN*	flat	0.85,0.45,0.25
+SIMPSONS/DUFF	metal	0.80,0.55,0.15
+SIMPSONS/HOMERGARAGE	door_wood
+SIMPSONS/FLANDERSGARAGE	door_wood
+SIMPSONS/GARAGE	door_wood
+SIMPSONS/DOGHOUSE	wood_planks
+SIMPSONS/RUG	carpet_red
+SIMPSONS/PLEXPOSTER*	flat	0.40,0.35,0.45
+SIMPSONS/SIMPSONS*	flat	0.85,0.75,0.25
+SIMPSONS/MAPBYAIR	flat	0.45,0.55,0.40
+SIMPSONS/THEANDROIDSDUNG	flat	0.60,0.40,0.35
+SIMPSONS/SPRINGFIELDBILL	flat	0.60,0.50,0.40
+SIMPSONS/AZTEC	stone_wall
+SIMPSONS/COMPUTERSIDE	metal
+SIMPSONS/TRAILER	metal
+SIMPSONS/*	plaster_painted
+# dm-scarletdevilmansion: a red mansion (red-painted brick, wallpapered halls, hedges), paintings and signs flat
+SDM/BATIMENTS/REDWALL	plaster_painted	0.70,0.12,0.10
+SDM/MANSION_INSIDE/WALL4	wallpaper	0.65,0.18,0.18
+EGYPT/BUMPY_WALL_01	stone_wall
+SDM/DARKLEAVES	grass	0.15,0.30,0.15
+SDM/MANSION_INSIDE/BOOK	flat	0.35,0.22,0.15
+SDM/BATIMENTS/CLOCK*	metal
+SDM/MISSING/PANCARTE	flat	0.55,0.15,0.15
+SDM/MANSION_INSIDE/OLD_REDSIGN	flat	0.55,0.15,0.15
+SDM/MANSION_INSIDE/CHESS	flat	0.50,0.50,0.50
+SDM/MANSION_INSIDE/ILLUSION*	flat	0.50,0.45,0.55
+SDM/MANSION_INSIDE/REMIRYA	flat	0.55,0.45,0.55
+SDM/MANSION_INSIDE/REMILIA*	flat	0.55,0.45,0.55
+SDM/MANSION_INSIDE/INU	flat	0.55,0.45,0.45
+SDM/OKUU_FINAL	flat	0.55,0.45,0.45
+SDM/MEMENTO/*	flat	0.50,0.45,0.40
+ENGINE/PRELOADTEXTURE	invisible

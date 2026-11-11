@@ -243,3 +243,4 @@ wlv_*	point	a mode script's weapon
 trigger_*	data	a trigger -- logic	
 env_*	data	an effect or screen logic	
 point_*	data	point logic	
+info_observer_point	point	a spectator camera spot of the original game -- the converted game has its own spectator	

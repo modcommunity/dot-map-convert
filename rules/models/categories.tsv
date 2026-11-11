@@ -1,4 +1,20 @@
 # name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour
+# dm worlds batch 2 (2026-11-11): dm-hot-cn-v1, dm-scarletdevilmansion, gg-woods props; no library match reads as the same thing except the bushes and candelabra, the rest are plain generated stand-ins of a guessed size
+^busch0\d$	plant_bush_detailed|plant_bush_large	1.2	1.0	1.2	cyl	3a6a30
+^crow$	NONE	0.25	0.3	0.5	box	202020
+^combinebuttress$	NONE	2.0	4.0	2.0	cyl	505860
+^groundlight00\d$	NONE	0.3	0.5	0.3	cyl	e8e0b0
+^weathervane001$	NONE	0.2	1.0	0.2	cyl	604030
+^wood_framing001b$	NONE	0.15	2.5	1.2	box	8a6a40
+^wood_patch\d$	NONE	1.0	0.05	1.0	box	8a6a40
+^wood_platform3$	NONE	2.0	0.2	2.0	box	8a6a40
+^smlprop_bat$	NONE	0.3	0.15	0.3	box	303030
+^baby_grand_01$	NONE	1.5	1.0	1.7	box	151515
+^(wall_)?candelabra_01$|^wall_candelabra_02$	candle_multiple	0.4	0.5	0.2	box	c8a040
+^curtains_0\d$	NONE	1.5	2.5	0.15	box	802030
+^wooden_barrier01$	NONE	2.0	1.0	0.2	box	8a6a40
+^vuvuzela(blue|red|yellow)$	NONE	0.1	0.1	0.6	cyl	4060c0
+^(a|clo|win\d?|error)$	NONE	0.5	0.5	0.5	box	c0c0c0
 # sunken_resort (2026-11-09): lab machinery and wall panels that had no category; plain generated fixtures (CC0, TMC) where no library model reads as the same thing
 ^128_fuse_set	NONE	0.3	2.1	2.1	box	708070
 ^claw_	NONE	0.2	1.0	0.4	box	808890
