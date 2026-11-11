@@ -617,3 +617,26 @@ BLACK_HAWK_MAPS/MAP_STAMP	plaster_painted
 # dm-morpheus: its two base surfaces, hard stone (concrete) and plate (metal) by look
 MORPHEUS/BASE05	concrete
 MORPHEUS/BASE06	metal
+# gg-canyon: painted wooden trail signs, and the water-flow card of the creek
+ANB/CANYON/CANYON_SIGN	wood_planks
+ANB/CANYON/CANYON_SIGNS	wood_planks
+FLOW/FLOW	water
+# blackhawkdown: Havana building walls B-F, a carpet, a construction tarp (painted cloth by look)
+CS_HAVANA/BLDC	plaster_painted
+CS_HAVANA/BLDE	plaster_painted
+CS_HAVANA/BLDF	plaster_painted
+CS_ITALY/CXCRPTB	carpet
+DE_CHATEAU/CNSTRCTTARPB	plaster_painted	0.45,0.50,0.40
+# gg-punishment: solid black and white (a plain painted wall, tinted)
+CUSTOMS/SCHWARZ_1	plaster_painted	0.08,0.08,0.08
+CUSTOMS/TEXWEISS_1	plaster_painted	0.95,0.95,0.95
+# gg-lego-arena: brick colours, drawn as painted plaster tinted to the brick (no blue Kenney grid exists)
+MY_LEGO/BLACK_WALL3D	plaster_painted	0.10,0.10,0.10
+MY_LEGO/BLUE*	plaster_painted	0.15,0.30,0.85
+MY_LEGO/ORANGE*	plaster_painted	0.95,0.50,0.10
+MY_LEGO1/ORANGE*	plaster_painted	0.95,0.50,0.10
+MY_LEGO1/RED*	plaster_painted	0.80,0.12,0.12
+MY_LEGO1/WHITE*	plaster_painted	0.95,0.95,0.95
+# gg-lego-arena: two embedded shop-sign textures (a brand logo each, not reproduced): painted plaster in the brand colour, guessed by name
+CUSTOMS/KK	plaster_painted	0.85,0.65,0.20
+CUSTOMS/MCK	plaster_painted	0.80,0.12,0.12
