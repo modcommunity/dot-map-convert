@@ -2,6 +2,7 @@
 Run: python3 -P tests/test_pbrmap.py
 """
 
+import json
 import os
 import sys
 import tempfile
@@ -112,6 +113,73 @@ class RoadNames(unittest.TestCase):
                 name, generic = line.split("\t")[:2]
                 if road.search(name.rsplit("/", 1)[-1]):
                     self.assertIsNone(wrong.search(generic), "%s -> %s" % (name, generic))
+
+
+class Pins(unittest.TestCase):
+    """A Kenney prototype grid is pin-only: never picked by colour, taken by a `pins.tsv` row."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        lib = self.lib = os.path.join(self.tmp.name, "lib")
+        rows = [("Concrete1", "ambientCG", "concrete"), ("kenney_prototype_dark_01", "Kenney", "prototype,grid")]
+        os.makedirs(lib)
+        with open(os.path.join(lib, "manifest.tsv"), "w") as f:
+            f.write("#h\n")
+            for sid, src, tags in rows:
+                files = [sid + s for s in ("_Color.png", "_NormalGL.png", "_Roughness.png")]
+                d = os.path.join(lib, src.lower(), sid)
+                os.makedirs(d)
+                for fn in files:
+                    open(os.path.join(d, fn), "wb").close()
+                f.write("\t".join((sid, src, "https://x/" + sid, "A", "CC0-1.0", tags, "0.3", "0.3", "0.3", ",".join(files))) + "\n")
+        world = os.path.join(self.tmp.name, "maps", "m", "world", "m")
+        os.makedirs(world)
+        doc = {"licence": {"textures": [{"kind": "generated", "generic": "concrete", "sources": ["dev/dev_measuregeneric01b", "concrete/wall01"]}]},
+               "surfaces": [{"material": "dev/dev_measuregeneric01b", "colour": [0.3, 0.3, 0.3]}, {"material": "concrete/wall01", "colour": [0.3, 0.3, 0.3]}]}
+        with open(os.path.join(world, "m.json"), "w") as f:
+            json.dump(doc, f)
+        open(os.path.join(world, "m.coverage.json"), "w").close()
+        self.out = os.path.join(self.tmp.name, "pbr")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _rows(self):
+        with open(os.path.join(self.out, "textures.tsv")) as f:
+            return dict(l.split("\t")[:2] for l in f if not l.startswith("#"))
+
+    def test_a_kenney_set_is_never_picked_by_colour(self):
+        lib = pbrmap.load_library(self.lib)
+        self.assertEqual(lib["kenney_prototype_dark_01"]["cats"], set())
+        self.assertEqual(pbrmap.pick(lib, "concrete", (0.3, 0.3, 0.3))["id"], "Concrete1")
+        self.assertEqual(pbrmap.pick(lib, None, (0.3, 0.3, 0.3))["id"], "Concrete1")
+
+    def test_build_takes_the_pinned_set_and_credits_it(self):
+        os.makedirs(self.out)
+        with open(os.path.join(self.out, "pins.tsv"), "w") as f:
+            f.write("# name\tset\twhy\nDev/Dev_MeasureGeneric01b\tkenney_prototype_dark_01\tgrid\n")
+        self.assertEqual(pbrmap.build([os.path.join(self.tmp.name, "maps")], self.lib, self.out), (2, 2))
+        rows = self._rows()
+        self.assertEqual(rows["dev/dev_measuregeneric01b"], "pbr_kenney_prototype_dark_01")
+        self.assertEqual(rows["concrete/wall01"], "pbr_Concrete1")
+        with open(os.path.join(self.out, "free_textures.tsv")) as f:
+            self.assertIn("pbr_kenney_prototype_dark_01\tpbr\tKenney\thttps://x/kenney_prototype_dark_01\tA\tCC0-1.0\n", f.read())
+
+    def test_a_pin_to_a_missing_set_fails(self):
+        with self.assertRaises(ValueError):
+            pbrmap.build([os.path.join(self.tmp.name, "maps")], self.lib, self.out, pins={"concrete/wall01": "Nope"})
+
+    def test_the_shipped_pins_name_sets_of_the_shipped_tier(self):
+        here = os.path.join(os.path.dirname(HERE), "rules", "pbr")
+        pins = pbrmap.load_pins(os.path.join(here, "pins.tsv"))
+        self.assertIn("dev/dev_measuregeneric01b", pins)
+        with open(os.path.join(here, "textures.tsv"), encoding="utf-8") as f:
+            rows = {l.split("\t")[0].lower(): l.split("\t")[1] for l in f if not l.startswith("#") and "\t" in l}
+        with open(os.path.join(here, "free_textures.tsv"), encoding="utf-8") as f:
+            free = {l.split("\t")[0] for l in f if not l.startswith("#")}
+        for name, sid in pins.items():
+            self.assertEqual(rows.get(name), pbrmap.GENERIC + sid, name)
+            self.assertIn(pbrmap.GENERIC + sid, free)
 
 
 if __name__ == "__main__":
