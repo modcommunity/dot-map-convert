@@ -1,6 +1,6 @@
 # Stand-in ranking
 
-Which source models and sounds are still drawn by a stand-in (a Kenney block, a generated plain shape or `placeholder_box`) instead of an equal-quality free model, ranked by how many converted maps use them. Source: the `licence` sections of the converted manifests in zombie-zone-maps (`world/*/*.json`) and g2gfast-maps (`worlds/*.json`), 44 manifests carry one; the rest are not yet through the licence pass, so counts are lower bounds. Regenerate with the same walk after a licence pass. Models are named by category; the key is the model's file name in the manifest.
+Which source models and sounds are still drawn by a stand-in (a Kenney block, a generated plain shape or `placeholder_box`) instead of an equal-quality free model, ranked by how many converted maps use them. Source: the `licence` sections of the converted manifests in zombie-zone-maps (`world/*/*.json`) and airdrift-maps (`worlds/*.json`), 44 manifests carry one; the rest are not yet through the licence pass, so counts are lower bounds. Regenerate with the same walk after a licence pass. Models are named by category; the key is the model's file name in the manifest.
 
 The replacement layer is `rules/models/categories.tsv` (name regex to library ids) feeding `bsp.py modelmap` and `picks.tsv`; the Replaced column says what the first batch pinned.
 

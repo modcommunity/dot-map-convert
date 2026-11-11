@@ -12,7 +12,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, "adapters", "game-g2gfast"))
 sys.path.insert(0, ROOT)
 
-# bsp_import reads through game-g2gfast's `bsp_read` shim, which lives in that game's repo.
+# bsp_import reads through game-airdrift's `bsp_read` shim, which lives in that game's repo.
 os.environ.setdefault("DOTBSP_PATH", ROOT)
 for READER in (os.environ.get("G2G_TOOLS", ""),
                os.path.join(os.path.dirname(ROOT), "game-g2gfast", "tools"),

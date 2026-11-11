@@ -284,7 +284,7 @@ class Cli(unittest.TestCase):
             self.assertEqual(rows["surf_zipped"]["version"], 21)
             self.assertEqual(rows["surf_zipped"]["entities"], 4)
             rc, o, _ = self.run_cli("list", t, "--markdown")
-            self.assertIn("| surf_zipped | game-g2gfast |", o)
+            self.assertIn("| surf_zipped | game-airdrift |", o)
 
     def test_convert_warns_without_credit(self):
         with tempfile.TemporaryDirectory() as t:
@@ -306,7 +306,7 @@ class Cli(unittest.TestCase):
             self.assertEqual([r["name"] for r in json.loads(o)["maps"]], ["ze_new"])
 
     def test_targets(self):
-        self.assertEqual(sources.target("bhop_x"), "game-g2gfast")
+        self.assertEqual(sources.target("bhop_x"), "game-airdrift")
         self.assertEqual(sources.target("ph_x"), "mg-prop-hunt")
         self.assertIsNone(sources.target("unknown_x"))
         self.assertEqual(sources.target("gm_x"), "game-playlot")
