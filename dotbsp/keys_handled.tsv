@@ -32,3 +32,11 @@ point_servercommand	(sv_.*|phys_.*)	ignored	a console command written as a key b
 func_tracktrain	(sounds|style)	ignored	move sound number and path style of the original train; the stand-in mover has one sound and a fixed path follow
 .*	zhlt_lightflags	ignored	compile-time lighting flag of the original tools
 worldspawn	MaxRange	ignored	far view distance of the original engine; the converted camera uses its own
+env_embers	ParticleDrawWidth|ParticleSpacingDistance	ignored	particle layout of the original embers effect; the stand-in effect has its own
+light	_ambientHDR	ignored	HDR ambient colour of the original lightmap compile; there are no lightmaps here
+npc_metropolice	manhacks|weapondrawn	ignored	an AI soldier's loadout: no AI in the converted map
+prop_physics	RespawnTime	ignored	respawn of a prop in the original mode; the game decides
+shadow_control	direction	ignored	direction of the original's baked shadow casting; the converted sun lights shadows
+worldspawn	(defaultteam|sounds|light|fogenable|fogblend|fogcolor|fogcolor2|fogdir|fogstart|fogend)	ignored	the original engine's fog and team defaults and its CD track number; the converted environment and the game use their own
+info_player_terrorist	(StartDisabled|TeamNum)	ignored	team and enable state of a spawn; the game assigns teams itself
+item_healthkit_small	powerup_model	ignored	pickup model of the original game's item; the game's own pickup is used

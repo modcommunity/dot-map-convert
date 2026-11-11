@@ -59,6 +59,7 @@ What a class becomes:
 | `func_physbox` | 48 | a brush simulated as a physics object; drawn and solid where it rests, not simulated | `world` |  |
 | `info_player_start` | 48 | a spawn | `point` |  |
 | `info_target` | 48 | a named point other entities aim at | `point` |  |
+| `info_observer_point` | 0 | a spectator camera spot of the original game -- the converted game has its own spectator | `point` |  |
 | `prop_physics_override` | 48 | as prop_physics | `point` |  |
 | `info_teleport_destination` | 47 | where a teleport sends a body | `point` |  |
 | `trigger_once` | 46 | fires outputs the first time a body enters | `volume` | `DotMapTrigger` |
