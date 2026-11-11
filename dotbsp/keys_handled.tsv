@@ -40,3 +40,5 @@ shadow_control	direction	ignored	direction of the original's baked shadow castin
 worldspawn	(defaultteam|sounds|light|fogenable|fogblend|fogcolor|fogcolor2|fogdir|fogstart|fogend)	ignored	the original engine's fog and team defaults and its CD track number; the converted environment and the game use their own
 info_player_terrorist	(StartDisabled|TeamNum)	ignored	team and enable state of a spawn; the game assigns teams itself
 item_healthkit_small	powerup_model	ignored	pickup model of the original game's item; the game's own pickup is used
+team_control_point	(skin|team_bodygroup_\d+|team_icon_\d+)	ignored	model skin, body groups and HUD icons of the original capture point; the converted marker carries index, name and owner only
+team_control_point_master	(MaxAnimTime|MinAnimTime|solid)	ignored	animation timing and collision of the original master entity; the converted game runs its own mode

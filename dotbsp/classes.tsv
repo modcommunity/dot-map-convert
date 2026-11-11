@@ -244,3 +244,6 @@ trigger_*	data	a trigger -- logic
 env_*	data	an effect or screen logic	
 point_*	data	point logic	
 info_observer_point	point	a spectator camera spot of the original game -- the converted game has its own spectator	
+team_control_point	point	a Team Fortress 2 capture point -- the importer reads its index, name and owner into the objective markers	
+team_control_point_master	data	the Team Fortress 2 control point round rules -- the converted game runs its own mode	
+func_regenerate	volume	a Team Fortress 2 resupply cabinet -- the importer reads its brush box into the resupply volumes	
