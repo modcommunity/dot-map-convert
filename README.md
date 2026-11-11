@@ -107,7 +107,7 @@ Per-game importers are in `adapters/<repo>/` (launchers stay in each map reposit
 | Static props from the `sprp` game lump, v4 to v11 | game-g2gfast `bsp_props.py` |
 | A brush turned about the vertical is one box: every upright side's angle tried, corners within 1.5 units | mg-prop-hunt-maps and hide-n-seek-maps (zombie-zone-maps tried one angle at 0.5) |
 | An upright prism (a column, a curved wall's segment) is one turned box | mg-prop-hunt-maps; here only when its plan fills 80% of the box, because the box round a triangular column is twice the column |
-| A single-slope ramp as one tilted box, for a document that can tilt one (`tilt=True`) | game-playground-maps |
+| A single-slope ramp as one tilted box, for a document that can tilt one (`tilt=True`) | game-playlot-maps |
 | Slabs cut along the slope, each spanning the brush's own cross-section at its middle | zombie-zone-maps (the others cut along the longer axis, across the bounding box) |
 | A wedge is not a box: an axis box wants all eight corners | new here, found by the tests; three copies wrote a ramp as a block because a wedge's six corners are all box corners |
 
@@ -146,7 +146,7 @@ Deleted nowhere yet: the maps repositories were being edited by conversion agent
 | hide-n-seek-maps `tools/import_bsp.py` | `planes_of`, `z_range`, `box_in_frame`, `turned_box`, `prism_box`, `brush_boxes`, `terrain_boxes` (`boxes.terrain_cells`); `prune_pockets`'s flood after a trial on `flood.Flood`; the prop-model lookup (`PropTable`); the light loop; the `prop_door_rotating`/door class tests (`entities`) |
 | mg-prop-hunt-maps `tools/import_bsp.py`, `bsp_read.py` | the same as hide-n-seek-maps (the two are copies); `bsp_read.py` becomes the shim |
 | murder-mystery-maps `tools/import_bsp.py` | the box helpers (`dboxes.decompose`); `--max-lights` thinning (`lights.thin`); the start filter (`Flood.keep_starts`); `prune_pockets`; the prop lookups; the light loop |
-| game-playground-maps `tools/import_bsp.py` | `planes_of`, `z_range`, `box_in_frame`, `turned_box`, `prism_box`, `ramp_box`, `brush_boxes` (to `boxes.decompose(tilt=True)`); light conversion; entity class tests |
+| game-playlot-maps `tools/import_bsp.py` | `planes_of`, `z_range`, `box_in_frame`, `turned_box`, `prism_box`, `ramp_box`, `brush_boxes` (to `boxes.decompose(tilt=True)`); light conversion; entity class tests |
 | mg-wipeout-maps | no importer yet (`tools/build.py` only): start from `gamebox`, `entities`, `props`, `lights`; `bsp.py convert` takes the workshop `.gma` directly |
 | mg-look-at-me (a game, not a maps repo) | `tools/bsp_layout.py` becomes a call to `plan.extract` (and `plan.ascii_plan` for `--ascii`); numpy and scipy go |
 
@@ -177,7 +177,7 @@ One JSON object. Map units and map axes throughout (Z up, 1 unit = 0.01905 m, Go
 | --- | --- | --- |
 | game-zombie-zone | `zombie-zone-maps/tools/import_bsp.py`, an adapter reading a `.bsp` or an intermediate `.json` | migrated 2026-10-19; Nuke and Run For Your Life re-convert with identical floors, spawns, routes and props and better boxes (below) |
 | game-g2gfast | `game-g2gfast/tools/bsp_import.py` (a mesh, lightmap and texture pipeline); its `bsp_read.py` is now a shim over `dotbsp.reader` | migrated at reader level 2026-10-19; six maps (v19, v20, LZMA) import byte-identical |
-| mg-prop-hunt, game-hide-n-seek, game-playground, mg-deathrun | their own `import_bsp.py` / `bsp_to_course.py` and a copy of `bsp_read.py` in the map repository | not migrated (see the note) |
+| mg-prop-hunt, game-hide-n-seek, game-playlot, mg-deathrun | their own `import_bsp.py` / `bsp_to_course.py` and a copy of `bsp_read.py` in the map repository | not migrated (see the note) |
 
 Zombie-zone's re-conversion against the committed maps: Nuke differs only in the last digit of 19 boxes (planes now pass through the document's rounding) and a few boxes turned under half a degree written square; Run For Your Life's invisible boundary walls, turned about one degree, were 129 saw-tooth slabs and are now 14 turned boxes. Nav floors, spawns, routes, items and props are unchanged, and game-zombie-zone's `headless_maps` gives the same result on both. Raven Street re-converts with one box 1 mm taller and was left as it was, because its committed lightmap is hashed against the document; it moves with its next bake.
 
@@ -186,7 +186,7 @@ Zombie-zone's re-conversion against the committed maps: Nuke differs only in the
 Each is the same change zombie-zone-maps made, a few hours a game:
 
 1. Delete the repository's `tools/bsp_read.py` and import `dotbsp` (`reader`, `boxes`, `intermediate`) from `$DOTBSP_PATH` or `../dot-map-convert`, exiting with a message when neither exists. Copy `_dotbsp_path()` from zombie-zone-maps' importer.
-2. Replace the local `turned_box` / `prism_box` / `slice_brush` / `ramp_box` with `boxes.decompose(planes, hull, slab=..., min_size=..., tilt=...)` in the game's units (prop-hunt and hide-n-seek: metres, so `slab=0.4 / 0.01905`; playground passes `tilt=True`; deathrun's scale is 0.0254, so convert with that, not `METRES_PER_UNIT`). `boxes.centre(b)` and `boxes.size(b)` give a box's centre in map coordinates and its turned-frame size.
+2. Replace the local `turned_box` / `prism_box` / `slice_brush` / `ramp_box` with `boxes.decompose(planes, hull, slab=..., min_size=..., tilt=...)` in the game's units (prop-hunt and hide-n-seek: metres, so `slab=0.4 / 0.01905`; playlot passes `tilt=True`; deathrun's scale is 0.0254, so convert with that, not `METRES_PER_UNIT`). `boxes.centre(b)` and `boxes.size(b)` give a box's centre in map coordinates and its turned-frame size.
 3. Read brushes from `intermediate.build(...)` (or a saved document) rather than walking `bs.brushes` by hand: a brush entity's planes and hull are already moved to its origin, which every copy did by hand.
 4. Re-convert every map the repository ships and compare with the committed documents. Expect fewer, larger boxes where a map has ramps wider than they are long (slabs now follow the slope) and on narrow upright prisms (now slabs, not their bounding box), and ramps that used to be blocks (the wedge fix). Render one and look.
 
@@ -210,7 +210,7 @@ Sourcing rule (2026-10-19): maps from the community map sites may be converted i
 | 8 | bhop_lost_world_v2 | game-g2gfast | 236.3 | 7977 | 470 displacements, 699 props, 1704 packed files | https://gamebanana.com/mods/125470 | teh_grave | CC BY-NC-ND 4.0 | checked, none |
 | 9 | bhop_shutdown2 | game-g2gfast | 308.8 | 6576 | 480 displacements, 1173 props, 3337 packed files: the largest | https://gamebanana.com/mods/125964 | sodawater, Benchmarked, wet | CC BY-NC-ND 4.0 | checked, none |
 
-Nothing in the two folders belongs to zombie-zone, prop-hunt, hide-n-seek, deathrun or playground that is not already converted; a new batch for those starts with a new download and `list --converted`.
+Nothing in the two folders belongs to zombie-zone, prop-hunt, hide-n-seek, deathrun or playlot that is not already converted; a new batch for those starts with a new download and `list --converted`.
 
 ## Where a lift differs from its original
 
@@ -230,7 +230,7 @@ hide-n-seek-maps, mg-prop-hunt-maps and murder-mystery-maps carried copies of th
 | Function | Replaces (in) | Parameters where the copies differ |
 | --- | --- | --- |
 | `within(box, x, z, slack)` | `within` (all three) | none |
-| `classify_material`, `brush_material_names`, `majority_material(names, table, default)` | `classify`, `brush_material`, `pick_material` (all three; `classify` and the same majority pick also in game-playground-maps' `material_for`) | the table and the default: `("flat", None)` or a config's own. The pick is `classify(max(sorted(set(pool)), key=pool.count))`: a tie follows the sorted name, not the hash seed |
+| `classify_material`, `brush_material_names`, `majority_material(names, table, default)` | `classify`, `brush_material`, `pick_material` (all three; `classify` and the same majority pick also in game-playlot-maps' `material_for`) | the table and the default: `("flat", None)` or a config's own. The pick is `classify(max(sorted(set(pool)), key=pool.count))`: a tie follows the sorted name, not the hash seed |
 | `suburban_surface(at, size, palette)` | `suburban_surface` and its five colour constants (all three) | `palette` |
 | `widen_doors(boxes, want, doors)` | `widen_doors` (all three) | prop-hunt's has no `doors`; the default `()` is its behaviour |
 | `drop_door_leaves(boxes)` | `drop_door_leaves` (all three) | takes `m.boxes`, not the map |
@@ -254,6 +254,6 @@ Every importer carried its own `TEXTURE_MAP` (a substring table in its own file)
 
 `texturemap.load()` returns a `TextureMap`; `docboxes.majority_material(names, table, default)` takes it where it took the old list. `python3 -P bsp.py unmapped <maps...>` (`--top N`, `--json`, `--strict`) lists every texture of the given maps that hits no row, with face counts and the maps it is in. A texture that turns up there gets a row in the list, not a line in an importer.
 
-Used by murder-mystery-maps' `import_bsp.py`. **Next (not done): the other importers keep their own `TEXTURE_MAP`s and still work** (hide-n-seek-maps, mg-prop-hunt-maps, mg-deathrun-maps, mg-wipeout-maps, zombie-zone-maps, g2gfast-maps, game-playground-maps), because each names its own game's material ids (`paint`, `plaster`, `tile`...). Moving one is a mapping from the generic ids to that game's ids in its adapter, then deleting its table; `test_material_helpers_match_every_copy` compares the old tables, so it goes with them.
+Used by murder-mystery-maps' `import_bsp.py`. **Next (not done): the other importers keep their own `TEXTURE_MAP`s and still work** (hide-n-seek-maps, mg-prop-hunt-maps, mg-deathrun-maps, mg-wipeout-maps, zombie-zone-maps, g2gfast-maps, game-playlot-maps), because each names its own game's material ids (`paint`, `plaster`, `tile`...). Moving one is a mapping from the generic ids to that game's ids in its adapter, then deleting its table; `test_material_helpers_match_every_copy` compares the old tables, so it goes with them.
 
 Hull kinds (`solid`, `clip`, `glass`, `sky`, `fence`): `fence` is a brush with CONTENTS_GRATE or only fence, chain-link, grate, vent, cage or jail textures (`materials.see_through_material`; wood, brick and concrete words veto it). It stops bodies and is meant to pass shots, so the runtime puts it on its own layer; `kind` is the only field, nothing per map.

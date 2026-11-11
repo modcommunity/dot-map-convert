@@ -184,8 +184,8 @@ TARGETS = (
     (("hns_", "hs_"), "game-hide-n-seek"),
     (("deathrun_", "dr_"), "mg-deathrun"),
     (("ttt_", "mm_", "md_"), "game-murder-mystery"),
-    (("gm_", "sb_", "rp_"), "game-playground"),
-    (("mg_",), "game-playground"),
+    (("gm_", "sb_", "rp_"), "game-playlot"),
+    (("mg_",), "game-playlot"),
     (("dm_", "aim_", "awp_", "fy_", "de_", "cs_", "ctf_", "tdm_", "jb_", "ba_"), "game-arena"),
 )
 
@@ -196,7 +196,7 @@ CONVERTER = {
     "mg-prop-hunt": "mg-prop-hunt-maps/tools/import_bsp.py",
     "game-hide-n-seek": "hide-n-seek-maps/tools/import_bsp.py",
     "mg-deathrun": "mg-deathrun-maps/tools/bsp_to_course.py",
-    "game-playground": "game-playground-maps/tools/import_bsp.py",
+    "game-playlot": "game-playlot-maps/tools/import_bsp.py",
 }
 
 
