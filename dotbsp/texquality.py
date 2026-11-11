@@ -4,7 +4,7 @@ A converted map is drawn world-triplanar (`lightmapped.gdshader`, `DotMapSurface
 PBR set covers `DRAW_METRES` metres whatever the source's own texture scale was, so the mesh uv is not what a
 player sees and retiling it changes nothing. The pixels per metre of a set are its albedo's width over that.
 `--store` reads the real width of the shipped slice (`<store>/<id>/<tier>/albedo.webp`); a set missing from it is
-drawn from the small fallback albedo beside the map (`licence.SMALL_PX`, 64 until 2026-10-26), which is what reads as blur. The
+drawn from the small fallback albedo beside the map (`licence.SMALL_PX`, 64 until 2026-10-26, 128 until 2026-11-10, now 512 = `TARGET`). The
 original's density (texels over the metres one repeat of its uv spans) is listed to show the replacement is
 not the blurrier of the two. Worst sets by drawn area come first.
 

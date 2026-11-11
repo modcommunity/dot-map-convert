@@ -186,11 +186,12 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
     return block
 
 
-SMALL_PX = 128
+# 512 px over the 2 m one repeat covers is 256 px per metre, texquality.TARGET: about 25 KB of webp per set.
+SMALL_PX = 512
 
 
 def small_albedos(block, outdir, store, px=SMALL_PX):
-    """Write a `px`-square albedo of each PBR set into the pack (`textures/fb_<id>.webp`, a few KB each) and name it
+    """Write a `px`-square albedo of each PBR set into the pack (`textures/fb_<id>.webp`, tens of KB each) and name it
     `fallback_file`, so a client without the store slices draws the set's own colours and pattern, not a guess.
     Returns the bytes written."""
     from PIL import Image
@@ -201,15 +202,19 @@ def small_albedos(block, outdir, store, px=SMALL_PX):
         sid = t["file"].split("/")[-1]
         rel = "textures/fb_%s.webp" % sid
         out = os.path.join(outdir, rel)
-        if not os.path.exists(out):
-            src = None
-            for tier in (t.get("tier", "1k"), "1k", "2k"):
-                for ext in ("webp", "jpg", "png"):
-                    cand = os.path.join(store, sid, tier, "albedo." + ext)
-                    if os.path.exists(cand):
-                        src = src or cand
-            if src is None:
-                continue
+        src = None
+        for tier in (t.get("tier", "1k"), "1k", "2k"):
+            for ext in ("webp", "jpg", "png"):
+                cand = os.path.join(store, sid, tier, "albedo." + ext)
+                if os.path.exists(cand):
+                    src = src or cand
+        if os.path.exists(out):
+            with Image.open(out) as im:
+                if im.size == (px, px):    # else written at an earlier SMALL_PX: redone when the set is there
+                    src = None
+        elif src is None:
+            continue
+        if src is not None:
             os.makedirs(os.path.dirname(out), exist_ok=True)
             with Image.open(src) as im:
                 im.convert("RGB").resize((px, px), Image.LANCZOS).save(out, "WEBP", quality=80, method=6)

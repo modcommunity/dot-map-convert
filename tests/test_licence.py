@@ -223,6 +223,24 @@ class Defects(unittest.TestCase):
         self.assertGreater(licence.name_colour("metal/white")[0], 0.8)
 
 
+class SmallAlbedo(unittest.TestCase):
+    def test_redone_at_the_current_size(self):
+        """A fallback written at an earlier SMALL_PX is redone from the store; one whose set is gone is kept."""
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as d:
+            store, out = os.path.join(d, "store"), os.path.join(d, "pack")
+            os.makedirs(os.path.join(store, "a", "1k"))
+            os.makedirs(os.path.join(out, "textures"))
+            Image.new("RGB", (1024, 1024), (200, 10, 10)).save(os.path.join(store, "a", "1k", "albedo.png"))
+            for sid in ("a", "gone"):
+                Image.new("RGB", (128, 128)).save(os.path.join(out, "textures", "fb_%s.webp" % sid), "WEBP")
+            block = {"textures": [{"kind": "pbr", "file": "pbr/a", "tier": "1k"}, {"kind": "pbr", "file": "pbr/gone"}]}
+            licence.small_albedos(block, out, store)
+            sizes = {sid: Image.open(os.path.join(out, "textures", "fb_%s.webp" % sid)).size for sid in ("a", "gone")}
+            self.assertEqual(sizes, {"a": (licence.SMALL_PX,) * 2, "gone": (128, 128)})
+            self.assertEqual([t["fallback_file"] for t in block["textures"]], ["textures/fb_a.webp", "textures/fb_gone.webp"])
+
+
 class Import(unittest.TestCase):
     def test_raw_store_is_outside_the_repo_and_plain(self):
         with tempfile.TemporaryDirectory() as root:

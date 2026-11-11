@@ -32,8 +32,8 @@ class TexQuality(unittest.TestCase):
         self.assertEqual(mesh.repeat_metres(quad(8.0, 0.0)), 0.0)
 
     def test_density_is_width_over_draw_metres(self):
-        self.assertEqual(licence.SMALL_PX / texquality.DRAW_METRES, 64.0)
-        self.assertLess(licence.SMALL_PX / texquality.DRAW_METRES, texquality.TARGET)
+        self.assertEqual(licence.SMALL_PX / texquality.DRAW_METRES, 256.0)
+        self.assertGreaterEqual(licence.SMALL_PX / texquality.DRAW_METRES, texquality.TARGET)
         self.assertGreaterEqual(1024 / texquality.DRAW_METRES, texquality.TARGET)
 
     def test_percentiles_weight_by_area(self):

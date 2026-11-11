@@ -532,7 +532,7 @@ def main(argv):
     sa = sub.add_parser("smallalbedo", help="add a small albedo per PBR set to converted packs, drawn when the store slices are missing (dotbsp/licence.py)")
     sa.add_argument("manifests", nargs="+", help="a pack's manifest json")
     sa.add_argument("--pbr-store", help="the PBR store; default the manifest's licence.pbr_store")
-    sa.add_argument("--px", type=int, default=128, help="side in pixels (default 128)")
+    sa.add_argument("--px", type=int, default=licence.SMALL_PX, help="side in pixels (default %d)" % licence.SMALL_PX)
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
