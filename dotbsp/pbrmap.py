@@ -3,7 +3,9 @@
 By name first (Source folders and words: `brick/`, `metalfloor005a`), then by the nearest average
 colour inside that category. The picks are written as an `addon` rule tier (`textures.tsv` name ->
 `pbr_<set id>`, `free_textures.tsv` the set's source, URL, author and licence, kind `pbr`), and the
-importer copies the chosen set's albedo, normal, roughness and AO beside the map.
+importer copies the chosen set's albedo, normal, roughness and AO beside the map. A name in
+`pins.tsv` (name -> set id) takes that set instead; pin-only sources (the Kenney prototype grids) are
+never picked by colour.
 
     python3 -P bsp.py pbrmap [--root DIR] [--library DIR] [--out DIR]
 """
@@ -75,6 +77,9 @@ KIND_CATEGORY = {
     "sand": "ground", "rock": "stone", "stone_block": "stone", "asphalt": "asphalt", "snow": "snow",
     "roof_clay": "roof", "carpet_grey": "fabric", "carpet_pattern": "fabric", "carpet_red": "fabric", "carpet_blue": "fabric",
 }
+# Library sources a texture only gets through a pin, never by name or colour (a prototype grid is no photo).
+PIN_ONLY = frozenset(("kenney",))
+PINS = os.path.join(OUT_DIR, "pins.tsv")
 _NAMES = [(c, re.compile(r"(?<![a-z])(?:%s)" % p)) for c, p in NAMES]
 
 
@@ -102,9 +107,10 @@ def load_library(root=None):
             if not cats and source == "polyhaven":
                 tt = _tokens(tags.replace(",", " "))
                 cats = {c for c, words in LIBRARY.items() if tt & set(words.split())}
+            pin_only = source.lower() in PIN_ONLY
             out[sid] = {"id": sid, "source": source, "url": url, "author": author, "licence": lic, "toks": toks,
-                        "idcats": {c for c, words in LIBRARY.items() if toks & set(words.split())},
-                        "colour": (float(row[6]), float(row[7]), float(row[8])), "cats": cats,
+                        "idcats": set() if pin_only else {c for c, words in LIBRARY.items() if toks & set(words.split())},
+                        "colour": (float(row[6]), float(row[7]), float(row[8])), "cats": set() if pin_only else cats,
                         "dir": os.path.join(root, source.lower(), sid), "files": row[9].split(",")}
             if any(_find(out[sid], suff) is None for suff in REQUIRED):
                 del out[sid]
@@ -211,15 +217,31 @@ def _glob_safe(name):
     return re.sub(r"[*?\[\]]", "?", name)
 
 
-def build(roots, library=None, out=OUT_DIR):
-    """Write the addon tier at `out`; returns (names mapped, distinct sets used)."""
+def load_pins(path=PINS):
+    """{source texture name: library set id} from `pins.tsv` (name, set id, a note); {} without the file."""
+    out = {}
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            for row in csv.reader(f, delimiter="\t"):
+                if row and not row[0].startswith("#") and len(row) >= 2:
+                    out[row[0].lower()] = row[1]
+    return out
+
+
+def build(roots, library=None, out=OUT_DIR, pins=None):
+    """Write the addon tier at `out`; returns (names mapped, distinct sets used). A pinned name takes
+    its pinned set (ValueError when the library lacks it)."""
     lib = load_library(library)
+    pins = load_pins(os.path.join(out, "pins.tsv")) if pins is None else pins
     picks = {}
     for name, (colour, kind) in sorted(seen(roots).items()):
-        picks[name] = pick(lib, category(name, kind), colour)
+        sid = pins.get(name.lower())
+        if sid is not None and sid not in lib:
+            raise ValueError("pins.tsv: %s -> %s, a set the library %s lacks" % (name, sid, library or library_root()))
+        picks[name] = lib[sid] if sid is not None else pick(lib, category(name, kind), colour)
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "textures.tsv"), "w", encoding="utf-8") as f:
-        f.write("# Source texture name -> PBR library set (bsp.py pbrmap). Name words first, then the nearest average colour in that category.\n")
+        f.write("# Source texture name -> PBR library set (bsp.py pbrmap). A pins.tsv row first, then name words, then the nearest average colour in that category.\n")
         for name, e in picks.items():
             f.write("%s\t%s%s\t\n" % (_glob_safe(name), GENERIC, e["id"]))
     used = {e["id"]: e for e in picks.values()}
