@@ -891,7 +891,8 @@ goth_house/goth_painting06	pbr_red_brick_plaster_patch_02
 goth_house/goth_painting_frame	pbr_Facade016	
 goth_house/goth_welcome_banner00	pbr_RoofingTiles014B	
 goth_house/goth_welcome_banner01	pbr_Tiles072	
-ground/blendsnow_tracks_wvt_patch	pbr_Gravel023	
+ground/blendsnow_asphault	pbr_Snow007C	
+ground/blendsnow_tracks_wvt_patch	pbr_Snow007C	
 ground_season	pbr_Ground022	
 halflife/black	pbr_Metal039	
 halflife/lab1_cmpm3000	pbr_Metal036	
