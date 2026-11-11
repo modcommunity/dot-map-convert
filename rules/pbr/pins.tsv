@@ -1,0 +1,5 @@
+# source texture name<TAB>library set id<TAB>why: pbrmap takes these before name words and colour. Prototype and block-out textures get the Kenney Prototype Textures (CC0, tools/kenney_prototypes.py), never a photo.
+dev/dev_measuregeneric01b	kenney_prototype_dark_01	grey dev grid: the dark Kenney grid
+dev/dev_measuregeneric01	kenney_prototype_orange_03	orange dev grid: the orange Kenney grid
+tfcustoms/color_grey	kenney_prototype_light_02	flat grey block-out: the light Kenney grid
+tfcustoms/color_orange	kenney_prototype_orange_03	flat orange block-out: the orange Kenney grid

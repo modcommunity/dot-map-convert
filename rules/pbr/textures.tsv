@@ -820,8 +820,8 @@ dev/dev_lowerwallmetal01c	pbr_Metal020
 dev/dev_lowerwallmetal01d	pbr_PaintedMetal013	
 dev/dev_measurecrate01	pbr_WoodFloor068	
 dev/dev_measurecrate02	pbr_WoodFloor030	
-dev/dev_measuregeneric01	pbr_DiamondPlate006B	
-dev/dev_measuregeneric01b	pbr_Asphalt003	
+dev/dev_measuregeneric01	pbr_kenney_prototype_orange_03	
+dev/dev_measuregeneric01b	pbr_kenney_prototype_dark_01	
 dev/dev_measuregeneric02	pbr_Tiles011	
 dev/dev_measuregeneric21	pbr_Ground014	
 dev/dev_measuregeneric25	pbr_WoodFloor012	
@@ -1535,8 +1535,8 @@ test_speakers/cuwoodm	pbr_weathered_planks
 test_speakers/door_2	pbr_laminate_floor_02	
 test_speakers/miwoodm	pbr_Wood071	
 testtext/egypt_012b	pbr_PavingStones041	
-tfcustoms/color_grey	pbr_Concrete023	
-tfcustoms/color_orange	pbr_Wood091B	
+tfcustoms/color_grey	pbr_kenney_prototype_light_02	
+tfcustoms/color_orange	pbr_kenney_prototype_orange_03	
 tile/ceilingtilea	pbr_PaintedPlaster006	
 tile/infroofb	pbr_Tiles066	
 tile/marblefloor001b_phong	pbr_PavingStones087	
