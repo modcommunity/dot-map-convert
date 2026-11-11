@@ -19,7 +19,7 @@ had not. This is the union, in the order a brush is tried:
    took any plan, and the rectangle round a triangular column is twice the column, a wall
    where the map has a corridor. A thinner plan goes on to slabs.
 4. **One tilted box for a single-slope ramp**, only when the caller's document can draw a
-   tilted box (`tilt=True`; game-playground's `ramp_box`). A staircase of slabs left gaps a
+   tilted box (`tilt=True`; game-playlot's `ramp_box`). A staircase of slabs left gaps a
    survey reads as slots, and feet catch on its saw-tooth.
 5. **Slabs** for everything else (roofs, wedges, ramps a document cannot tilt). Cut **along
    the slope** (zombie-zone's fix): the other copies cut along the longer horizontal axis,
@@ -33,7 +33,7 @@ Everything is in map units and map axes (Z-up). A box is a dict:
 
 where the ranges are in a frame turned `phi` degrees about +Z (0 for most), so the box's
 centre in map coordinates is `centre(box)`. A ramp box also carries `ramp`: (axis, zlow,
-zhigh, base, angle, sign), playground's tuple.
+zhigh, base, angle, sign), playlot's tuple.
 """
 
 import math

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Converts a Source 1 community sandbox .bsp (VBSP 19/20) into a game-playground map document.
+"""Converts a Source 1 community sandbox .bsp (VBSP 19/20) into a game-playlot map document.
 
     tools/import_bsp.py <map.bsp> <config-name> [--out=maps/<id>.json]
 
@@ -358,7 +358,7 @@ def build(bsp_path, name):
     cfg = dict(CONFIGS[name])
     # The flights live beside this adapter (stairs/<config>.json), wherever the launcher runs from.
     stairs_file = os.path.join(os.path.dirname(os.path.abspath(sys.modules["adapter_launch"].__file__)),
-                               "game-playground-maps", "stairs", name + ".json") if "adapter_launch" in sys.modules else ""
+                               "game-playlot-maps", "stairs", name + ".json") if "adapter_launch" in sys.modules else ""
     if stairs_file and os.path.exists(stairs_file):
         with open(stairs_file) as f:
             cfg["stairs"] = json.load(f)

@@ -13,7 +13,7 @@ recorded in `REPO/tools/audit_exempt.json` (or --exempt FILE), never by raising 
 "passes": ["prune_far_scenery"], "why": "..."}}`. The two numbers are ceilings measured with `tools/audit_passes.py`, which names the importer
 pass behind each lost brush; the map passes at or under them, so a new loss still fails. `passes` and `why` are required.
 
-Box documents (hide-n-seek, prop-hunt, murder-mystery, game-playground) were shifted by the importer so the
+Box documents (hide-n-seek, prop-hunt, murder-mystery, game-playlot) were shifted by the importer so the
 map's origin stands on open ground. A document imported since 2026-11-07 records the shift, the --bounds crop and the
 source map's name and hash in `source_frame` (dotbsp/sourceframe.py): the audit then uses that exact frame
 (`frame=recorded`), audits only inside the crop, and does no registration. An older document, or one whose recorded

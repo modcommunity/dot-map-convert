@@ -309,6 +309,16 @@ class Cli(unittest.TestCase):
         self.assertEqual(sources.target("bhop_x"), "game-g2gfast")
         self.assertEqual(sources.target("ph_x"), "mg-prop-hunt")
         self.assertIsNone(sources.target("unknown_x"))
+        self.assertEqual(sources.target("gm_x"), "game-playlot")
+
+    def test_launcher_under_a_former_repo_name_runs_the_renamed_adapter(self):
+        spec = importlib.util.spec_from_file_location("adapter_launch_t", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "adapters", "adapter_launch.py"))
+        launch = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(launch)
+        for old, new in launch.FORMER.items():
+            self.assertTrue(os.path.isdir(os.path.join(launch.ROOT, "adapters", new)), new)
+            self.assertFalse(os.path.exists(os.path.join(launch.ROOT, "adapters", old)), old)
 
 
 # ---- the helpers moved out of the maps repositories' importers --------------------------------

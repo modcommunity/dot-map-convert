@@ -4,7 +4,7 @@ A brush cut into slabs, or two walls the author left a sliver apart, leave such 
 """
 import math
 
-PLAYER_WIDTH = 0.8   # the survey's slot width (game-playground playground_map_survey.gd)
+PLAYER_WIDTH = 0.8   # the survey's slot width (game-playlot playground_map_survey.gd)
 STEP = 0.4           # floors that differ by less than this are stepped over, so the crack between them is no slot
 
 
