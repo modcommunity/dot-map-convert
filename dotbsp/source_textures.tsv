@@ -280,6 +280,8 @@ PROPS/MAILBOXWOOD*	wood_planks
 FDA/WOOD/*	wood_planks
 MODELS/PROPS_WASTELAND/WOOD_FENCE*	wood_planks
 MODELS/PROPS/DE_INFERNO/WOODFLOOR*	wood_floor
+# crackhouse: the office meeting table top
+MODELS/PROPS/CS_OFFICE/TABLE_MEETING	wood_planks
 REALWORLDTEXTURES/FLOOR/WOOD_FLOOR*	wood_floor
 DE_CBBLE/DOOR*	door_wood
 CUSTOM/FG_DOORBOLD	door_wood
@@ -610,3 +612,8 @@ Z-O-M-B-I-E/STALKER/STON/*	concrete
 Z-O-M-B-I-E/STALKER/WALL/WALL_RED*	brick_red
 Z-O-M-B-I-E/STALKER/WALL/*	plaster_worn
 Z-O-M-B-I-E/STALKER/WIND/*	glass
+# dm-industrial-gamma: the map author's stamp, painted on a wall
+BLACK_HAWK_MAPS/MAP_STAMP	plaster_painted
+# dm-morpheus: its two base surfaces, hard stone (concrete) and plate (metal) by look
+MORPHEUS/BASE05	concrete
+MORPHEUS/BASE06	metal

@@ -257,3 +257,6 @@ pillow|cushion|plush|teddy	pillow|cushion|teddy|toy	0.4	0.15	0.4	box	a07080
 ^st_truba_beton	NONE	1.2	1.2	2.0	cyl	909088
 ^st_(m_)?vagon	NONE	3.0	3.0	12.0	box	6a5a4a
 ^fanhousing$	ceiling_fan	1.2	0.5	1.2	cyl	707070
+# dm worlds (2026-11-11): CS:S stock models whose size is not in the store (no game files here), so the default size below is used
+^du_dome_	NONE	2.0	1.2	2.0	cyl	c9b38a
+^platform$	NONE	2.0	0.3	2.0	box	808080

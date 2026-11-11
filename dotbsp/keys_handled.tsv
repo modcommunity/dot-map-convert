@@ -28,3 +28,4 @@ func_physbox|func_breakable|func_breakable_surf	modelscale	ignored	scale of the 
 func_breakable	gibmodel	ignored	the original's gib model; breakage debris is cosmetic
 worldspawn	no_decomp	ignored	decompiler marker, not a map setting
 env_projectedtexture	(lightcolor|texturename)	ignored	the original's projected texture; the converted lamp has no projection
+point_servercommand	(sv_.*|phys_.*)	ignored	a console command written as a key by the decompiler (gravity, friction, air acceleration, push scale); the class is dropped, a map does not run commands on this server
