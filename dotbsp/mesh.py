@@ -85,7 +85,8 @@ LAYOUT = "per surface: vertex_count float32 xyz positions, then normals, then fl
 
 def hidden(e):
     """Whether a brush entity starts invisible: `rendermode 10`, an alpha render mode at
-    `renderamt 0` (a brush an output fades in), or a func_brush that starts disabled."""
+    `renderamt 0` (a brush an output fades in), a func_brush that starts disabled, or a
+    func_wall_toggle that starts off."""
     mode = str(e.get("rendermode", "0")).strip()
     if mode == "10":
         return True
@@ -94,6 +95,9 @@ def hidden(e):
             return True
     except ValueError:
         pass
+    if e.get("classname") == "func_wall_toggle":    # spawnflag 1: starts off (the document boxes leave it out too)
+        sf = str(e.get("spawnflags", "0")).strip()
+        return sf.isdigit() and int(sf) & 1 == 1
     return e.get("classname") == "func_brush" and str(e.get("StartDisabled", "0")).strip() == "1"
 
 
