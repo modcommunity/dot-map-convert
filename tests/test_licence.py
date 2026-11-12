@@ -197,10 +197,11 @@ class Defects(unittest.TestCase):
         self.assertEqual(fm.get("props/de_nuke/wall_light.mdl")["stand_in"], "ceiling_light")
         self.assertEqual(fm.get("props_junk/shoe001a.mdl")["stand_in"], "cardboard_box")
         self.assertEqual(sz.get("props_junk/shoe001a.mdl"), 0.22)
-        for m in ("effects/vol_light64x128.mdl", "humans/charple02.mdl", "props_vents/vent_medium_grill002.mdl",
+        for m in ("effects/vol_light64x128.mdl", "humans/charple02.mdl",
                   "props_buildings/buildingskybox_002a.mdl", "props_furniture/picture_frame8.mdl"):
             self.assertTrue(standins.is_skybox(m) or standins.is_detail(m), m)
         self.assertFalse(standins.is_detail("props_c17/furniturechair001a.mdl"))
+        self.assertFalse(standins.is_detail("props_vents/vent_medium_grill002.mdl"))   # an own CC0 vent model since 724a483
 
     def test_measured_block_for_a_packed_model_no_stand_in_fits(self):
         from dotbsp import standins
