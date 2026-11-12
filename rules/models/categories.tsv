@@ -1,7 +1,17 @@
-# name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour
+# name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour; an optional 8th column "fixed" ignores the measured size (a weapon header box is an idle-pose hull, not its shape) and uses the default w h d
 # dm worlds batch 2 (2026-11-11): dm-hot-cn-v1, dm-scarletdevilmansion, gg-woods props; no library match reads as the same thing except the bushes and candelabra, the rest are plain generated stand-ins of a guessed size
 # zombie-zone-maps (2026-11-11 pass 3): own CC0 household and warehouse clutter (tools/models/household.py).
 # zombie-zone-maps (2026-11-12 pass 5): own CC0 scenery (tools/models/scenery.py); train cars, guard, water towers, speakers, dish, drain and dock were detail, kept now.
+# weapon pickups (map-models-leftovers, 2026-11-12): own CC0 models (tools/models/weapons.py); the stems are the w_ weapon world models. Specific kinds first, any other w_ model is a rifle-sized long gun.
+^w_(pist|pistol|usp|glock|deagle|elite|fiveseven|p228|revolver)	dm_weaponpistol	0.22	0.15	0.03	box	1a1a1c	fixed
+^w_(smg|mp5|mp7|mac10|ump|tmp|p90)	dm_weaponsmg	0.4	0.2	0.05	box	1a1a1c	fixed
+^w_(snip|sniper|awp|scout|g3sg1|sg550)	dm_weaponsniper	1.18	0.2	0.05	box	1a1a1c	fixed
+^w_(shot|shotgun|annabelle|xm1014|m3)	dm_weaponshotgun	1.03	0.14	0.05	box	3a2a1c	fixed
+^w_(mach|lmg|m249|para)	dm_weaponlmg	1.03	0.23	0.07	box	1a1a1c	fixed
+^w_(rocket|rpg|launcher)	dm_weaponlauncher	1.14	0.16	0.14	box	40472e	fixed
+^w_(knife|crowbar|stunbaton|bat|axe)	dm_weaponknife	0.5	0.06	0.05	box	1a1a1c	fixed
+^w_(c4|bomb|physics)	dm_weaponc4	0.21	0.07	0.12	box	8c8061	fixed
+^w_\w+	dm_weaponrifle|dm_weaponsmg	0.93	0.19	0.05	box	1a1a1c	fixed
 ^train00\d	dm_traincar	2.5	3.7	10.6	box	6a3a2a
 ^(de_train_)?securityguard	dm_securityguard	0.7	0.3	1.1	box	26334f
 ^watertower_\w+	dm_watertower	6.0	11.0	6.0	cyl	806a58
