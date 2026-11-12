@@ -1,6 +1,21 @@
 # name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour
 # dm worlds batch 2 (2026-11-11): dm-hot-cn-v1, dm-scarletdevilmansion, gg-woods props; no library match reads as the same thing except the bushes and candelabra, the rest are plain generated stand-ins of a guessed size
 # zombie-zone-maps (2026-11-11 pass 3): own CC0 household and warehouse clutter (tools/models/household.py).
+# zombie-zone-maps (2026-11-11 pass 4): own CC0 props (tools/models/props.py).
+^woodwall030b_window\d|^boardedwindow	dm_boardedwindow	1.1	1.3	0.14	box	73543a
+^watermelon\d	dm_watermelon	0.28	0.28	0.28	cyl	407040
+^(props_)?orange\d*$|^orange$	dm_orange	0.116	0.116	0.116	cyl	e8730d
+^patty\d*$	dm_patty	0.19	0.07	0.19	cyl	9a6a3a
+^rockcliff01[a-f]	dm_rockcliff1|dm_rockcliff2	4.0	3.5	3.0	box	6a6258
+^sheetrock_leaning	dm_sheetrock	2.44	1.25	0.45	box	cfcdc0
+^food_stack	dm_foodstack	1.9	1.19	1.0	box	3366a0
+^garbage_plasticbottle\d	dm_plasticbottle	0.135	0.37	0.135	cyl	c0e0e8
+^harddrive\d	dm_harddrive	0.147	0.026	0.102	box	9a9ca0
+^light_security	dm_securitylight	0.36	0.29	0.34	box	8c8e8e
+^pylon\d*$	dm_pylontall	0.194	1.18	0.194	cyl	cc1e14
+^harpoon\d	dm_harpoon	1.6	0.06	0.06	cyl	6a5a48
+^cannon_base	dm_cannoncarriage	1.5	0.85	0.85	box	5c4026
+^cannon_gun	dm_cannonbarrel	2.4	0.3	0.3	cyl	2e2e30
 ^sinkkitchen\d	dm_kitchensink	0.44	0.68	0.52	box	c8c8c0
 ^(garbage_)?coffeemug\d|^coffee_mug$	dm_coffeemug	0.1	0.1	0.1	cyl	d8d4c8
 ^furnitureshelf002a	dm_shelfsmall	0.81	0.31	0.29	box	80583a
