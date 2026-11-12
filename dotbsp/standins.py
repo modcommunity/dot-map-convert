@@ -38,10 +38,15 @@ DETAIL = re.compile(
     r"|picture_frame|ceiling_fan|(^|/)fan(off)?(\\.mdl)?$|teleplatform|info_speech|snowman_arm|(^|/)donut(\.mdl)?$|extras/")
 
 
+# Models DETAIL's patterns catch by accident (a spool "wire", a call "button", a "cluster" of pipes or rocks) that read as props
+# and have an own CC0 model (tools/models/industrial.py).
+DETAIL_KEEP = re.compile(r"(^|/)(spoolwire|freightelevatorbutton\d*|rockcliff_cluster\w*|(furniture)?pipecluster\w*)(\.mdl)?$")
+
+
 def is_detail(model):
-    """True for a model left out on purpose (see DETAIL); `is_skybox` models are a separate, silent case."""
+    """True for a model left out on purpose (see DETAIL, bar DETAIL_KEEP); `is_skybox` models are a separate, silent case."""
     m = str(model or "").lower().replace("\\", "/")
-    return not is_skybox(m) and bool(DETAIL.search(m))
+    return not is_skybox(m) and bool(DETAIL.search(m)) and not DETAIL_KEEP.search(m)
 
 
 def is_skybox(model):
