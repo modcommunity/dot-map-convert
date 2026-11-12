@@ -27,6 +27,11 @@
 ^mh-53j$	dm_helifuselage	27.7	6.2	8.5	box	606870
 ^mh-53j_rotor	dm_helirotor	27.0	0.06	27.0	box	303030
 ^mh-53j_tail	dm_helitailrotor	4.2	0.06	4.2	box	303030
+^mh-53j_gear	dm_heligear	0.17	0.66	0.25	box	101010
+^mh-53j_[lr][ft]wheel	dm_heliwheel	0.3	0.75	0.75	cyl	101010
+# zombie-zone-maps (2026-11-11): the c17 handrail pieces were gate and fence-curve stand-ins; own CC0 handrail (tools/models/handrail.py)
+^handrail04_corner	dm_handrailcorner	0.63	0.76	0.63	box	707878
+^handrail04_	dm_handrail	1.24	0.76	0.04	box	707878
 # sunken_resort (2026-11-09): lab machinery and wall panels that had no category; plain generated fixtures (CC0, TMC) where no library model reads as the same thing
 ^128_fuse_set	NONE	0.3	2.1	2.1	box	708070
 ^claw_	NONE	0.2	1.0	0.4	box	808890

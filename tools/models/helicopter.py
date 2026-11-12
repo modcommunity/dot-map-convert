@@ -3,7 +3,8 @@ and gear), the main rotor (hub and blades, flat) and the tail rotor, matching ho
 
 blender -b --factory-startup --python helicopter.py -- outdir
 Writes dm_helifuselage (nose at -X, 27.7 m long with the tail boom, 8.5 m wide over the sponsons, about 6 m high),
-dm_helirotor (27 m across on a 1.4 m mast) and dm_helitailrotor (4.2 m, in the Y-Z plane) into outdir. Origin on the floor, centred. Plain colour materials.
+dm_helirotor (27 m across on a 1.4 m mast), dm_helitailrotor (4.2 m, in the Y-Z plane), dm_heligear (a 0.66 m landing-gear strut) and
+dm_heliwheel (a 0.75 m wheel, axle along X) into outdir. Origin on the floor, centred. Plain colour materials.
 """
 import math
 import os
@@ -65,3 +66,19 @@ def rotor(name, radius, blades, hub, chord, mast=0.0, vertical=False):
 
 rotor("dm_helirotor", 13.5, 7, 0.6, 0.6, mast=1.4)
 rotor("dm_helitailrotor", 2.1, 4, 0.2, 0.25, vertical=True)
+
+
+# The separate gear and wheel parts a source map places beside the fuselage.
+g = mk.fresh()
+dark = mk.mat("heli_dark", (0.1, 0.11, 0.1), 0.6, 0.4)
+mk.beam(g, (0, 0, 0.62), (0, 0, 0.04), 0.14, dark)
+mk.box(g, (0, 0, 0.62), (0.17, 0.25, 0.08), dark)
+mk.box(g, (0, 0, 0.03), (0.17, 0.25, 0.06), dark)
+mk.finish(g, "dm_heligear", f"{outdir}/dm_heligear.glb")
+
+w = mk.fresh()
+dark = mk.mat("heli_dark", (0.1, 0.11, 0.1), 0.6, 0.4)
+tyre = mk.mat("heli_tyre", (0.06, 0.06, 0.06), 0.9, 0.0)
+mk.cyl(w, (0, 0, 0.375), 0.375, 0.3, tyre, verts=16, rot=(0, math.pi / 2, 0))
+mk.cyl(w, (0, 0, 0.375), 0.2, 0.32, dark, verts=12, rot=(0, math.pi / 2, 0))
+mk.finish(w, "dm_heliwheel", f"{outdir}/dm_heliwheel.glb")
