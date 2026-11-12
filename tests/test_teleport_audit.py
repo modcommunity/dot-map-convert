@@ -59,6 +59,16 @@ class SeparatePits(unittest.TestCase):
         self.assertEqual(bsp_import.separate_pits([c, d]), 0)
         self.assertEqual(c["max"][0], 100)
 
+    def test_no_side_is_cut_thinner_than_a_tick(self):
+        a = pit((0, 0, 0), (40, 64, 64), (1000, 0, 0), original=((0, 0, 0), (16, 64, 64)))
+        b = pit((20, 0, 0), (200, 64, 64), (2000, 0, 0), original=((24, 0, 0), (192, 64, 64)))
+        self.assertEqual(bsp_import.separate_pits([a, b]), 1)
+        self.assertEqual(a["max"][0], bsp_import.TICK_DEPTH)
+        self.assertEqual(b["min"][0], bsp_import.TICK_DEPTH)
+        c = pit((0, 0, 0), (40, 64, 64), (1000, 0, 0), original=((0, 0, 0), (16, 64, 64)))
+        d = pit((20, 0, 0), (50, 64, 64), (2000, 0, 0), original=((24, 0, 0), (40, 64, 64)))
+        self.assertEqual(bsp_import.separate_pits([c, d]), 0)
+
     def test_other_tracks_are_left(self):
         a = pit((0, 0, 0), (192, 64, 64), (1, 0, 0), track=0, original=((0, 0, 0), (64, 64, 64)))
         b = pit((96, 0, 0), (288, 64, 64), (2, 0, 0), track=1, original=((128, 0, 0), (192, 64, 64)))

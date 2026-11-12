@@ -3417,37 +3417,50 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
     if held:
         z.notes.append("%d pits around or under a team spawn send to the spawn" % held)
 
-    looped = chained = 0
-    for zz in pits:
-        at = zz.get("destination")
-        if at is None:
-            continue
-        yaw = zz.get("destination_yaw", 0.0)
+    def follow(zz):
+        """Where a player sent by [param zz] ends up, through every pit or door they land in."""
+        at, yaw = zz["destination"], zz.get("destination_yaw", 0.0)
         seen = {id(zz)}
-        ok = True
         for _hop in range(8):
             q = pit_at(at)
             if q is None:
-                break
+                return at, yaw, True, len(seen)
             if id(q) in seen or q.get("destination") is None:
-                ok = False
-                break
+                return at, yaw, False, len(seen)
             seen.add(id(q))
             at, yaw = q["destination"], q.get("destination_yaw", 0.0)
-        else:
-            ok = False
+        return at, yaw, False, len(seen)
+
+    looped = chained = 0
+    for zz in pits:
+        if zz.get("destination") is None:
+            continue
+        at, yaw, ok, hops = follow(zz)
         if not ok:
             del zz["destination"]
             zz.pop("destination_yaw", None)
             zz["looped"] = True
             looped += 1
-        elif len(seen) > 1:
+        elif hops > 1:
             zz["destination"], zz["destination_yaw"] = list(at), yaw
             chained += 1
     if chained:
         z.notes.append("%d pits send through a hub teleport; they send to where it ends" % chained)
     if looped:
         z.notes.append("%d pits send round a loop; they send to the spawn instead" % looped)
+
+    # A finish door that lands the player in a pit sends on to where that pit sends:
+    # bhop_exodus's `enddddddd` is two units off the teleport wall back to the start, so the
+    # hull touches it on arrival. Followed only when the chain ends; a loop keeps the map's own.
+    onward_doors = 0
+    for zz in z.zones:
+        if zz["kind"] == "TELEPORT" and zz.get("finish") and zz.get("destination") is not None:
+            at, yaw, ok, hops = follow(zz)
+            if ok and hops > 1:
+                zz["destination"], zz["destination_yaw"] = list(at), yaw
+                onward_doors += 1
+    if onward_doors:
+        z.notes.append("%d finish doors land in a teleport; they send to where it ends" % onward_doors)
 
     moved = spawn_through_pits(z, pits)
     if moved:
@@ -3646,6 +3659,12 @@ def separate_pits(pits):
             k = max(range(3), key=lambda k: max(ob[0][k] - oa[1][k], oa[0][k] - ob[1][k]))
             lower, upper = (a, b) if oa[1][k] <= ob[0][k] else (b, a)
             mid = ((oa[1][k] + ob[0][k]) if lower is a else (ob[1][k] + oa[0][k])) * 0.5
+            # Never cut a side thinner than a tick of travel: a pit between two
+            # neighbours (bhop_tranquility's rows) was left 12 units deep, which a falling player steps over.
+            floor, ceil = lower["min"][k] + TICK_DEPTH, upper["max"][k] - TICK_DEPTH
+            if floor > ceil:
+                continue
+            mid = min(max(mid, floor), ceil)
             lower["max"][k] = min(lower["max"][k], mid)
             upper["min"][k] = max(upper["min"][k], mid)
             cut += 1
@@ -3777,6 +3796,9 @@ def emit_zones(z):
         if zone.get("no_restart"):
             one["restart"] = False
             one["restart_why"] = zone["no_restart"]
+        if zone.get("finish"):
+            # The game leaves a finish door out of what a stage must face.
+            one["finish"] = True
         out.append(one)
     return out
 
