@@ -2432,6 +2432,13 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
     if start_pt < 0:
         sys.exit(f"no ground within 3 m of the survivor start {starts[0]}: the start floats or the map's floor is not brushes (displacements, models)")
     main = G.find(start_pt)
+    # The main ground is the largest piece holding a survivor start, not the first start's piece: goth_house's first
+    # four starts stand in a 14-point cellar, so the horde's fallback starts went into the cellar under the house.
+    sizes_m = collections.Counter(G.find(i) for i in range(len(G.pts)))
+    for st_ in starts[1:]:
+        k_ = G.nearest(st_[0], st_[1], st_[2], 3.0)
+        if k_ >= 0 and sizes_m[G.find(k_)] > sizes_m[main]:
+            main = G.find(k_)
     for bid, cx, cz, thin in bar_geo:
         d = (1.2, 0.0) if thin == 0 else (0.0, 1.2)
         for sgn in (1, -1):
