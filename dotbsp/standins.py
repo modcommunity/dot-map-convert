@@ -40,7 +40,7 @@ DETAIL = re.compile(
 
 # Models DETAIL's patterns catch by accident (a spool "wire", a call "button", a "cluster" of pipes or rocks) that read as props
 # and have an own CC0 model (tools/models/industrial.py).
-DETAIL_KEEP = re.compile(r"(^|/)(spoolwire|freightelevatorbutton\d*|rockcliff_cluster\w*|(furniture)?pipecluster\w*|combine_wire\d+|wall_wires\d|antenna\w*|du_antenna\w*|m33_antenna\w*|truss02[d-g]|de_train_truss02d|vent_(large|medium)_grill\w*|vent_medium_straight\w*|vent_cluster\d+|roof_vent\d+|wall_vent|vent001|lights_industrialcluster\w*|trashcluster\d+\w*|ceilingtruss_\w+|truss02h)(\.mdl)?$")
+DETAIL_KEEP = re.compile(r"(^|/)(train00\d|(de_train_)?securityguard|watertower_\w+|speakercluster\w+|roof_dish\w+|gutter_drain\w+|dock_broken\w+|spoolwire|freightelevatorbutton\d*|rockcliff_cluster\w*|(furniture)?pipecluster\w*|combine_wire\d+|wall_wires\d|antenna\w*|du_antenna\w*|m33_antenna\w*|truss02[d-g]|de_train_truss02d|vent_(large|medium)_grill\w*|vent_medium_straight\w*|vent_cluster\d+|roof_vent\d+|wall_vent|vent001|lights_industrialcluster\w*|trashcluster\d+\w*|ceilingtruss_\w+|truss02h)(\.mdl)?$")
 
 
 def is_detail(model):
