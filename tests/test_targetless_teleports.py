@@ -1,4 +1,4 @@
-"""A trigger_teleport with no target is dropped, not sent to the spawn.
+"""A trigger_teleport with no target, or one naming nothing, is dropped, not sent to the spawn.
 Run: python3 -P tests/test_targetless_teleports.py
 """
 
@@ -52,9 +52,16 @@ class Targetless(unittest.TestCase):
         self.assertIn("xStage1TimerTele", self.z.notes[0])
 
     def test_nothing_to_drop_logs_nothing(self):
-        z = zoner([{"classname": "trigger_teleport", "target": "a"}])
+        z = zoner([{"classname": "trigger_teleport", "target": "a"},
+                   {"classname": "info_teleport_destination", "targetname": "A"}])
         self.assertEqual(bsp_import.targetless_teleports(z), 0)
         self.assertEqual(z.notes, [])
+
+    def test_a_target_that_names_nothing_is_dropped_too(self):
+        z = zoner([{"classname": "trigger_teleport", "targetname": "t", "target": "secret1"}])
+        self.assertEqual(bsp_import.targetless_teleports(z), 1)
+        self.assertEqual(z.claimed, {0})
+        self.assertIn("1 teleports dropped that aim at a name nothing has (t)", z.notes[0])
 
     def test_a_claimed_teleport_is_left_alone(self):
         self.z.claimed.add(0)

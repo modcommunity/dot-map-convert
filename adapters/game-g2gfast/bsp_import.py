@@ -1999,6 +1999,8 @@ class Zoner:
         self.zones = []
         self.notes = []
         self.track_names = {}
+        # {entity index: [RESPAWN zones]} for every teleport imported as a pit; the audit reads it.
+        self.pit_zones = {}
 
     # -- reading the entity lump ------------------------------------------
     def entities(self, *classnames):
@@ -2187,6 +2189,33 @@ def resolve_overrides(z, doc):
             dest, yaw = floor_of(box), float(spec.get("destination_yaw", around_yaw(z, spec)))
         z.add(kind, track, box=box, number=float(spec.get("number", 0)),
               destination=dest, yaw=yaw, comment=str(spec.get("note", "")))
+        if kind == "END" and "teleport_to" in spec:
+            finish_teleports(z, spec, track, box)
+
+
+def finish_teleports(z, spec, track, around):
+    """A finish drawn round a `trigger_teleport` still sends where that trigger aims.
+
+    [b]Claimed as END alone, it finished the run and left the player standing in it.[/b]
+    bhop_arcane_v2's stage-stop pads land the player at `end_stop`, inside a clip brush
+    and inside the trigger to `end`: Source moved them on, this game left them stuck.
+    The TELEPORT fires after the finish (dot-timer applies effects last), and is marked
+    `finish` so a pit landing in it is not chained past the END.
+    """
+    want = str(spec["teleport_to"]).strip().lower()
+    for e in z.bsp.entities:
+        if e.get("classname") != "trigger_teleport" or e.get("target", "").strip().lower() != want:
+            continue
+        box = brush_box(z.bsp, e)
+        hits = z.destinations(want)
+        # Only the triggers resolve_box drew this END round (it claimed them already).
+        if box is None or not hits or not all(around[0][k] <= box[0][k] and box[1][k] <= around[1][k]
+                                              for k in range(3)):
+            continue
+        at, yaw = hits[0]
+        zone = z.add("TELEPORT", track, box=box, destination=at, yaw=yaw,
+                     comment="the finish trigger sends on to %s" % e.get("target", ""))
+        zone["finish"] = True
 
 
 POINT_KINDS = ("SPAWN",)
@@ -2991,16 +3020,20 @@ def targetless_teleports(z):
     not run. Imported, each one fell through to "no destination means the spawn" and
     became a pit over a whole stage. Dropped and listed instead, so the note names them.
     A teleport an override or an earlier rule already claimed is not asked.
+    A target that names no entity is the same in Source (the touch finds nowhere to send
+    and does nothing): bhop_pharma's `secret1` and surf_lt_unicorn's `stage_null`.
     """
-    dropped = []
+    dropped, aimless = [], []
     for i, e in list(z.entities("trigger_teleport")):
-        if not e.get("target", "").strip():
+        target = e.get("target", "").strip()
+        if not target or not z.destinations(target):
             z.claimed.add(i)
-            dropped.append(e.get("targetname", "") or "#%d" % i)
-    if dropped:
-        shown = ", ".join(dropped[:12]) + (", ..." if len(dropped) > 12 else "")
-        z.notes.append("%d teleports dropped that have no target (%s)" % (len(dropped), shown))
-    return len(dropped)
+            (aimless if target else dropped).append(e.get("targetname", "") or "#%d" % i)
+    for names, why in ((dropped, "have no target"), (aimless, "aim at a name nothing has")):
+        if names:
+            shown = ", ".join(names[:12]) + (", ..." if len(names) > 12 else "")
+            z.notes.append("%d teleports dropped that %s (%s)" % (len(names), why, shown))
+    return len(dropped) + len(aimless)
 
 
 def train_movers(bsp, limit=256):
@@ -3281,6 +3314,7 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
                 continue
             boxes = [(None, None, box)]
         z.claimed.add(i)
+        made = z.pit_zones.setdefault(i, [])
         pieces = []
         for brush, origin, box in boxes:
             cut = hull_boxes(bsp, brush, origin, box) if brush is not None else [box]
@@ -3321,6 +3355,7 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
                 for piece in clear_standers(zone, z.solids):
                     rest.append(dict(copy.deepcopy(zone), min=piece[0], max=piece[1]))
                 z.zones.extend(rest)
+                made.extend([zone] + rest)
                 for part in [zone] + rest:
                     respawn.append({"min": part["min"], "max": part["max"],
                                     "inflated": part["inflated"],
@@ -3339,10 +3374,17 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
     # pit sends there; a chain that comes back round, or runs into a pit with nowhere to
     # send, falls back to the spawn, which is what every pit did before, and is counted.
     pits = [zz for zz in z.zones if zz["kind"] == "RESPAWN"]
+    parted = separate_pits(pits)
+    if parted:
+        z.notes.append("%d pairs of thickened pits cut apart where they grew into each other" % parted)
+
+    # A walk-through TELEPORT at the far end is a hub too: bhop_tesquo_v2's pits send to
+    # cells in a clip grid, and the door teleport in each cell sends on to the stage.
+    onward = pits + [zz for zz in z.zones if zz["kind"] == "TELEPORT" and not zz.get("finish")]
 
     def pit_at(point):
         p = [point[0], point[1], point[2] + DESTINATION_LIFT]
-        for o in pits:
+        for o in onward:
             if all(o["min"][a] <= p[a] <= o["max"][a] for a in range(3)):
                 return o
         return None
@@ -3397,6 +3439,7 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
         if not ok:
             del zz["destination"]
             zz.pop("destination_yaw", None)
+            zz["looped"] = True
             looped += 1
         elif len(seen) > 1:
             zz["destination"], zz["destination_yaw"] = list(at), yaw
@@ -3410,7 +3453,203 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
     if moved:
         z.notes.append("%d spawns stand in or over a teleport; they spawn where it sends" % moved)
 
+    z.audit = teleport_audit(z)
     return z, spawns, respawn, push, other, dropped
+
+
+def teleport_audit(z):
+    """Every `trigger_teleport` in the map, and whether the pits made of it send where it does.
+
+    [b]A teleport that sends you to the wrong place reads as fine from everywhere but its
+    destination.[/b] So each one is resolved again here, after every rule has run, and the
+    manifest carries the result; headless_imported fails a map with any `broken` entry. A
+    teleport another rule claimed (a zone, a drop with its note) is counted, not judged.
+    Problems, per teleport imported as a pit:
+    `unresolved` its target names nothing, so it sends to the spawn;
+    `shadowed` everywhere in the trigger, the game's first zone is a pit sending elsewhere
+    (counted as `filter_stack` instead when both triggers are filtered or start disabled, or this
+    one starts disabled so the map's default state is the other's; and as
+    `drawn_overlap` when the mapper drew the other trigger over all of it);
+    `in_solid` where it finally sends is inside a solid brush (`authored_solid` when the
+    map's own destination is);
+    `loop` its hub chain comes back round, so it sends to the spawn (`hold` when it lands
+    in a trigger sending to the same place: a holding cell map logic opens);
+    `gone` none of its pits is left in the zone list.
+    """
+    live = {id(zz) for zz in z.zones}
+    pits = [zz for zz in z.zones if zz["kind"] == "RESPAWN"]
+    doors = [zz for zz in z.zones if zz["kind"] == "TELEPORT"]
+    owner = {id(zz): i for i, made in z.pit_zones.items() for zz in made}
+    brushes = None
+    stuck = {}
+
+    def in_solid(at):
+        nonlocal brushes
+        key = tuple(round(v) for v in at)
+        if key not in stuck:
+            # Just above the feet and at a crouched player's middle, where Source puts them:
+            # bhop_exodus sends into a 56-unit crawlway a ducked player fits. A door
+            # teleport there sends the player on before they can be stuck.
+            stuck[key] = False
+            for p in ((at[0], at[1], at[2] + 8.0), (at[0], at[1], at[2] + 36.0)):
+                if any(all(d["min"][k] <= p[k] <= d["max"][k] for k in range(3)) for d in doors) \
+                        or not any(all(a[k] < p[k] < b[k] for k in range(3)) for a, b in z.solids):
+                    continue
+                # The hull boxes only shortlist: a merged sloped hull's box is mostly air.
+                # World brushes only: a trigger's brush is "solid" in the BSP and moves no one.
+                if brushes is None:
+                    brushes = [i for i in sorted(z.bsp.model_brushes(0))
+                               if z.bsp.brushes[i][2] & MASK_PLAYERSOLID]
+                if any(point_in_brush(z.bsp, i, p, -4.0) for i in brushes):
+                    stuck[key] = True
+                    break
+        return stuck[key]
+
+    broken = []
+    counts = collections.Counter()
+    for i, e in enumerate(z.bsp.entities):
+        if e.get("classname") != "trigger_teleport":
+            continue
+        counts["teleports"] += 1
+        made = z.pit_zones.get(i)
+        if made is None:
+            counts["claimed" if i in z.claimed else "no_volume"] += 1
+            continue
+        counts["pits"] += 1
+        problem = ""
+        if not z.destinations(e.get("target", "")):
+            problem = "unresolved"
+        else:
+            kept = [zz for zz in made if id(zz) in live]
+            if not kept:
+                problem = "gone"
+            # Shadowed only when no part of the trigger as drawn reaches its own destination:
+            # where the mapper drew two triggers overlapping, Source is no surer which wins.
+            shadow = drawn = None
+            for zz in kept:
+                for at in _samples(zz):
+                    first = next((p for p in pits if p["track"] == zz["track"]
+                                  and all(p["min"][k] <= at[k] <= p["max"][k] for k in range(3))), None)
+                    if first is None or _same_destination(first, zz):
+                        shadow = False
+                        break
+                    if all(first["original_min"][k] <= at[k] <= first["original_max"][k] for k in range(3)):
+                        drawn = first
+                    else:
+                        shadow = first
+                if shadow is False:
+                    break
+            if kept and shadow is None and drawn is not None:
+                counts["drawn_overlap"] += 1
+            if kept and shadow:
+                problem = "shadowed"
+                # A stack of filtered or switched-on teleports is the map picking one by logic
+                # this game does not run (surf_summit's bonus 3 checkpoints): counted.
+                other = z.bsp.entities[owner[id(shadow)]] if id(shadow) in owner else {}
+                # One that starts off under an always-on trigger is an event (surf_animals'
+                # fight teleports): with it off, as the map starts, the other is right.
+                if _gated(e) and (_gated(other) or _starts_off(e)):
+                    problem = ""
+                    counts["filter_stack"] += 1
+            for zz in kept if not problem else []:
+                if zz.get("looped"):
+                    # A cell whose own teleport keeps sending back into it holds the player
+                    # until logic lets them out (surf_lt_unicorn's ending, bhop_angst's secret).
+                    at = z.destinations(e.get("target", ""))[0][0]
+                    at = (at[0], at[1], at[2] + DESTINATION_LIFT)
+                    cell = next((p for p in pits if p["track"] == zz["track"]
+                                 and all(p["min"][k] <= at[k] <= p["max"][k] for k in range(3))), None)
+                    keeper = z.bsp.entities[owner[id(cell)]] if id(cell) in owner else {}
+                    if keeper.get("target", "").strip().lower() == e.get("target", "").strip().lower():
+                        counts["hold"] += 1
+                    else:
+                        problem = "loop"
+                    break
+                if zz.get("destination") is not None and in_solid(zz["destination"]):
+                    # Where the map itself aims into a solid (bhop_angst's `tp_redout`), the
+                    # map is stuck in Source too: counted, not ours to move.
+                    if in_solid(z.destinations(e.get("target", ""))[0][0]):
+                        counts["authored_solid"] += 1
+                    else:
+                        problem = "in_solid"
+                    break
+        if e.get("landmark", "").strip():
+            # The offset from the landmark is not carried: a pit sends to one point.
+            counts["landmark"] += 1
+        if problem:
+            broken.append({"entity": i, "targetname": e.get("targetname", ""),
+                           "target": e.get("target", ""), "problem": problem})
+    out = dict(counts)
+    out["broken"] = broken
+    return out
+
+
+def _starts_off(e):
+    return str(e.get("StartDisabled", "0")).strip() == "1"
+
+
+def _gated(e):
+    """Whether map logic picks when this trigger works: a filter, or off until switched on."""
+    return bool(e.get("filtername", "").strip()) or _starts_off(e)
+
+
+def _samples(zz, n=3):
+    """A grid of points in the trigger as drawn, kept inside the zone it became."""
+    lo = [max(zz.get("original_min", zz["min"])[k], zz["min"][k]) for k in range(3)]
+    hi = [min(zz.get("original_max", zz["max"])[k], zz["max"][k]) for k in range(3)]
+    axes = [[lo[k] + (hi[k] - lo[k]) * (j + 0.5) / n for j in range(n)] for k in range(3)]
+    return [(x, y, w) for x in axes[0] for y in axes[1] for w in axes[2]]
+
+
+def _same_destination(a, b):
+    da, db = a.get("destination"), b.get("destination")
+    if da is None or db is None:
+        return da is None and db is None
+    return math.dist(da, db) < 1.0
+
+
+def separate_pits(pits):
+    """Cut two thickened pits apart where the thickening made them overlap.
+
+    [b]The thickness is ours; the trigger is the mapper's.[/b] `inflate` grows every axis
+    to MIN_ZONE_THICKNESS, so a grid of 64-unit teleport pads (bhop_arcane_v2's stage
+    picker: one pad per stage) became 192-unit boxes that each covered their neighbours,
+    and the game sent a player on `stage4a` to whichever overlapping pad came first --
+    another stage. Only pits on one track with different destinations are cut, at the
+    middle of the gap between the triggers as drawn, so neither loses any of its own
+    volume. Triggers the mapper drew overlapping are left as drawn. Hammer boxes.
+    """
+    def apart(a, b):
+        return any(a[0][k] >= b[1][k] or b[0][k] >= a[1][k] for k in range(3))
+
+    for p in pits:
+        # In place where they are lists already: `respawn_volumes` shares them.
+        for key in ("min", "max"):
+            if not isinstance(p[key], list):
+                p[key] = list(p[key])
+    order = sorted(pits, key=lambda p: p["min"][0])
+    reach = [(p["min"][0], p["max"][0]) for p in order]
+    cut = 0
+    for i, a in enumerate(order):
+        for j in range(i + 1, len(order)):
+            if reach[j][0] >= reach[i][1]:
+                break
+            b = order[j]
+            if a["track"] != b["track"] or _same_destination(a, b):
+                continue
+            if apart((a["min"], a["max"]), (b["min"], b["max"])):
+                continue
+            oa = (a.get("original_min", a["min"]), a.get("original_max", a["max"]))
+            ob = (b.get("original_min", b["min"]), b.get("original_max", b["max"]))
+            if not apart(oa, ob):
+                continue
+            k = max(range(3), key=lambda k: max(ob[0][k] - oa[1][k], oa[0][k] - ob[1][k]))
+            lower, upper = (a, b) if oa[1][k] <= ob[0][k] else (b, a)
+            mid = ((oa[1][k] + ob[0][k]) if lower is a else (ob[1][k] + oa[0][k])) * 0.5
+            lower["max"][k] = min(lower["max"][k], mid)
+            upper["min"][k] = max(upper["min"][k], mid)
+            cut += 1
+    return cut
 
 
 def pit_catches(z, pit, at):
@@ -4106,6 +4345,8 @@ def main(argv=None):
         "min_zone_thickness": a.min_zone_thickness,
         "zones": zones,
         "track_names": z.track_names,
+        # Every trigger_teleport resolved again after the rules ran; see teleport_audit.
+        "teleport_audit": z.audit,
         "respawn_volumes": respawn,
         # What the volumes DO to a player: water, pushes, gravity, hurt, conveyors,
         # ladders and the blocks that sink. See tools/bsp_mechanics.py.
@@ -4190,6 +4431,10 @@ def main(argv=None):
                  "end" if "END" in kinds else "NO END",
                  "" if "SPAWN" in kinds else ", NO SPAWN", stages,
                  ", %d teleports" % kinds.count("TELEPORT") if "TELEPORT" in kinds else ""))
+    print("  teleports: %d, %d imported as pits, %d claimed by other rules, %d broken%s"
+          % (z.audit.get("teleports", 0), z.audit.get("pits", 0), z.audit.get("claimed", 0),
+             len(z.audit["broken"]), "".join("\n    BROKEN %s #%d %r -> %r" % (
+                 b["problem"], b["entity"], b["targetname"], b["target"]) for b in z.audit["broken"])))
     for track, name in dropped:
         print("  track %d (%s) was dropped: a track needs both a start and an end"
               % (track, name))
