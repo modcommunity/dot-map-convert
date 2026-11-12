@@ -59,7 +59,7 @@ def categories(path=None):
                 continue
             c = line.split("\t")
             rows.append({"name": re.compile(c[0]), "lib": None if c[1] == "NONE" else [re.compile(r"(?<![a-z0-9])(?:%s)(?![a-z0-9])" % a) for a in c[1].replace("-", "_").split("|")],
-                         "dims": tuple(float(v) for v in c[2:5]), "shape": c[5], "colour": c[6]})
+                         "dims": tuple(float(v) for v in c[2:5]), "shape": c[5], "colour": c[6], "fixed": len(c) > 7 and c[7] == "fixed"})
     return rows
 
 
@@ -211,6 +211,28 @@ def category_of(key, cats):
     return cat
 
 
+_FIXED = {}
+
+
+def fixed_pick(model, root=None):
+    """A picks.tsv-shaped entry for a model the ranking never saw but a fixed category names (a weapon prop of a map not
+    ranked yet), or None; the library and the rows are read once."""
+    if "cats" not in _FIXED:
+        try:
+            _FIXED["lib"], _FIXED["cats"] = manifest(root), [c for c in categories() if c["fixed"] and c["lib"]]
+        except OSError:
+            _FIXED["lib"], _FIXED["cats"] = [], []
+    key = model[len("models/"):] if model.startswith("models/") else model
+    stem = key.lower().rsplit("/", 1)[-1].rsplit(".", 1)[0]
+    cat = next((c for c in _FIXED["cats"] if c["name"].search(stem)), None)
+    hit = pick(model, list(cat["dims"]), cat, _FIXED["lib"]) if cat else None
+    if not hit:
+        return None
+    m, s, turns, _d = hit
+    return {"stand_in": "lib/" + m["id"], "size": round(s * max(m["dims"]), 4), "turns": turns, "centre": [0.0, 0.0, 0.0], "base": 0.0,
+            "row": {"stand_in": "lib/" + m["id"], "source": m["source"], "url": m["url"], "author": m["author"], "licence": m["licence"], "file": m["file"]}}
+
+
 def cmd(args):
     root = library_root()
     lib = manifest(root)
@@ -232,7 +254,7 @@ def cmd(args):
             instances["skipped"] += n
             continue
         cat = category_of(key, cats)
-        d = dims.get(model)
+        d = None if cat and cat.get("fixed") else dims.get(model)
         if cat is None and d:
             cat = GENERIC
         if cat is None:

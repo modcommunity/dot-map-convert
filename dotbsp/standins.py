@@ -177,8 +177,15 @@ def shape_matches(bsp, game_table=None, table=None, packed=None, catalogue=None,
     catalogue = catalogue or ShapeCatalogue()
     out = {}
     library = (picks() if PICKS_ON else {}) if library is None else library
+    from . import modelmap as _mm
     for m in _m.placed(bsp):
         rec = packed.get(m)
+        if PICKS_ON and m not in library and not is_skybox(m) and (game_table is None or game_table.get(m) is None):
+            # a weapon prop the ranking has not seen: the same category row picks it
+            fixed = _mm.fixed_pick(m)
+            if fixed:
+                out[m] = fixed
+                continue
         if m in library and not is_skybox(m) and not is_detail(m) and (game_table is None or game_table.get(m) is None):
             out[m] = library[m]
             continue

@@ -50,6 +50,32 @@ class ModelMap(unittest.TestCase):
         self.assertIsNotNone(modelmap.category_of("props/x/kk_barrel.mdl", cats))
         self.assertIsNone(modelmap.category_of("props/de_inferno/zzzz.mdl", cats))
 
+    def test_weapon_props_get_a_gun_not_a_box(self):
+        cats = modelmap.categories()
+        want = {"w_pist_deagle": "dm_weaponpistol", "w_snip_awp": "dm_weaponsniper", "w_smg_mp5": "dm_weaponsmg",
+                "w_rif_aug": "dm_weaponrifle", "w_shot_m3super90": "dm_weaponshotgun", "w_rocket_launcher": "dm_weaponlauncher",
+                "w_mach_m249para": "dm_weaponlmg", "w_knife_ct": "dm_weaponknife", "w_c4_planted": "dm_weaponc4", "w_zzz_unknown": "dm_weaponrifle"}
+        for stem, ident in want.items():
+            cat = modelmap.category_of("weapons/" + stem + ".mdl", cats)
+            self.assertIsNotNone(cat, stem)
+            self.assertTrue(cat["fixed"], stem)
+            self.assertTrue(cat["lib"][0].search(ident), stem)
+        self.assertFalse(modelmap.category_of("props/chair.mdl", cats)["fixed"])
+
+    def test_fixed_pick_sizes_a_weapon_by_its_category(self):
+        with tempfile.TemporaryDirectory() as root:
+            with open(os.path.join(root, "manifest.tsv"), "w", encoding="utf-8") as f:
+                f.write("dm_weaponpistol\tdot-map Blender model\thttps://x\tTMC\tCC0-1.0\tpistol\t0.22\t0.155\t0.03\tdotmap/dm_weaponpistol/dm_weaponpistol.glb\n")
+            modelmap._FIXED.clear()
+            try:
+                got = modelmap.fixed_pick("models/weapons/w_pist_deagle.mdl", root)
+                self.assertEqual(got["stand_in"], "lib/dm_weaponpistol")
+                self.assertEqual(got["row"]["licence"], "CC0-1.0")
+                self.assertAlmostEqual(got["size"], 0.22, delta=0.03)
+                self.assertIsNone(modelmap.fixed_pick("models/props/chair.mdl", root))
+            finally:
+                modelmap._FIXED.clear()
+
     def test_generic_shape_pick_skips_weapons(self):
         lib = [rec("ph_stick_grenade", (0.08, 0.33, 0.08)), rec("ph_candle_holder", (0.08, 0.33, 0.08))]
         got = modelmap.pick("m", (0.08, 0.33, 0.08), modelmap.GENERIC, lib)
