@@ -98,6 +98,13 @@ def flood_step(value):
 
 STEP = 0.42           # a body climbs this between neighbouring cells
 TREAD_STEP = 0.45     # and this onto or off a kept stair tread (`keep_treads`): two 8-inch risers fall in one cell
+# Floor heights this close are one floor, at the highest. The game's graph (ZzNpcs._is_floor, nav_emulate._is_floor)
+# takes a box for a floor slab only when its top is within 0.12 m of a floor over it, and every other box blocks the
+# points up to a clearance above its top. The heights here are box tops rounded to a centimetre, so a snap of the full
+# 0.12 put a floor 0.1244 m over a 12-inch tread (top -0.9144, floor -0.79): the tread blocked its own points and the
+# flight was cut in the game though the flood had walked it (zm_lila_panic, its bunker stair). 0.11 keeps the half
+# centimetre of rounding inside the game's tolerance.
+FLOOR_SNAP = 0.11
 THIN_WALLS = False    # set from the spec: see _thin_wall_over
 THIN_LINTELS = False   # set from the spec (`thin_lintels`): see _thin_wall_over
 GREEDY_FLOORS = False  # set from the spec (`greedy_floors`): see build_nav
@@ -553,14 +560,13 @@ def build_nav(boxes, starts, blocked=None, wide=False):
     stairs = stair_links(seen, treads, surf)
     if stairs:
         links = {**{("stair", i): l for i, l in enumerate(stairs)}, **links}
-    # Surfaces within 0.12 m of each other (a kerb, a worn step) are one floor: the game joins
-    # nav points by distance, and two floors 0.1 m apart that merely touch are not joined.
+    # Surfaces within FLOOR_SNAP of each other (a kerb, a worn step) are one floor, at the highest of them.
     hs = sorted({t[2] for t in seen if t not in tsurf})
     snap = {}
     i = 0
     while i < len(hs):
         j = i
-        while j + 1 < len(hs) and hs[j + 1] - hs[i] <= 0.12:
+        while j + 1 < len(hs) and hs[j + 1] - hs[i] <= FLOOR_SNAP:
             j += 1
         for k in range(i, j + 1):
             snap[hs[k]] = hs[j]
@@ -1040,9 +1046,25 @@ def cut_links(argv):
     return rc if check else 0
 
 
+def extra_floors(spec):
+    """The spec's `extra_floors`: nav floor rectangles [x0, z0, x1, z1, y] (game metres) the flood cannot place.
+
+    The graph samples a floor every metre from half a metre in, so a doorway a metre wide whose centre is not on that
+    grid gets no point, and the link bridging it runs along the grid line, close enough to one jamb for the game's body
+    sweep to cut it (zm_atix_helicopter: a 1.08 m door beside a window sill). A rectangle at most half a metre across
+    is sampled on its centre line instead, so a strip down the middle of the doorway puts the points where a body fits."""
+    out = []
+    for f in spec.get("extra_floors", []):
+        if len(f) != 5 or f[2] <= f[0] or f[3] <= f[1]:
+            raise ValueError("extra_floors wants [x0, z0, x1, z1, y] with x0 < x1 and z0 < z1, got %r" % (f,))
+        out.append([float(v) for v in f])
+    return out
+
+
 def add_links(argv):
-    """`--add-links <spec> <doc>...`: append the spec's `extra_links` and `add_boxes` the committed documents lack, without a re-conversion (which drifts boxes and lights)."""
-    spec = json.load(open(argv[2]))
+    """`--add-links <spec> <doc>...`: append the spec's `extra_links`, `extra_floors` and `add_boxes` the committed documents lack, without a re-conversion (which drifts boxes and lights)."""
+    with open(argv[2]) as f:
+        spec = json.load(f)
     for path in argv[3:]:
         with open(path) as f:
             doc = json.load(f)
@@ -1050,8 +1072,11 @@ def add_links(argv):
         new = [list(l) for l in spec.get("extra_links", []) if tuple(l) not in have]
         have_boxes = {(tuple(b["at"]), tuple(b["size"])) for b in doc["boxes"]}
         patches = [dict(b) for b in spec.get("add_boxes", []) if (tuple(b["at"]), tuple(b["size"])) not in have_boxes]
-        print("%s: %d extra links, %d added boxes appended" % (doc["id"], len(new), len(patches)))
-        if new or patches:
+        have_floors = {tuple(float(v) for v in f) for f in doc["nav"]["floors"]}
+        strips = [f for f in extra_floors(spec) if tuple(f) not in have_floors]
+        print("%s: %d extra links, %d extra floors, %d added boxes appended" % (doc["id"], len(new), len(strips), len(patches)))
+        if new or patches or strips:
+            doc["nav"]["floors"].extend(strips)
             doc["nav"]["links"].extend(new)
             doc["boxes"].extend(patches)
             with open(path, "w") as f:
@@ -2756,6 +2781,7 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
     turned = aim_spawns(spawns, all_boxes, floors=floors, goals=[list(p) for p in list(posts) + list(caches) + list(route or [])[1:]])
     if turned:
         print("  survivor spawns: %d facing a wall turned to open ground" % turned)
+    floors = floors + extra_floors(spec)
     nav_doc = {"spacing": 1.0, "clearance": 0.35, "floors": floors, "links": build_nav.links[:600] + [list(l) for l in spec.get("extra_links", [])]}
     import nav_emulate
     feet = nav_emulate.under_feet_for(all_boxes, props, sizes, floors, terrain_pts=TERRAIN_PTS, solid_props=prior_solid_props(os.path.join(out_dir, spec["id"] + ".json")))
