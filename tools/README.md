@@ -11,6 +11,7 @@ Everything that converts a map, a model, a texture or a sound lives in this repo
 | `tools/bake_textures.gd`, `art_coverage.py` | texture bake (run with `godot --path ../dot-map --script`) and the art coverage report |
 | `tools/audit_maps.py`, `audit_passes.py` | the shared audit of a maps repository's documents against their source maps (lost brushes and floor; recorded per-map exemptions in the repository's `tools/audit_exempt.json`), and the attribution of that loss to the importer pass that removed the boxes (`dotbsp/passledger.py`; import with `DOTBSP_PASS_LEDGER=1` to write `<document>.passes.json`) |
 | `tools/build_provides.py` | the one writer of a maps repository's `provides.json`; each repository's `tools/build_provides.py` is a config |
+| `tools/check_playable.py` | every spawn and teleport destination of a maps repository lands where a player can stand (not in a solid, out of bounds, over nothing or in a pit), read from the converted `<id>.json` and `<id>.bin` only; failures not yet fixed are held by exact count in the repository's `tools/playable_known.json`; the repository's `tools/check_playable.py` launches it like `build_provides.py` |
 | `tools/regen_worlds.sh`, `stage_stores.sh` | regenerate a maps repository's worlds from the store; stage the raw stores |
 | `adapters/<repo>/` | the per-game importers (a game's own map document from an intermediate or a `.bsp`) and their checks |
 | `adapters/adapter_launch.py` | runs an adapter in its map repository's namespace |
