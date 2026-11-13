@@ -66,6 +66,7 @@ sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402
 from dotbsp import boxes as dboxes  # noqa: E402
 
+MAX_PIECES = 2400     # dr_course_doc.MAX_PIECES in mg-deathrun
 S = 0.0254
 PLAYER_H = 1.8  # the game's standing capsule (DrCourse.PLAYER_HEIGHT), for push_reach
 SLAB = 28.0
@@ -210,6 +211,92 @@ class Importer:
                 out.append(box)
         self.notes["dropped"].append("%d tool-only brushes (sky box, nodraw, hint, triggers)" % skipped)
         return out
+
+    def fit_cap(self, pieces, spec):
+        """Brings the document under the game's piece cap (dr_course_doc.MAX_PIECES, `max_pieces` in the spec), or leaves it alone when it fits.
+
+        The cap is the wire limit, not a render budget: a course goes to every client as one compressed reliable event, and 3500 pieces
+        deflate to about 52 KB of the 64 KB allowed. So a bigger map is made smaller here, in two steps, each only as far as it must go:
+        1. a box wholly inside another (a brush the map overlaps or buries) goes. Nothing can be seen or touched through it;
+        2. a box whose nearest point is further than R metres from the route, the walkway and the start and finish, goes: the scenery the
+           runners and activators never reach. R starts at 90 and tightens (90, 70, 55, 42, 32, 25, 20, 16) to the first that fits.
+        Kill volumes, teleports and every box near a path stay. Prints what it did under `dropped`."""
+        cap = int(spec.get("max_pieces", MAX_PIECES))
+        if len(pieces) <= cap:
+            return pieces
+        boxes = [p for p in pieces if p["kind"] == "box"]
+        rest = [p for p in pieces if p["kind"] != "box"]
+
+        def lo_hi(b):
+            return ([b["at"][i] - b["size"][i] / 2 for i in range(3)], [b["at"][i] + b["size"][i] / 2 for i in range(3)])
+
+        # step 1: boxes inside a bigger axis-aligned one (a see-through or invisible container does not hide a visible box)
+        eps = 0.002
+        cell = 8.0
+        grid, huge = {}, []
+        order = sorted((b for b in boxes if not b.get("yaw")), key=lambda b: -b["size"][0] * b["size"][1] * b["size"][2])
+        gone = set()
+        for b in order:
+            lo, hi = lo_hi(b)
+            ranges = [range(int(lo[i] // cell), int(hi[i] // cell) + 1) for i in range(3)]
+            hidden = False
+            first = (ranges[0][0], ranges[1][0], ranges[2][0])
+            for o in grid.get(first, ()) + tuple(huge):
+                olo, ohi = o[1]
+                if (all(olo[i] - eps <= lo[i] and hi[i] <= ohi[i] + eps for i in range(3))
+                        and (o[0].get("visible", True) or not b.get("visible", True))):
+                    hidden = True
+                    break
+            if hidden:
+                gone.add(id(b))
+                continue
+            # a big box is entered under every cell it covers, so a smaller one finds it from its own first cell; a vast one (a sky box) is checked by all
+            if len(ranges[0]) * len(ranges[1]) * len(ranges[2]) > 512:
+                huge.append((b, (lo, hi)))
+                continue
+            for x in ranges[0]:
+                for y in ranges[1]:
+                    for z in ranges[2]:
+                        grid[(x, y, z)] = grid.get((x, y, z), ()) + ((b, (lo, hi)),)
+        boxes = [b for b in boxes if id(b) not in gone]
+        self.notes["dropped"].append("%d boxes inside another box" % len(gone))
+        if len(boxes) + len(rest) <= cap:
+            return boxes + rest
+
+        # step 2: scenery away from every path
+        pts = []
+        for key in ("route", "walkway"):
+            line = [self.g(p["at"]) for p in spec.get(key, [])]
+            for a, c in zip(line, line[1:]):
+                n = max(1, int(math.hypot(c[0] - a[0], c[2] - a[2]) / 1.5))
+                pts += [(a[0] + (c[0] - a[0]) * k / n, a[2] + (c[2] - a[2]) * k / n) for k in range(n + 1)]
+            pts += [(q[0], q[2]) for q in line]
+        for key in ("start", "activators", "finish"):
+            if key in spec:
+                q = self.g(spec[key]["at"])
+                pts.append((q[0], q[2]))
+        if not pts:
+            return boxes + rest
+
+        def reach(b):
+            h = [b["size"][0] / 2, b["size"][2] / 2]
+            if b.get("yaw"):
+                c, sn = abs(math.cos(math.radians(b["yaw"]))), abs(math.sin(math.radians(b["yaw"])))
+                h = [h[0] * c + h[1] * sn, h[0] * sn + h[1] * c]
+            x, z = b["at"][0], b["at"][2]
+            best = 1e18
+            for px, pz in pts:
+                dx, dz = max(abs(px - x) - h[0], 0.0), max(abs(pz - z) - h[1], 0.0)
+                best = min(best, dx * dx + dz * dz)
+            return math.sqrt(best)
+
+        away = [(reach(b), b) for b in boxes]
+        for radius in (90, 70, 55, 42, 32, 25, 20, 16):
+            kept = [b for d, b in away if d <= radius]
+            if len(kept) + len(rest) <= cap:
+                break
+        self.notes["dropped"].append("%d boxes further than %d m from every path (cap %d)" % (len(boxes) - len(kept), radius, cap))
+        return kept + rest
 
     @staticmethod
     def merge(boxes):
@@ -790,6 +877,7 @@ class Importer:
                 yaw = r(math.degrees(math.atan2(-(tx - ax), -(tz - az))))
             return {"at": self.gv(a["at"]), "size": a["size"], "yaw": yaw}
 
+        pieces = self.fit_cap(pieces, spec)
         doc = {
             "format": 1, "kind": "course", "id": spec["id"], "name": spec["name"], "author": spec["author_line"],
             "attribution": spec["attribution"], "blurb": spec["blurb"],
