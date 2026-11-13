@@ -453,7 +453,7 @@ def walk_samples(hf, seen_terrain, cell):
     return out
 
 
-def tilted_tiles(hf, thick=1.0, slope_q=0.02, height_q=0.05, max_slope=1.5):
+def tilted_tiles(hf, thick=1.0, slope_q=0.02, height_q=0.05, max_slope=1.5, pad=0.0, cliff_columns=False):
     """A heightfield as tilted box slabs, for a document that has boxes and no meshes.
 
     Each cell's plane comes from its four corners (a hole drops the cell); cells whose quantised
@@ -462,9 +462,13 @@ def tilted_tiles(hf, thick=1.0, slope_q=0.02, height_q=0.05, max_slope=1.5):
     normal. A cell steeper than `max_slope` (rise per metre) is a cliff, nothing a player stands
     on, and is left out. Returns dicts {"at", "size"[, "turn"]} in the heightfield's metres
     (Godot axes, y up); "turn" is [ax, ay, az, degrees] and absent when the slab is level.
+    `pad` grows each footprint by that much on every side, so slabs of different slope overlap
+    at their seams instead of opening a wedge of air between them. With `cliff_columns` a cliff
+    cell is not left open but filled by an upright box from its lowest corner, `thick` down, to
+    its highest: the cliff as a wall, and no hole in the ground beside it.
     """
     c = hf.cell
-    plane = {}
+    plane, cols = {}, []
     for j in range(hf.nz - 1):
         for i in range(hf.nx - 1):
             h00, h10, h01, h11 = hf.at(i, j), hf.at(i + 1, j), hf.at(i, j + 1), hf.at(i + 1, j + 1)
@@ -473,6 +477,11 @@ def tilted_tiles(hf, thick=1.0, slope_q=0.02, height_q=0.05, max_slope=1.5):
             bx = ((h10 + h11) - (h00 + h01)) / (2 * c)
             bz = ((h01 + h11) - (h00 + h10)) / (2 * c)
             if math.hypot(bx, bz) > max_slope:
+                if cliff_columns:
+                    lo, hi = min(h00, h10, h01, h11) - thick, max(h00, h10, h01, h11)
+                    cols.append({"at": [round(hf.x0 + (i + 0.5) * c, 4), round((lo + hi) / 2, 4),
+                                        round(hf.z0 + (j + 0.5) * c, 4)],
+                                 "size": [round(c, 4), round(hi - lo, 4), round(c, 4)]})
                 continue
             qx, qz = round(bx / slope_q), round(bz / slope_q)
             bx, bz = qx * slope_q, qz * slope_q
@@ -502,9 +511,9 @@ def tilted_tiles(hf, thick=1.0, slope_q=0.02, height_q=0.05, max_slope=1.5):
             j2 += 1
             done.add((i, e, j2))
         qx, qz, q = key
-        out.append(_tile(i * c, (e + 1) * c, j * c, (j2 + 1) * c, qx * slope_q, qz * slope_q,
+        out.append(_tile(i * c - pad, (e + 1) * c + pad, j * c - pad, (j2 + 1) * c + pad, qx * slope_q, qz * slope_q,
                          q * height_q, hf.x0, hf.z0, thick))
-    return out
+    return out + cols
 
 
 def _tile(x0, x1, z0, z1, bx, bz, h0, ox, oz, thick):

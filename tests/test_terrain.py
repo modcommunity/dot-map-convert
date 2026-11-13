@@ -359,6 +359,27 @@ class TestTiltedTiles(unittest.TestCase):
         hf = terrain.Heightfield.from_tris(grid_tris(f, 0, 0, 10, 10, 1.0), 2.0, bounds=(0, 0, 10, 10))
         self.assertEqual(terrain.tilted_tiles(hf, max_slope=1.5), [])
 
+    def test_a_cliff_can_stand_as_upright_columns_from_its_foot_to_its_top(self):
+        f = lambda x, z: 3.0 * x  # noqa: E731
+        hf = terrain.Heightfield.from_tris(grid_tris(f, 0, 0, 10, 10, 1.0), 2.0, bounds=(0, 0, 10, 10))
+        cols = terrain.tilted_tiles(hf, thick=1.0, max_slope=1.5, cliff_columns=True)
+        self.assertEqual(len(cols), (hf.nx - 1) * (hf.nz - 1))
+        for b in cols:
+            self.assertNotIn("turn", b)
+            x0 = b["at"][0] - b["size"][0] / 2
+            self.assertAlmostEqual(b["at"][1] + b["size"][1] / 2, f(x0 + b["size"][0], 0), delta=0.2)
+            self.assertAlmostEqual(b["at"][1] - b["size"][1] / 2, f(x0, 0) - 1.0, delta=0.2)
+
+    def test_pad_overlaps_neighbouring_slabs(self):
+        f = lambda x, z: 0.3 * x if x < 10 else 3.0 + 0.6 * (x - 10)  # noqa: E731
+        hf = terrain.Heightfield.from_tris(grid_tris(f, 0, 0, 20, 10, 1.0), 2.0, bounds=(0, 0, 20, 10))
+        bare = terrain.tilted_tiles(hf, pad=0.0)
+        padded = terrain.tilted_tiles(hf, pad=0.1)
+        self.assertEqual(len(bare), len(padded))
+        for a, b in zip(bare, padded):
+            self.assertGreater(b["size"][0], a["size"][0] + 0.15)
+            self.assertGreater(b["size"][2], a["size"][2] + 0.15)
+
 
 class TestFixture(unittest.TestCase):
     def test_fixture_current(self):
