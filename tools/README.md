@@ -27,6 +27,7 @@ Everything that converts a map, a model, a texture or a sound lives in this repo
 | `mg-prop-hunt-maps/import_bsp.py`, `bsp_environment.py` | prop-hunt document and its environment pass |
 | `mg-wipeout-maps/import_world.py` | wipeout course from a regenerated world |
 | `mg-deathrun-maps/bsp_to_course.py`, `plan_route.py`, `draft_spec.py` | deathrun course from a spec, the route planner over the document the importer would write, and the first spec for a community map |
+| `mg-dangerous-delivery/bsp_route.py` | Dangerous Delivery route document (segments of length, turn, climb, width, walls, rails) along the longest drivable road of a converted map; no launcher there yet, run it here with the converted map's prefix |
 | `mg-look-at-me/bsp_layout.py` | floor skeleton (rooms on the 4 m grid) from an intermediate |
 | `game-g2gfast/bsp_import.py`, `bsp_mechanics.py`, `bsp_props.py`, `vtf.py`, `stock_*.py`, `vrf_import.py`, `teleport_traps.py`, `migrate_batch.py` | the g2gfast mesh, lightmap and texture pipeline, its stock-asset stand-ins and surveys Also the arena maps: per-side spawns (`team` red/blue from `TeamNum`), `control_points`, `resupply` and the authored `flag_spawns` and `modes` of `zones/<id>.json` land in the manifest. `bsp_import.py` also writes `collision.hull_kinds` (hull indexes by kind: clip, glass, fence, sky; absent = all solid) from `dotbsp.materials.hull_kind`, the rule the drawn mesh uses; `migrate_batch.py` re-imports a batch headlessly (and with `--regen` runs `bsp.py regen g2g/<id>`) and writes a TSV of hull counts and kinds. |
 
