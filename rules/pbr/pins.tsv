@@ -1,8 +1,8 @@
 # source texture name<TAB>library set id<TAB>why: pbrmap takes these before name words and colour. Prototype and block-out textures get the Kenney Prototype Textures (CC0, tools/kenney_prototypes.py), never a photo.
-dev/dev_measuregeneric01b	kenney_prototype_dark_01	grey dev grid: the dark Kenney grid
-dev/dev_measuregeneric01	kenney_prototype_orange_03	orange dev grid: the orange Kenney grid
-tfcustoms/color_grey	kenney_prototype_light_02	flat grey block-out: the light Kenney grid
-tfcustoms/color_orange	kenney_prototype_orange_03	flat orange block-out: the orange Kenney grid
+dev/dev_measuregeneric01b	Concrete034	cp-orange-x3 grey floor: plain concrete, not a grid
+dev/dev_measuregeneric01	Bricks067	cp-orange-x3 orange floor: terracotta brick, not a grid
+tfcustoms/color_grey	Concrete025	flat grey block-out: light concrete, not a grid
+tfcustoms/color_orange	Bricks067	flat orange block-out: terracotta brick, not a grid
 ground/blendsnow_asphault	Snow007C	snow-blended road: snow, not the gravel its colour picked
 ground/blendsnow_tracks_wvt_patch	Snow007C	snow with tyre tracks: snow, not gravel
 concrete/computerwall003d	concrete_wall_008	cp-orange-x3 walls: plain cast concrete, not grass paving on a wall
