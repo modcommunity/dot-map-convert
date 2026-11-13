@@ -1537,6 +1537,7 @@ def main(argv):
             o = vec(e["origin"])
             gx, gy, gz = gd(o)
             c = vec(e.get("_light", "255 255 255 200"))
+            c = c + [255.0, 255.0, 255.0, 200.0][len(c):]  # "r g b" without the brightness
             c = (list(c) + [255, 255, 255, 200][len(c):])[:4]  # a light may omit its brightness (or all of it)
             m.light(gx, gy, gz, rng=9.0, energy=min(1.2, c[3] / 200.0), colour=[c[0] / 255, c[1] / 255, c[2] / 255])
     def floor_corners_ok(x, z, pid, yaw, y):

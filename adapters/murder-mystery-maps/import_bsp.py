@@ -1021,6 +1021,7 @@ def main(argv):
             o = vec(e["origin"])
             gx, gy, gz = gd(o)
             c = vec(e.get("_light", "255 255 255 200"))
+            c = c + [255.0, 255.0, 255.0, 200.0][len(c):]  # "r g b" without the brightness
             c = (list(c) + [255.0, 255.0, 255.0, 200.0][len(c):])[:4] if len(c) < 4 else c   # "r g b" without a brightness
             lights.append((gx, gy, gz, min(1.2, c[3] / 200.0), [c[0] / 255, c[1] / 255, c[2] / 255]))
     # A map documents at most 128 lights and a browser draws 8 a surface: keep the author's lights at least

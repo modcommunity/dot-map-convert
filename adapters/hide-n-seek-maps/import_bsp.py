@@ -590,6 +590,7 @@ def main(argv):
             o = vec(e["origin"])
             gx, gy, gz = gd(o)
             c = vec(e.get("_light", "255 255 255 200"))
+            c = c + [255.0, 255.0, 255.0, 200.0][len(c):]  # "r g b" without the brightness
             m.light(gx, gy, gz, rng=9.0, energy=min(1.2, c[3] / 200.0), colour=[c[0] / 255, c[1] / 255, c[2] / 255])
     def floor_corners_ok(x, z, pid, yaw, y):
         """A prop standing on the ground has solid floor under every corner of its footprint:
@@ -741,6 +742,19 @@ def main(argv):
         kept, radius = dlights.thin_by_gap(m.lights, 128, step=0.25, first=0.5)
         m.lights[:] = kept
         print("lights thinned from %d to %d (radius %.2f m)" % (before, len(kept), radius))
+    # A hider start inside a wall with no clear floor anywhere near (a hole in the ground an original left under a prop) cannot be
+    # settled and Map.build() refuses the whole map for it: drop that start and keep the others.
+    full, stuck = m.spawns, []
+    for sp in list(full["hiders"]):
+        m.spawns = {"hiders": [sp]}
+        try:
+            m._settle_spawns()
+        except SystemExit:
+            stuck.append(sp)
+    m.spawns = full
+    if stuck and len(stuck) < len(full["hiders"]):
+        full["hiders"][:] = [sp for sp in full["hiders"] if not any(sp is t for t in stuck)]
+        print("hider starts inside a wall with no clear floor near, dropped: %d" % len(stuck))
     print("props %d  lights %d  spawns %d  dropped models %s" % (len(m.props), len(m.lights), len(starts), dropped))
     doc = m.build()
     # Move the map so its origin stands on open ground. The collision audit tests a drawn
