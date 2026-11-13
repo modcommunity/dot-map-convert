@@ -42,3 +42,4 @@ info_player_terrorist	(StartDisabled|TeamNum)	ignored	team and enable state of a
 item_healthkit_small	powerup_model	ignored	pickup model of the original game's item; the game's own pickup is used
 team_control_point	(skin|team_bodygroup_\d+|team_icon_\d+)	ignored	model skin, body groups and HUD icons of the original capture point; the converted marker carries index, name and owner only
 team_control_point_master	(MaxAnimTime|MinAnimTime|solid)	ignored	animation timing and collision of the original master entity; the converted game runs its own mode
+npc_enemyfinder	(FieldOfView|MaxSearchDist|StartOn|freepass_movetolerance|freepass_refillrate)	ignored	vision cone, range and free-pass tuning of the original game's enemy finder; the game's own NPC sensing picks targets
