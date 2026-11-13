@@ -23,7 +23,10 @@ What it does, and why each choice:
   what it misses); GAME_MATERIAL turns the list's generic ids into this game's materials and
   tints, drawn over Kenney's CC0 Prototype Textures grid like every other map.
 - Tool brushes (skybox, clip, trigger, hint, nodraw-only) are dropped. A water brush becomes a
-  water volume. Displacements are not carried (a document has no meshes); the brush under one is.
+  water volume. A document has no meshes, so a displacement is not carried as one: a config with
+  `terrain` ({"cell", "material", "colour", "thick"}) samples the map's displacements inside its region
+  into a heightfield and lays tilted slabs on it (dotbsp.terrain.tilted_tiles), one per run of cells
+  sharing a plane, so a hill is walked on and not climbed as steps. Without it the brush under one is all.
 - The ground is shifted so the spawn's floor is y = 0.
 - A config may hold what a converter cannot read out of the brushes: `stairs` (a file stairs/<name>.json of
   flights, each a run of box steps that carves its way through the boxes in its headroom; a staircase of
@@ -43,6 +46,7 @@ import bsp_read  # noqa: E402  (also puts dot-map-convert on sys.path)
 from dotbsp import boxes as boxes_lib, docboxes, texturemap  # noqa: E402  (the passes and the texture list the map repositories share)
 from dotbsp import gaps  # noqa: E402  (closes the cracks the survey reads as slots)
 from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the ground shift, for the audit)
+from dotbsp import terrain  # noqa: E402  (displacement ground as tilted slabs)
 
 S = 0.01905
 SLAB = 28.0     # source units: ~0.53 m, a slope's riser
@@ -297,6 +301,45 @@ CONFIGS = {
         "region": ((-277.4, -167.4), (-15.0, 45.0), (-226.0, -116.0)),
         "min_size": 0.5,
     },
+    "boreas": {
+        "id": "pgc_boreas",
+        "name": "Boreas",
+        "blurb": "A snowy valley sandbox: rolling snowfields and the buildings around the author's spawn, cut from a larger map.",
+        "author": "Blueberry_pie",
+        "close_gaps": True, "slab": 15.0,
+        "source": "gm_boreas, https://steamcommunity.com/sharedfiles/filedetails/?id=1572373847",
+        "spawn_at": 2,
+        "region": ((-148.9, -38.9), (-25.0, 55.0), (96.2, 206.2)),
+        # The valley floor is displacement terrain: laid as tilted snow slabs on a 3 m grid.
+        "terrain": {"cell": 3.0, "material": "snow", "thick": 1.0},
+        "min_size": 0.5,
+    },
+    "bigisland": {
+        "id": "pgc_bigisland",
+        "name": "Big Island",
+        "blurb": "A tropical island sandbox: beach, dunes and the ground around the author's spawn, cut from a larger map.",
+        "author": "Comrade Stinger and Hiyu",
+        "close_gaps": True, "slab": 15.0,
+        "source": "gm_bigisland, https://steamcommunity.com/sharedfiles/filedetails/?id=169600867",
+        "spawn_at": 0,
+        "region": ((-117.8, -7.8), (-20.0, 45.0), (-118.9, -8.9)),
+        # The island is displacement terrain: laid as tilted grass slabs on a 3 m grid.
+        "terrain": {"cell": 3.0, "material": "grass", "thick": 1.0},
+        "min_size": 0.5,
+    },
+    "rooftops": {
+        "id": "pgc_rooftops",
+        "name": "Rooftops",
+        "blurb": "A cluster of city rooftops joined by ladders, planks and walkways above the streets: the area around the author's spawn.",
+        "author": "youmenow1",
+        "close_gaps": True, "slab": 15.0,
+        "source": "ttt_rooftops_2016, https://steamcommunity.com/sharedfiles/filedetails/?id=534491717",
+        "spawn_at": 0,
+        # The street is 30 m below the roofs: kept, so a fall lands somewhere.
+        "region": ((-55.2, 54.8), (-40.0, 45.0), (-52.6, 57.4)),
+        "terrain": {"cell": 2.0, "material": "concrete", "colour": "#8a8780", "thick": 1.0},
+        "min_size": 0.5,
+    },
 }
 
 WATER = 0x20
@@ -448,6 +491,30 @@ def weld_hairlines(boxes, eps=0.03):
                     b["size"][k] = round(hi_b[k] - lo_b[k], 4)
 
 
+def terrain_boxes(bsp, cfg, y_off):
+    """The map's displacements inside the region as tilted slabs (see the module doc)."""
+    t = cfg["terrain"]
+    region = cfg.get("region")
+    tris = terrain.game_tris(terrain.terrain_tris(bsp), S, y_off)
+    if region:
+        tris = [tr for tr in tris if any(region[0][0] <= p[0] <= region[0][1] and region[2][0] <= p[2] <= region[2][1]
+                                         and region[1][0] <= p[1] <= region[1][1] for p in tr)]
+    if not tris:
+        return []
+    bounds = (region[0][0], region[2][0], region[0][1], region[2][1]) if region else None
+    hf = terrain.Heightfield.from_tris(tris, float(t.get("cell", 2.0)), bounds=bounds)
+    out = []
+    for b in terrain.tilted_tiles(hf, thick=float(t.get("thick", 1.0))):
+        b["material"] = t.get("material", "grass")
+        if t.get("colour"):
+            b["colour"] = t["colour"]
+        b.setdefault("turn", [0, 1, 0, 0.0])
+        out.append(b)
+    print("  terrain: %d displacement triangles -> %dx%d cells at %.1f m -> %d tilted slabs"
+          % (len(tris), hf.nx - 1, hf.nz - 1, hf.cell, len(out)))
+    return out
+
+
 def build(bsp_path, name):
     cfg = dict(CONFIGS[name])
     # The flights live beside this adapter (stairs/<config>.json), wherever the launcher runs from.
@@ -525,6 +592,8 @@ def build(bsp_path, name):
     if cfg.get("close_gaps"):
         print("  tilted-only cracks left after closing gaps:", gaps.close_gaps(boxes))
     weld_hairlines(boxes)
+    if cfg.get("terrain"):
+        boxes.extend(terrain_boxes(bsp, cfg, y_off))
     if cfg.get("spawn_pad"):
         # The author's start stood on displacement terrain this converter leaves out.
         boxes.append({"at": [round(sp[0] * S, 3), -0.15, round(-sp[1] * S, 3)], "size": [4.0, 0.3, 4.0], "material": "concrete", "colour": "#b9b4aa"})

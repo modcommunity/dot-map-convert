@@ -297,6 +297,69 @@ class TestSwapTerrain(unittest.TestCase):
             terrain.swap_terrain({"boxes": doc["boxes"][-1:]}, self.tris, "grass", None)
 
 
+def _rot(turn):
+    """The rotation matrix a document's "turn" [ax, ay, az, degrees] stands for (Rodrigues)."""
+    if not turn:
+        return [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    x, y, z, deg = turn
+    a = math.radians(deg)
+    c, s, t = math.cos(a), math.sin(a), 1 - math.cos(a)
+    return [[t * x * x + c, t * x * y - s * z, t * x * z + s * y],
+            [t * x * y + s * z, t * y * y + c, t * y * z - s * x],
+            [t * x * z - s * y, t * y * z + s * x, t * z * z + c]]
+
+
+def tile_top(b, x, z):
+    """The height of tile b's top face over (x, z), or None when (x, z) is outside its footprint."""
+    r = _rot(b.get("turn"))
+    n = [r[0][1], r[1][1], r[2][1]]
+    top = [b["at"][k] + n[k] * b["size"][1] / 2 for k in range(3)]
+    y = top[1] - (n[0] * (x - top[0]) + n[2] * (z - top[2])) / n[1]
+    d = [x - top[0], y - top[1], z - top[2]]
+    u = sum(r[k][0] * d[k] for k in range(3))
+    v = sum(r[k][2] * d[k] for k in range(3))
+    if abs(u) > b["size"][0] / 2 + 1e-3 or abs(v) > b["size"][2] / 2 + 1e-3:
+        return None
+    return y
+
+
+class TestTiltedTiles(unittest.TestCase):
+    def test_a_plane_is_one_tilted_slab_lying_in_it(self):
+        f = lambda x, z: 1.0 + 0.2 * x + 0.1 * z  # noqa: E731
+        hf = terrain.Heightfield.from_tris(grid_tris(f, 0, 0, 20, 20, 1.0), 2.0, bounds=(0, 0, 20, 20))
+        tiles = terrain.tilted_tiles(hf, thick=1.0)
+        self.assertEqual(len(tiles), 1)
+        self.assertIn("turn", tiles[0])
+        for x, z in ((1, 1), (10, 10), (19, 3), (4, 18)):
+            self.assertAlmostEqual(tile_top(tiles[0], x, z), f(x, z), delta=0.06)
+        self.assertIsNone(tile_top(tiles[0], 25, 10))
+
+    def test_level_ground_has_no_turn(self):
+        hf = terrain.Heightfield.from_tris(grid_tris(lambda x, z: 2.0, 0, 0, 10, 10, 1.0), 2.0,
+                                           bounds=(0, 0, 10, 10))
+        tiles = terrain.tilted_tiles(hf, thick=0.5)
+        self.assertEqual(len(tiles), 1)
+        self.assertNotIn("turn", tiles[0])
+        self.assertAlmostEqual(tiles[0]["at"][1], 1.75, delta=0.03)
+        self.assertAlmostEqual(tiles[0]["size"][0], 10.0, delta=0.01)
+
+    def test_a_hill_is_covered_close_to_its_surface(self):
+        hf = terrain.Heightfield.from_tris(grid_tris(hill, 0, 0, 40, 40, 1.6), 2.0, bounds=(0, 0, 40, 40))
+        tiles = terrain.tilted_tiles(hf, thick=1.0)
+        self.assertLess(len(tiles), (hf.nx - 1) * (hf.nz - 1))
+        for i in range(hf.nx - 1):
+            for j in range(hf.nz - 1):
+                x, z = hf.x0 + (i + 0.5) * hf.cell, hf.z0 + (j + 0.5) * hf.cell
+                tops = [t for t in (tile_top(b, x, z) for b in tiles) if t is not None]
+                self.assertTrue(tops, (x, z))
+                self.assertLess(min(abs(t - hill(x, z)) for t in tops), 0.35, (x, z))
+
+    def test_a_cliff_steeper_than_the_limit_is_left_out(self):
+        f = lambda x, z: 3.0 * x  # noqa: E731
+        hf = terrain.Heightfield.from_tris(grid_tris(f, 0, 0, 10, 10, 1.0), 2.0, bounds=(0, 0, 10, 10))
+        self.assertEqual(terrain.tilted_tiles(hf, max_slope=1.5), [])
+
+
 class TestFixture(unittest.TestCase):
     def test_fixture_current(self):
         with open(FIXTURE) as f:
