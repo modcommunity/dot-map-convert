@@ -453,6 +453,88 @@ def walk_samples(hf, seen_terrain, cell):
     return out
 
 
+def tilted_tiles(hf, thick=1.0, slope_q=0.02, height_q=0.05, max_slope=1.5):
+    """A heightfield as tilted box slabs, for a document that has boxes and no meshes.
+
+    Each cell's plane comes from its four corners (a hole drops the cell); cells whose quantised
+    plane is the same merge into one rectangle, along x then along z, so a flat yard is one slab.
+    A slab's top lies in the plane and covers the rectangle's footprint, `thick` deep along the
+    normal. A cell steeper than `max_slope` (rise per metre) is a cliff, nothing a player stands
+    on, and is left out. Returns dicts {"at", "size"[, "turn"]} in the heightfield's metres
+    (Godot axes, y up); "turn" is [ax, ay, az, degrees] and absent when the slab is level.
+    """
+    c = hf.cell
+    plane = {}
+    for j in range(hf.nz - 1):
+        for i in range(hf.nx - 1):
+            h00, h10, h01, h11 = hf.at(i, j), hf.at(i + 1, j), hf.at(i, j + 1), hf.at(i + 1, j + 1)
+            if None in (h00, h10, h01, h11):
+                continue
+            bx = ((h10 + h11) - (h00 + h01)) / (2 * c)
+            bz = ((h01 + h11) - (h00 + h10)) / (2 * c)
+            if math.hypot(bx, bz) > max_slope:
+                continue
+            qx, qz = round(bx / slope_q), round(bz / slope_q)
+            bx, bz = qx * slope_q, qz * slope_q
+            # The plane's height carried to the field's origin, so neighbours compare like for like.
+            mid = (h00 + h10 + h01 + h11) / 4
+            q = round((mid - bx * (i + 0.5) * c - bz * (j + 0.5) * c) / height_q)
+            plane[(i, j)] = (qx, qz, q)
+    runs = {}
+    for j in range(hf.nz - 1):
+        i = 0
+        while i < hf.nx - 1:
+            if (i, j) not in plane:
+                i += 1
+                continue
+            e = i
+            while (e + 1, j) in plane and plane[(e + 1, j)] == plane[(i, j)]:
+                e += 1
+            runs[(i, e, j)] = plane[(i, j)]
+            i = e + 1
+    out, done = [], set()
+    for (i, e, j) in sorted(runs, key=lambda r: (r[2], r[0])):
+        if (i, e, j) in done:
+            continue
+        key = runs[(i, e, j)]
+        j2 = j
+        while runs.get((i, e, j2 + 1)) == key:
+            j2 += 1
+            done.add((i, e, j2))
+        qx, qz, q = key
+        out.append(_tile(i * c, (e + 1) * c, j * c, (j2 + 1) * c, qx * slope_q, qz * slope_q,
+                         q * height_q, hf.x0, hf.z0, thick))
+    return out
+
+
+def _tile(x0, x1, z0, z1, bx, bz, h0, ox, oz, thick):
+    """One slab whose top is y = h0 + bx x + bz z over [x0, x1] x [z0, z1], offset by (ox, oz)."""
+    def unit(v):
+        n = math.sqrt(sum(k * k for k in v))
+        return [k / n for k in v]
+    n = unit((-bx, 1.0, -bz))
+    tx = unit((1.0, bx, 0.0))
+    tz = [tx[1] * n[2] - tx[2] * n[1], tx[2] * n[0] - tx[0] * n[2], tx[0] * n[1] - tx[1] * n[0]]
+    corners = [(x, h0 + bx * x + bz * z, z) for x in (x0, x1) for z in (z0, z1)]
+    us = [sum(p[k] * tx[k] for k in range(3)) for p in corners]
+    vs = [sum(p[k] * tz[k] for k in range(3)) for p in corners]
+    w = sum(p[k] * n[k] for p in corners for k in range(3)) / 4
+    um, vm = (min(us) + max(us)) / 2, (min(vs) + max(vs)) / 2
+    top = [tx[k] * um + tz[k] * vm + n[k] * w for k in range(3)]
+    at = [top[k] - n[k] * thick / 2 for k in range(3)]
+    b = {"at": [round(at[0] + ox, 4), round(at[1], 4), round(at[2] + oz, 4)],
+         "size": [round(max(us) - min(us), 4), round(thick, 4), round(max(vs) - min(vs), 4)]}
+    # Columns tx, n, tz are the box's local x, y, z in the world: that rotation as axis and angle.
+    r = [[tx[0], n[0], tz[0]], [tx[1], n[1], tz[1]], [tx[2], n[2], tz[2]]]
+    ang = math.acos(max(-1.0, min(1.0, (r[0][0] + r[1][1] + r[2][2] - 1) / 2)))
+    if ang > 1e-4:
+        ax = (r[2][1] - r[1][2], r[0][2] - r[2][0], r[1][0] - r[0][1])
+        ln = math.sqrt(sum(k * k for k in ax))
+        b["turn"] = [round(ax[0] / ln, 5), round(ax[1] / ln, 5), round(ax[2] / ln, 5),
+                     round(math.degrees(ang), 3)]
+    return b
+
+
 def _v3(x, y, z):
     return [round(x, 3), round(y, 3), round(z, 3)]
 

@@ -735,7 +735,7 @@ SDM/OKUU_FINAL	flat	0.55,0.45,0.45
 SDM/MEMENTO/*	flat	0.50,0.45,0.40
 ENGINE/PRELOADTEXTURE	invisible
 
-# --- workshop worlds for Playground (gm_boreas, rp_southside, rp_asheville): every texture of the three maps hits a row
+# --- workshop worlds for Playlot (gm_boreas, rp_southside, rp_asheville): every texture of the three maps hits a row
 # gm_boreas: effect cards and screens are not surfaces; train floors are rubber, the rest generic
 BOREAS/EFFECTS/*	invisible
 BOREAS/AREAPORTALS/*	invisible
