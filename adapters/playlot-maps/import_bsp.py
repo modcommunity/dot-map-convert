@@ -503,6 +503,9 @@ WATER = 0x20
 
 TEXTURE_MAP = texturemap.load()
 
+# Where a map's author asks for the conversion to be taken down (credited in every document, never a claim that it was).
+REMOVAL_CONTACT = "https://github.com/zees-games/playlot-maps/issues"
+
 
 def material_for(cfg, names):
     # The majority pick (sorted, so a tie follows the name, not the hash seed) is dot-map's. The map's own
@@ -761,7 +764,7 @@ def build(bsp_path, name):
         "blurb": cfg["blurb"], "map_kind": "sandbox", "tier": 1, "author": cfg["author"],
         "attribution": ("Geometry converted from %s by %s. The author's textures are not carried: "
                         "surfaces use this game's materials over Kenney's Prototype Textures (CC0). "
-                        "Removed on request." % (cfg["source"], cfg["author"])),
+                        "The author can have this conversion removed: contact %s." % (cfg["source"], cfg["author"], REMOVAL_CONTACT)),
         "spawn": [round(sp[0] * S, 3), 1.0, round(-sp[1] * S, 3)],
         "spawn_yaw": round(sp_yaw - 90.0, 1),
         "boxes": boxes, "declared": cfg.get("declared", []),
