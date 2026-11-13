@@ -66,6 +66,41 @@ class StairRamps(unittest.TestCase):
         self.check(self.ramp((482, 5316, -2053), 270), (482, 5316, -2053), 310.0)
         self.check(self.ramp((-1997, 1808, -2053), 90), (-1997, 1808, -2053), -1825.0)
 
+    def test_ramp_is_under_the_drawn_stairs(self):
+        # The ramp is where the game draws the model: the worlds/ placement (standins._shaped_placements, in metres)
+        # put through dot-map's bottom-centre rooting (ramps.godot_points) gives the same corners as the Hammer hull.
+        from dotbsp import ramps, standins
+        pick = standins.picks()[STAIRS]
+        for origin, yaw in (((482, 5316, -2053), 270), ((-1997, 1808, -2053), 90)):
+            spots = [(STAIRS, origin, (0, yaw, 0), "1", 6)]
+            rec = standins._shaped_placements(spots, {STAIRS: pick}, bsp_import.METRES_PER_UNIT, 0.0)[0]
+            drawn = ramps.godot_points(rec, ramps.WALK_RAMPS[pick["stand_in"]])
+            hull = self.ramp(origin, yaw)
+            for (hx, hy, hz), (gx, gy, gz) in zip(hull, drawn):
+                m = bsp_import.METRES_PER_UNIT
+                self.assertAlmostEqual(hx * m, gx, delta=0.01)
+                self.assertAlmostEqual(hz * m, gy, delta=0.01)
+                self.assertAlmostEqual(-hy * m, gz, delta=0.01)
+
+    def test_a_ramp_that_stops_short_of_its_wall_is_noted(self):
+        origin = (482, 5316, -2053)
+        hull = self.ramp(origin, 270)
+        wall = ([252.0, 5050.0, -2073.0], [310.0, 5585.0, -1804.0])     # cp_orange_x3 brush 240, the wall it climbs
+        notes = []
+        self.assertEqual(bsp_import.stair_landings([hull], [wall], notes), [0.0])
+        self.assertEqual(notes, [])
+        moved = ([wall[0][0] - 170, wall[0][1], wall[0][2]], [wall[1][0] - 170, wall[1][1], wall[1][2]])
+        gaps = bsp_import.stair_landings([hull], [moved], notes)
+        self.assertGreater(gaps[0], 160)
+        self.assertIn("short of its landing", notes[0])
+
+    def test_modelmap_rerun_keeps_the_hand_set_stairs_row(self):
+        # 724a483 reran modelmap and the row went (the model is in no ranking): the stairs lost their collision.
+        from dotbsp import modelmap
+        kept = modelmap.unranked_rows(os.path.join(modelmap.RULES, modelmap.PICKS), set())
+        self.assertIn(STAIRS, [r[0] for r in kept])
+        self.assertNotIn(STAIRS, [r[0] for r in modelmap.unranked_rows(os.path.join(modelmap.RULES, modelmap.PICKS), {STAIRS})])
+
     def test_not_solid_or_not_a_staircase_has_no_ramp(self):
         self.assertEqual(bsp_import.stair_hulls(Bsp(stairs((0, 0, 0), 0, solid="0"))), [])
         self.assertEqual(bsp_import.stair_hulls(Bsp(dict(stairs((0, 0, 0), 0), model="models/props_c17/chair02a.mdl"))), [])
