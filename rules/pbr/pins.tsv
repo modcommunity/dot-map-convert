@@ -5,3 +5,9 @@ tfcustoms/color_grey	kenney_prototype_light_02	flat grey block-out: the light Ke
 tfcustoms/color_orange	kenney_prototype_orange_03	flat orange block-out: the orange Kenney grid
 ground/blendsnow_asphault	Snow007C	snow-blended road: snow, not the gravel its colour picked
 ground/blendsnow_tracks_wvt_patch	Snow007C	snow with tyre tracks: snow, not gravel
+concrete/computerwall003d	concrete_wall_008	cp-orange-x3 walls: plain cast concrete, not grass paving on a wall
+concrete/computerwall003	brushed_concrete	cp-orange-x3 floor: plain brushed concrete, not the brown pebble-embedded slab
+concrete/computerwall005d	concrete_wall_004	cp-orange-x3 walls: even grey concrete, not the stained Concrete036
+concrete/computerwall006	Concrete009	cp-orange-x3: smooth concrete, not the coarse pebble Concrete011
+models/props_2fort/building_farm01_wall	weathered_planks	2fort farm wall is weathered timber, not blotchy blue-tan paint
+models/props_badlands/buildings_redwood_walls01	WoodSiding003	redwood wall is wood siding, not peeling plaster

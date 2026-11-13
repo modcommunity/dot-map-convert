@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-from . import classes, coverage, environment, licence, loose, mapcfg, mesh, movers, pbrmap, reader, rules, scripts, standins, store, units
+from . import classes, coverage, environment, licence, loose, mapcfg, mesh, movers, pbrmap, ramps, reader, rules, scripts, standins, store, units
 
 
 def _json(path):
@@ -77,17 +77,20 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     keep = mesh.crop_keep(crop)
     if keep is not None:
         extra = _cropped(extra, keep)
+    # Placed before the mesh is written: a staircase prop's ramp is a hull in the .bin (dotbsp.ramps).
+    shaped = standins.shape_matches(bsp, None, table=rs.models_view())
+    props = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0, shaped=shaped)
+    if keep is not None:
+        props = [p for p in props if keep(p["at"])]
+    stairs(props, m)
     doc = mesh.write(m, out, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(out))
     from . import importer
-    shaped = standins.shape_matches(bsp, None, table=rs.models_view())
     licence.annotate(doc, outdir, table=rs.free_table(), models=importer.placed_models(bsp),
                      free_models=rs.models_view(), free_sounds=rs.sounds_view(), shaped=shaped,
                      pbr_store=os.path.abspath(pbr_store or os.path.join(outdir, os.pardir, "pbr-library")),
                      model_store=os.path.abspath(model_store or os.path.join(outdir, os.pardir, "model-library")))
-    doc["props"] = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0, shaped=shaped)
-    if keep is not None:
-        doc["props"] = [p for p in doc["props"] if keep(p["at"])]
+    doc["props"] = props
     loose.mark(doc["props"], bsp.entities, scale, y0)
     loose.hold(doc["breakables"], doc["props"], lambda mi: _model_box(bsp, mi), scale, y0)
     problems = licence.check(doc)
@@ -102,6 +105,20 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
         json.dump({"map": {k: doc.get("credit", {}).get(k, "") for k in ("author", "page", "licence")}, "works": licence.credits_list(doc)}, f, indent=1)
         f.write("\n")
     return doc, rep, problems
+
+
+def stairs(props, m):
+    """Ramp hulls for the staircase props (dotbsp.ramps.add_ramp_hulls), and a note in the manifest for each whose top
+    meets no world brush: stairs that stop short of the wall or ledge they climb to."""
+    boxes = [([min(p[i] for p in h["points"]) for i in range(3)], [max(p[i] for p in h["points"]) for i in range(3)])
+             for h in m.hulls if h["kind"] == "solid" and h["model"] == 0]
+    for rec, pts in ramps.add_ramp_hulls(props, m.hulls):
+        gap = ramps.landing_gap(pts, boxes)
+        if gap is None or gap > 0.02:
+            note = "staircase %s at %s %s" % (rec.get("model", ""), [round(v, 2) for v in rec["at"]],
+                                             "leads to nothing within 4 m" if gap is None else "stops %.2f m short of its landing" % gap)
+            m.notes.append(note)
+            print("  STAIRS: " + note, file=sys.stderr)
 
 
 def _model_box(bsp, model):

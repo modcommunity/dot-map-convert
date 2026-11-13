@@ -52,7 +52,7 @@ import bsp_mechanics  # noqa: E402
 import bsp_props  # noqa: E402
 import stock_standins  # noqa: E402
 from dotbsp import mood as _mood  # noqa: E402
-from dotbsp import docboxes as _docboxes, materials as _dotmaterials, props as _dotprops  # noqa: E402
+from dotbsp import docboxes as _docboxes, materials as _dotmaterials, props as _dotprops, ramps as _ramps  # noqa: E402
 
 LUMP_LIGHTING, LUMP_PAKFILE, LUMP_PLANES = 8, 40, 1
 ATLAS_W = 1024
@@ -1220,13 +1220,9 @@ def prop_hulls(pak, drawn):
     return out
 
 
-# Library staircases a solid `prop_dynamic` is drawn as (rules/models/picks.tsv), in the glb's own metres:
-# its bounds, and where the line along the treads' front edges meets the floor (`foot`) and the top (`crest`)
-# along +x, the way it rises. A stock model has no .phy in the pak, so without this the stairs are not solid.
-WALK_RAMPS = {
-    "lib/kenney_furniture-kit_stairs": {"lo": (0.0, 0.0, -0.79), "hi": (1.82343, 1.33953, 0.0),
-                                        "foot": -0.164, "crest": 1.639},
-}
+# Library staircases a solid `prop_dynamic` is drawn as (rules/models/picks.tsv): dotbsp.ramps, shared with the
+# worlds/ regen. A stock model has no .phy in the pak, so without this the stairs are not solid.
+WALK_RAMPS = _ramps.WALK_RAMPS
 METRES_PER_UNIT = 0.01905
 
 
@@ -1236,7 +1232,8 @@ def stair_hulls(bsp, picks=None):
     A ramp and not one box per step: a tread of the drawn model is taller than a player steps up (11 steps over
     4.7 m on cp_orange_x3), and a ramp along the front edges is the climb the drawing shows. Placed the way
     dotbsp.standins._shaped_placements and the game draw the pick: on the origin plus the turned centre, at yaw
-    + 90 * turns + 90 (the library model faces +z, a Source model +x), scaled so its longest side is `size`.
+    + 90 * turns + 90 (the library model faces +z, a Source model +x), scaled so its longest side is `size`, and
+    measured from the bottom centre of the model's bounds (dotbsp.ramps.local_points), where the game roots it.
     """
     if picks is None:
         from dotbsp import standins as _standins
@@ -1259,15 +1256,26 @@ def stair_hulls(bsp, picks=None):
         at = (o[0] + cx * math.cos(a) - cy * math.sin(a), o[1] + cx * math.sin(a) + cy * math.cos(a),
               o[2] + pick["base"] / METRES_PER_UNIT)
         t = math.radians(ang + 90.0 * pick["turns"] + 90.0)
-        k = pick["size"] / max(h - l for l, h in zip(ramp["lo"], ramp["hi"])) / METRES_PER_UNIT
-        (_x0, y0, z0), (x1, y1, z1) = ramp["lo"], ramp["hi"]
-        world = []
-        for x, y in ((ramp["foot"], y0), (x1, y0), (ramp["crest"], y1), (x1, y1)):
-            for z in (z0, z1):
-                world.append((at[0] + k * (x * math.cos(t) + z * math.sin(t)),
-                              at[1] + k * (x * math.sin(t) - z * math.cos(t)), at[2] + k * y))
-        out.append(world)
+        k = _ramps.scale_of(ramp, pick["size"]) / METRES_PER_UNIT
+        out.append([(at[0] + k * (x * math.cos(t) + z * math.sin(t)),
+                     at[1] + k * (x * math.sin(t) - z * math.cos(t)), at[2] + k * y)
+                    for x, y, z in _ramps.local_points(ramp)])
     return out
+
+
+def stair_landings(stairs, solids, notes):
+    """Notes each ramp from `stair_hulls` whose top does not meet a brush (`solids`, Hammer boxes): stairs that stop
+    short of the wall or ledge they lead to. Returns the gaps in units, None where nothing is in reach."""
+    gaps = []
+    for pts in stairs:
+        gap = _ramps.landing_gap(pts, solids, up=2, reach=_ramps.LANDING_REACH / METRES_PER_UNIT,
+                                 limit=4.0 / METRES_PER_UNIT, step=1.0)
+        gaps.append(gap)
+        if gap is None or gap > 1.0:
+            top = max(p[2] for p in pts)
+            notes.append("staircase prop topping out at (%.0f, %.0f, %.0f) %s" % (
+                pts[6][0], pts[6][1], top, "leads to nothing within 4 m" if gap is None else "stops %.0f u short of its landing" % gap))
+    return gaps
 
 
 MERGE_EPSILON = 0.05
@@ -4284,8 +4292,10 @@ def main(argv=None):
             if nocull:
                 s["two_sided"] = True
 
-    solid_props = prop_hulls(pak, props_drawn) + stair_hulls(bsp)
+    stairs = stair_hulls(bsp)
+    solid_props = prop_hulls(pak, props_drawn) + stairs
     collision_blob, collision, skipped_entities, solids = build_collision(bsp, notes, solid_props)
+    stair_landings(stairs, solids, notes)
     # The collision block lives in the same .bin, after the mesh, so a map is still the
     # four files it was. Its offsets are written relative to its own block and shifted
     # here, which keeps build_collision independent of what precedes it.

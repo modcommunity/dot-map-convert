@@ -233,6 +233,22 @@ def fixed_pick(model, root=None):
             "row": {"stand_in": "lib/" + m["id"], "source": m["source"], "url": m["url"], "author": m["author"], "licence": m["licence"], "file": m["file"]}}
 
 
+def unranked_rows(path, ranked):
+    """The rows of the picks.tsv at `path` for models not in `ranked`: set by hand (cp_orange_x3's portable stairs,
+    placed to meet their wall), and kept by a rerun, which only rewrites what the ranking measures. Without this a
+    rerun dropped them and the stairs went back to having no collision (owner 2026-11-12)."""
+    out = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f.read().splitlines():
+                c = line.split("\t")
+                if line and not line.startswith("#") and len(c) >= 12 and c[0] not in ranked:
+                    out.append(c[:12])
+    except OSError:
+        pass
+    return out
+
+
 def cmd(args):
     root = library_root()
     lib = manifest(root)
@@ -292,6 +308,8 @@ def cmd(args):
         rows.append([model, m["id"], "%.4f" % (s * max(w, h, dd)), str(turns), "%.4f" % centre[0], "%.4f" % centre[2], "%.4f" % base,
                      m["source"], m["url"], m["author"], m["licence"], m["file"]])
     out = os.path.join(args.out or RULES, PICKS)
+    kept = unranked_rows(os.path.join(RULES, PICKS), {m for m, _n in rank})
+    rows += kept
     with open(out, "w", encoding="utf-8") as f:
         f.write("# model<TAB>library id<TAB>size (m, longest side)<TAB>quarter turns<TAB>centre x<TAB>centre z<TAB>base y (original, m)<TAB>source<TAB>url<TAB>author<TAB>licence<TAB>file. bsp.py modelmap\n")
         for r in rows:
@@ -301,6 +319,8 @@ def cmd(args):
             for r in sorted(report, key=lambda r: -r[1]):
                 f.write("%s\t%d\t%s\t%s\n" % r)
     total = sum(n for _m, n in rank)
+    if kept:
+        print("kept %d rows for models the ranking does not list (set by hand)" % len(kept))
     print("picked %d models: %d library, %d generated; %d skipped (skybox, left out on purpose), %d with no category" % (
         len(rows), stat["library"], stat["own"], stat["skipped"], stat["none"]))
     print("by instance of %d: library %.1f%%, generated %.1f%% (plain fixtures %.1f%%, no library fit %.1f%%, no category %.1f%%), skipped %.1f%%, unmapped %.1f%%" % (
