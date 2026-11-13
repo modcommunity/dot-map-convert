@@ -118,6 +118,9 @@ TEXTURE_MAP = texturemap.load()
 
 # The list's ids say what a surface IS; the game draws these (ZzMaterials). Anything not here is already a game id
 # (metal, concrete, ceiling, carpet, glass, grass, parquet, wood_floor, water) and passes through.
+# Where a map's author asks for the conversion to be taken down (credited in every document, never a claim that it was).
+REMOVAL_CONTACT = "https://github.com/zees-games/zombie-zone-maps/issues"
+
 GAME_MATERIAL = {
     "wood_planks": "wood", "door_wood": "wood", "plaster_painted": "paint", "wallpaper": "paint",
     "plaster_worn": "plaster", "stone_wall": "stone", "roof_tiles": "roof", "tile_floor": "tile",
@@ -3097,9 +3100,9 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
         print("  nav.under_feet %.2f: a slab just under a floor was swallowing its points" % feet)
     doc = {
         "format": 1, "kind": "zombiezone_map", "id": spec["id"], "name": spec["name"],
-        "author": "%s (original map, %s, %s); converted. Removed on request." % (spec["author"], spec["page"], spec["licence"]),
-        "attribution": "Geometry converted from %s by %s, %s (%s), used non-commercially with credit under the licence. Credit: %s. The original file is not redistributed and its textures and models are not used (the game draws its own surfaces and Kenney CC0 props). This conversion is removed on the author's request." % (
-            spec["source"], spec["author"], spec["page"], spec["licence"], spec["author"]),
+        "author": "%s (original map, %s, %s); converted with credit. Removal contact: %s" % (spec["author"], spec["page"], spec["licence"], REMOVAL_CONTACT),
+        "attribution": "Geometry converted from %s by %s, %s (%s), used non-commercially with credit under the licence. Credit: %s. The original file is not redistributed and its textures and models are not used (the game draws its own surfaces and Kenney CC0 props). The author can have this conversion removed: contact %s." % (
+            spec["source"], spec["author"], spec["page"], spec["licence"], spec["author"], REMOVAL_CONTACT),
         "blurb": spec["blurb"], "mode": spec["mode"], "survivors": spec.get("survivors", 0), "next": "",
         "survive_seconds": spec.get("survive_seconds", 0), "kill_y": spec.get("kill_y", r3(min(lo[1], hi[1]) - 12.0)),
         "environment": env,
