@@ -4152,14 +4152,19 @@ def remove_geometry(bsp, specs):
     two drops the geometry from every one of them at once, where a filter in each would
     be six places for the next consumer to miss. Brush entities are untouched.
 
+    A spec with `"faces_only": true` drops only the faces whose every vertex is inside the
+    box and keeps every brush: a sliver face (a one-unit strip where two brushes meet) that
+    draws as a floor from the wrong side, with the brushes still solid.
+
     surf_year3000's spawn was a sealed 240 x 128 unit void between two arrival booths,
     and the request was to take the middle building away rather than move the spawn.
     Returns (brushes dropped, faces dropped).
     """
-    boxes = []
+    boxes, face_boxes = [], []
     for spec in specs:
         lo, hi = spec["box"]
-        boxes.append(([min(lo[k], hi[k]) for k in range(3)], [max(lo[k], hi[k]) for k in range(3)]))
+        box = ([min(lo[k], hi[k]) for k in range(3)], [max(lo[k], hi[k]) for k in range(3)])
+        (face_boxes if spec.get("faces_only") else boxes).append(box)
 
     def inside(pts):
         return bool(pts) and any(
@@ -4184,6 +4189,9 @@ def remove_geometry(bsp, specs):
             continue
         centre = [sum(p[k] for p in pts) / len(pts) for k in range(3)]
         if on_any(centre, gone) and not on_any(centre, near):
+            gone_faces.add(id(f))
+        elif any(all(lo[k] - 0.5 <= p[k] <= hi[k] + 0.5 for p in pts for k in range(3))
+                 for lo, hi in face_boxes):
             gone_faces.add(id(f))
 
     model_brushes, model_faces = bsp.model_brushes, bsp.model_faces
