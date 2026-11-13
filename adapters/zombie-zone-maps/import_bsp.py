@@ -466,7 +466,9 @@ def stair_links(seen, treads, surf):
     return out
 
 
-def build_nav(boxes, starts, blocked=None, wide=False):
+def nav_geometry(boxes):
+    """The flood's surfaces, which depend on the boxes alone: the prop sweep floods the same boxes once per prop,
+    and building these each time was most of a big map's import (roy_highway ran past the 900 s budget)."""
     solid = [b for b in boxes if b.get("solid", True) and b.get("nav", True) is not False and not b.get("_sky")]
     grid = cell_index(solid)
     surf = {}
@@ -478,7 +480,6 @@ def build_nav(boxes, starts, blocked=None, wide=False):
             if s:
                 surf[(ix, iz)] = s
     tsurf = dterrain.add_surfaces(TERRAIN, surf, lambda a, b: spans_at(solid, grid, a, b), CELL, HEAD) if TERRAIN else set()
-    build_nav.tsurf = tsurf
     treads = set()
     for (ix, iz), bis in grid.items():
         for bi in bis:
@@ -493,6 +494,13 @@ def build_nav(boxes, starts, blocked=None, wide=False):
         for dx in (-1, 0, 1):
             for dz in (-1, 0, 1):
                 near_tread.setdefault((ix + dx, iz + dz), []).append(th)
+    return surf, tsurf, treads, near_tread
+
+
+def build_nav(boxes, starts, blocked=None, wide=False, geom=None):
+    """`geom`: nav_geometry(boxes) when the caller floods the same boxes again; the flood does not change it."""
+    surf, tsurf, treads, near_tread = geom or nav_geometry(boxes)
+    build_nav.tsurf = tsurf
 
     def step_of(a, b):
         return max(STEP, TREAD_STEP) if a in treads or b in treads else STEP
@@ -2315,15 +2323,18 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
                     out.setdefault((ix, iz), []).append(pr["at"][1])
         return out
 
+    geom = nav_geometry(boxes)
+
     def ground_cells(plist):
-        r = build_nav(boxes, starts, blocks_of(plist), True)
+        r = build_nav(boxes, starts, blocks_of(plist), True, geom)
         return r, {(a, b, round(h, 2)) for a, b, h in r[2]}
 
     keep = list(cand)
     res, have = ground_cells(keep)
-    base = {(a, b, round(h, 2)) for a, b, h in build_nav(boxes, starts, None, True)[2]}
+    base = {(a, b, round(h, 2)) for a, b, h in build_nav(boxes, starts, None, True, geom)[2]}
     for pr in list(cand):
-        if sizes[pr["id"]][1] <= 0.5 or have >= base:
+        # Fewer blocks only ever flood more, and never past `base`, so a prop cannot win back more than base - have.
+        if sizes[pr["id"]][1] <= 0.5 or have >= base or len(base) - len(have) <= len(blocks_of([pr])) + 6:
             continue
         trial = [q for q in keep if q is not pr]
         r2, h2 = ground_cells(trial)
@@ -2332,7 +2343,7 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
         # beyond that (a room behind it) is a reason to drop it, or every prop on open ground goes.
         if len(h2) - len(have) > len(blocks_of([pr])) + 6:
             keep, res, have = trial, r2, h2
-    floors, surf, seen2, parent, dist = build_nav(boxes, starts, blocks_of(keep), True)
+    floors, surf, seen2, parent, dist = build_nav(boxes, starts, blocks_of(keep), True, geom)
     if os.environ.get("ZZ_DEBUG_PROPS"):
         # The decor props kept as blocks in the wide flood, for nav_coverage.py --props: [x, y, z, radius].
         with open(os.environ["ZZ_DEBUG_PROPS"], "w") as dbg:
