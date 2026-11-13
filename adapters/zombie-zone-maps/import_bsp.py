@@ -748,6 +748,33 @@ LINK_CLIP_MIN = 0.3    # the game's ZzNpcs.LINK_CLIP_MIN: less horizontal run in
 LINK_STEEP = 1.2    # the game's ZzNpcs.LINK_STEEP: a link that changes level by more is tested against the floor slabs
 
 
+def horde_main(G, main, starts, steep_ends, sizes):
+    """The horde's main ground from the piece `main` the survivor starts chose, with the links that rise over LINK_STEEP
+    (`steep_ends`: [upper point, lower point], one-way down in the game) left out of the graph `G` until now.
+
+    A start on a ledge the horde cannot climb is not the horde's ground (zs_lens's three source starts are all on the
+    roof of the survivors' room): the largest piece the starts reach by dropping down is. What the horde drops into
+    from that piece joins it; what only drops onto it does not. Returns the root of the joined piece."""
+    below = {main} | {G.find(k) for k in (G.nearest(s[0], s[1], s[2], 3.0) for s in starts) if k >= 0}
+    grown = True
+    while grown:
+        grown = False
+        for hi, lo in steep_ends:
+            if G.find(hi) in below and G.find(lo) not in below:
+                below.add(G.find(lo))
+                grown = True
+    main = max(below, key=lambda r: (sizes[r], r == main))
+    grown = True
+    while grown:
+        grown = False
+        for hi, lo in steep_ends:
+            if G.find(hi) == main and G.find(lo) != main:
+                G.union(hi, lo)
+                main = G.find(hi)
+                grown = True
+    return main
+
+
 def floor_slabs(boxes, floors):
     """The bounds of the solid boxes the game takes for floors (it does not make them walls for a link, but drops a level-changing link that pierces one)."""
     import nav_emulate
@@ -2392,10 +2419,17 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
     build_nav.links = links[:600]
     # The document carries every link and the game joins their ends, so the main ground is what they make one (a flight
     # of stairs the metre-spaced graph has no point on is joined by one link; counting without it said 368 of 2637).
+    # A link rising more than LINK_STEEP is one-way down for the horde (zz_nav_graph's steep cut), so it does not make
+    # its upper end main ground: zs_lens's roof was "on the main ground" by four 2.5 m drop links and its survivor spawn
+    # and post stood where no zombie climbs. Steep links join once the main ground is known, only from it downwards.
+    steep_ends = []
     for l_ in build_nav.links + [list(x) for x in spec.get("extra_links", [])]:
         a_, b_ = G.nearest(l_[0], l_[1], l_[2], 1.0), G.nearest(l_[3], l_[4], l_[5], 1.0)
         if a_ >= 0 and b_ >= 0:
-            G.union(a_, b_)
+            if abs(l_[1] - l_[4]) > LINK_STEEP:
+                steep_ends.append((a_, b_) if l_[1] > l_[4] else (b_, a_))
+            else:
+                G.union(a_, b_)
     # The walked route's path, and the links that join the graph's pieces along it, come before the main ground is
     # counted: a stair the metre-spaced points miss is joined by exactly such a link.
     exodus_path = None
@@ -2439,6 +2473,7 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
         k_ = G.nearest(st_[0], st_[1], st_[2], 3.0)
         if k_ >= 0 and sizes_m[G.find(k_)] > sizes_m[main]:
             main = G.find(k_)
+    main = horde_main(G, main, starts, steep_ends, sizes_m)
     for bid, cx, cz, thin in bar_geo:
         d = (1.2, 0.0) if thin == 0 else (0.0, 1.2)
         for sgn in (1, -1):
@@ -2516,10 +2551,14 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
             at = sp["at"]
             if any(abs(q[1] - at[1]) <= 0.6 and (q[0] - at[0]) ** 2 + (q[2] - at[2]) ** 2 <= 2.25 for q in mainpts):
                 continue
-            for q in sorted(mainpts, key=lambda q: (q[0] - at[0]) ** 2 + (q[2] - at[2]) ** 2 + (q[1] - at[1]) ** 2):
+            level = [q for q in mainpts if abs(q[1] - at[1]) <= 0.6 and (q[0] - at[0]) ** 2 + (q[2] - at[2]) ** 2 <= 64]
+            # None on its level: a start on a roof or a ledge the horde only drops from goes down to the
+            # nearest main ground under it within 8 m (zs_lens's start on the roof of the survivors' room).
+            for q in sorted(level or [q for q in mainpts if q[1] < at[1]],
+                            key=lambda q: (q[0] - at[0]) ** 2 + (q[2] - at[2]) ** 2 + (q[1] - at[1]) ** 2 * bool(level)):
                 if (q[0] - at[0]) ** 2 + (q[2] - at[2]) ** 2 > 64:
                     break
-                if abs(q[1] - at[1]) <= 0.6 and all((q[0] - o["at"][0]) ** 2 + (q[2] - o["at"][2]) ** 2 >= 1.96 for o in spawns):
+                if all((q[0] - o["at"][0]) ** 2 + (q[2] - o["at"][2]) ** 2 >= 1.96 for o in spawns):
                     sp["at"] = [r3(q[0]), r3(q[1] + 0.1), r3(q[2])]
                     moved += 1
                     break
