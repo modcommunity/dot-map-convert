@@ -500,19 +500,8 @@ def nav_geometry(boxes):
     return surf, tsurf, treads, near_tread
 
 
-def build_nav(boxes, starts, blocked=None, wide=False, geom=None):
-    """`geom`: nav_geometry(boxes) when the caller floods the same boxes again; the flood does not change it."""
-    surf, tsurf, treads, near_tread = geom or nav_geometry(boxes)
-    build_nav.tsurf = tsurf
-
-    def step_of(a, b):
-        return max(STEP, TREAD_STEP) if a in treads or b in treads else STEP
-    seen = set()
-    parent = {}
-    dist = {}
-    dq = deque()
-    blocked = blocked or {}
-
+def _nav_tests(surf, tsurf, near_tread, blocked):
+    """The wide flood's tests of a cell (ix, iz, h) against the prop blocks: build_nav and reach_more share them."""
     def is_open(ix, iz, h):
         return not any(abs(by - h) <= 0.5 for by in blocked.get((ix, iz), ()))
 
@@ -529,6 +518,67 @@ def build_nav(boxes, starts, blocked=None, wide=False, geom=None):
                        for i in (0, 1) for j in (0, 1)):
                     return True
         return False
+    return is_open, is_wide
+
+
+def reach_more(geom, seen, blocked, cols):
+    """The cells the wide flood (build_nav(..., wide=True)) reaches beyond `seen` once the blocks are `blocked`.
+
+    `seen` is that flood's cells under more blocks, and `cols` every (ix, iz) whose blocks differ, grown
+    by one cell (is_wide looks one cell round). Fewer blocks only ever open more cells, and whether the flood
+    steps from one cell to the next depends on the two cells alone, so the flood under `blocked` is `seen`
+    plus what this walks on from a seen cell into a changed column. The prop sweep in convert() asked one
+    whole-map flood per prop: gm_boreas ran past two hours and 8 GB of parent/dist tables."""
+    surf, tsurf, treads, near_tread = geom
+    is_open, is_wide = _nav_tests(surf, tsurf, near_tread, blocked)
+    new = set()
+
+    def steps(c, n):
+        if n in seen or n in new:
+            return False
+        dh = n[2] - c[2]
+        if c in tsurf and n in tsurf:
+            return bool(dterrain.move(dh, CELL, DROP)) and is_open(*n) and is_wide(*n)
+        step = max(STEP, TREAD_STEP) if c in treads or n in treads else STEP
+        return (abs(dh) <= step or -DROP <= dh <= JUMP) and is_open(*n) and is_wide(*n)
+    dq = deque()
+    for ix, iz in cols:
+        for h2 in surf.get((ix, iz), ()):
+            n = (ix, iz, h2)
+            for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                if n in new:
+                    break
+                for h in surf.get((ix - dx, iz - dz), ()):
+                    c = (ix - dx, iz - dz, h)
+                    if c in seen and steps(c, n):
+                        new.add(n)
+                        dq.append(n)
+                        break
+    while dq:
+        c = dq.popleft()
+        for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            for h2 in surf.get((c[0] + dx, c[1] + dz), ()):
+                n = (c[0] + dx, c[1] + dz, h2)
+                if steps(c, n):
+                    new.add(n)
+                    dq.append(n)
+    return new
+
+
+def build_nav(boxes, starts, blocked=None, wide=False, geom=None):
+    """`geom`: nav_geometry(boxes) when the caller floods the same boxes again; the flood does not change it."""
+    surf, tsurf, treads, near_tread = geom or nav_geometry(boxes)
+    build_nav.tsurf = tsurf
+
+    def step_of(a, b):
+        return max(STEP, TREAD_STEP) if a in treads or b in treads else STEP
+    seen = set()
+    parent = {}
+    dist = {}
+    dq = deque()
+    blocked = blocked or {}
+
+    is_open, is_wide = _nav_tests(surf, tsurf, near_tread, blocked)
 
     for st in starts:
         ix, iz = int(math.floor(st[0] / CELL)), int(math.floor(st[2] / CELL))
@@ -2505,24 +2555,35 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
 
     geom = nav_geometry(boxes)
 
-    def ground_cells(plist):
-        r = build_nav(boxes, starts, blocks_of(plist), True, geom)
-        return r, {(a, b, round(h, 2)) for a, b, h in r[2]}
-
     keep = list(cand)
-    res, have = ground_cells(keep)
+    blk = blocks_of(keep)
+    reached = set(build_nav(boxes, starts, blk, True, geom)[2])
+    have = {(a, b, round(h, 2)) for a, b, h in reached}
     base = {(a, b, round(h, 2)) for a, b, h in build_nav(boxes, starts, None, True, geom)[2]}
     for pr in list(cand):
         # Fewer blocks only ever flood more, and never past `base`, so a prop cannot win back more than base - have.
         if sizes[pr["id"]][1] <= 0.5 or have >= base or len(base) - len(have) <= len(blocks_of([pr])) + 6:
             continue
         trial = [q for q in keep if q is not pr]
-        r2, h2 = ground_cells(trial)
+        # The flood without this prop: the one with it plus what reach_more walks into the prop's columns.
+        own = blocks_of([pr])
+        tblk = dict(blk)
+        for col, ys in own.items():
+            rest = list(blk[col])
+            for y in ys:
+                rest.remove(y)
+            if rest:
+                tblk[col] = rest
+            else:
+                del tblk[col]
+        more = reach_more(geom, reached, tblk, {(a + dx, b + dz) for a, b in own for dx in (-1, 0, 1) for dz in (-1, 0, 1)})
+        h2 = have | {(a, b, round(h, 2)) for a, b, h in more}
         # Cells are (x, z, height): a car park's roof a prop seals off is a level, not new ground columns.
         # A prop's own footprint is cells the flood loses by definition; only what it cut off
         # beyond that (a room behind it) is a reason to drop it, or every prop on open ground goes.
         if len(h2) - len(have) > len(blocks_of([pr])) + 6:
-            keep, res, have = trial, r2, h2
+            keep, have, blk = trial, h2, tblk
+            reached |= more
     floors, surf, seen2, parent, dist = build_nav(boxes, starts, blocks_of(keep), True, geom)
     if os.environ.get("ZZ_DEBUG_PROPS"):
         # The decor props kept as blocks in the wide flood, for nav_coverage.py --props: [x, y, z, radius].
