@@ -1460,7 +1460,36 @@ def link_obstacles(boxes, floors):
         if nav_emulate._is_floor(nb, floors):
             continue
         obs.append(nb)
-    return obs
+    return LinkObstacles(obs)
+
+
+class LinkObstacles(list):
+    """The obstacle bounds, binned by 4 m square of x and z so a link looks only at the solids
+    whose footprint can meet its line, not at each of the map's tens of thousands of boxes."""
+    BIN = 4.0
+    WIDE = 64    # a box over this many bins (a terrain slab) is looked at by every link
+
+    def __init__(self, obs):
+        super().__init__(obs)
+        self.bins = {}
+        self.wide = []
+        for k, nb in enumerate(obs):
+            x0, x1 = int(math.floor(nb[0] / self.BIN)), int(math.floor(nb[3] / self.BIN))
+            z0, z1 = int(math.floor(nb[2] / self.BIN)), int(math.floor(nb[5] / self.BIN))
+            if (x1 - x0 + 1) * (z1 - z0 + 1) > self.WIDE:
+                self.wide.append(k)
+                continue
+            for bx in range(x0, x1 + 1):
+                for bz in range(z0, z1 + 1):
+                    self.bins.setdefault((bx, bz), []).append(k)
+
+    def near(self, x0, z0, x1, z1):
+        """The obstacles whose bins meet the rectangle (x0, z0)-(x1, z1), in list order."""
+        ks = set(self.wide)
+        for bx in range(int(math.floor(x0 / self.BIN)) - 1, int(math.floor(x1 / self.BIN)) + 2):
+            for bz in range(int(math.floor(z0 / self.BIN)) - 1, int(math.floor(z1 / self.BIN)) + 2):
+                ks.update(self.bins.get((bx, bz), ()))
+        return [self[k] for k in sorted(ks)]
 
 
 def link_blocked(obs, a, c, grow=0.0, min_h=0.55):
@@ -1468,6 +1497,8 @@ def link_blocked(obs, a, c, grow=0.0, min_h=0.55):
     (a wall, a window sill) and neither end stands on that solid."""
     lo = min(a[1], c[1])
     n = max(2, int(math.dist(a, c) / 0.1))
+    if isinstance(obs, LinkObstacles):
+        obs = obs.near(min(a[0], c[0]) - grow, min(a[2], c[2]) - grow, max(a[0], c[0]) + grow, max(a[2], c[2]) + grow)
     for nb in obs:
         if nb[4] <= lo + min_h or nb[1] >= lo + 1.5:
             continue
@@ -2719,9 +2750,11 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
     bridged = 0
     wall_obs = None if spec.get("keep_wall_links") else link_obstacles(boxes + bar_boxes, floors)
     for dd, i, j in pairs:
+        if G.find(i) == G.find(j):
+            continue
         if wall_obs is not None and link_blocked(wall_obs, G.pts[i], G.pts[j]):
             continue    # the cells only walk it because a wall thinner than a cell is invisible to them
-        if G.find(i) != G.find(j) and walkable(G.pts[i], G.pts[j]):
+        if walkable(G.pts[i], G.pts[j]):
             G.union(i, j)
             bridged += 1
             links.append([r3(G.pts[i][0]), r3(G.pts[i][1]), r3(G.pts[i][2]), r3(G.pts[j][0]), r3(G.pts[j][1]), r3(G.pts[j][2])])
