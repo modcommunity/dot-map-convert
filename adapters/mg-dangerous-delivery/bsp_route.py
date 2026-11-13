@@ -60,6 +60,8 @@ DRIVE_TURN, DRIVE_GRADE = 1.9, 0.14   # the hand routes' steepest: a stand-in fa
 OPEN_WIDTH = 9.0        # a route with no road under it (across country)
 WIDTH = (6.0, 12.0)
 CHECKPOINT_EVERY = 450.0
+MAX_DESCENT = 40.0      # metres a route may fall below its start: the game's land floor is 66 m down (dd_land SEA_FLOOR), and a
+                        # road under it stands under a slab, so a route that falls further is written from its other end
 MIN_ROUTE = 500.0       # metres; roads shorter than this are crossed off-road instead
 
 
@@ -354,6 +356,14 @@ def longest_path(gr, start=None, end=None):
     return path
 
 
+def _uphill(gr, path):
+    """[param path] oriented so it never falls more than MAX_DESCENT below its start, when the other end allows it."""
+    ys = [gr.y[nd] for nd in path]
+    fall = min(y - ys[0] for y in ys)
+    back = min(y - ys[-1] for y in ys)
+    return path[::-1] if fall < -MAX_DESCENT and back > fall else path
+
+
 def _resample(pts, step):
     out, carry = [pts[0]], 0.0
     for p, q in zip(pts, pts[1:]):
@@ -506,6 +516,8 @@ def route_doc(doc, m, rid=None, name=None, blurb=None, cargo="crates", start=Non
     rid = rid or "dd_" + re.sub(r"[^a-z0-9_]", "_", mapname.lower())
     gr = Graph(build_grid(doc, m, cell))
     path = longest_path(gr, start, end)
+    if start is None and end is None:
+        path = _uphill(gr, path)
     segs, stats = segments(gr, path, max_length)
     zone = {"name": name or mapname}
     if stats["snow_share"] > 0.3:
