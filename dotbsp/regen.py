@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-from . import classes, coverage, environment, licence, loose, mapcfg, mesh, movers, pbrmap, ramps, reader, rules, scripts, standins, store, units
+from . import classes, coverage, environment, licence, loose, mapcfg, mesh, movers, origtex, pbrmap, ramps, reader, rules, scripts, standins, store, units
 
 
 def _json(path):
@@ -48,7 +48,7 @@ def applied(rs):
         classes.treatment = orig
 
 
-def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None, crop=None):
+def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None, crop=None, orig_textures=False):
     """Write the map at `out` (prefix); returns (manifest, coverage report, problems)."""
     with open(path, "rb") as f:
         bsp = reader.Bsp(path, data=f.read()).load()
@@ -90,6 +90,9 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
                      free_models=rs.models_view(), free_sounds=rs.sounds_view(), shaped=shaped,
                      pbr_store=os.path.abspath(pbr_store or os.path.join(outdir, os.pardir, "pbr-library")),
                      model_store=os.path.abspath(model_store or os.path.join(outdir, os.pardir, "model-library")))
+    if orig_textures:
+        from . import origtex
+        origtex.ship(doc, bsp, outdir)
     doc["props"] = props
     loose.mark(doc["props"], bsp.entities, scale, y0)
     loose.hold(doc["breakables"], doc["props"], lambda mi: _model_box(bsp, mi), scale, y0)
@@ -180,6 +183,9 @@ def cmd(args):
         print("regen: %s has no author and page in its credit.json; a map ships with both" % args.entry, file=sys.stderr)
         return 2
     out = args.out
+    if getattr(args, "orig_textures", False) and not origtex.is_orig_name(args.name or name):
+        print("regen: --orig-textures is for an internal `%s` pack only (name it <map>%s)" % (origtex.MARK, origtex.MARK), file=sys.stderr)
+        return 2
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     cpath = args.baseline or out + ".coverage.json"
     base = None
@@ -191,7 +197,8 @@ def cmd(args):
     try:
         doc, rep, problems = build(path, args.name or name, sha, credit, out, rs, scale=units.parse_scale(args.scale),
                                    y0=args.y0, cat=coverage.catalogue(args.catalogue), crop=_crop(args.crop),
-                                   pbr_store=getattr(args, "pbr_store", None), model_store=getattr(args, "model_store", None))
+                                   pbr_store=getattr(args, "pbr_store", None), model_store=getattr(args, "model_store", None),
+                                   orig_textures=getattr(args, "orig_textures", False))
     except (ValueError, OSError) as e:
         print("regen: %s" % e, file=sys.stderr)
         return 1
