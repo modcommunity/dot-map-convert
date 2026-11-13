@@ -2009,6 +2009,10 @@ class Zoner:
         self.track_names = {}
         # {entity index: [RESPAWN zones]} for every teleport imported as a pit; the audit reads it.
         self.pit_zones = {}
+        self._player_brushes = None
+        self._stuck = {}
+        # {id(entity): how} for the teleports `sends` moved off a destination in a brush.
+        self.resent = {}
 
     # -- reading the entity lump ------------------------------------------
     def entities(self, *classnames):
@@ -2048,6 +2052,93 @@ class Zoner:
                 # spawn. Last, because a point entity is what a mapper usually meant.
                 brushes.append((entity_origin(e), entity_yaw(e)))
         return out or others or brushes
+
+    def stuck(self, at, lift=0.0):
+        """Whether a player put at [param at] (Source axes, feet) raised by [param lift] is inside a world brush.
+
+        Probed just above the feet and at a crouched player's middle, with the same
+        4-unit give as the audit, so a destination a few units into its floor is not stuck.
+        A teleport destination is written DESTINATION_LIFT higher than authored, so it is
+        probed there: authored points sunk into their floor (bhop_tesquo_v2's pits) are fine.
+        """
+        key = (tuple(round(v) for v in at), lift)
+        if key not in self._stuck:
+            hit = False
+            for p in ((at[0], at[1], at[2] + lift + 8.0), (at[0], at[1], at[2] + lift + 36.0)):
+                if self.solids and not any(all(a[k] < p[k] < b[k] for k in range(3))
+                                           for a, b in self.solids):
+                    continue
+                if self._player_brushes is None:
+                    self._player_brushes = [i for i in sorted(self.bsp.model_brushes(0))
+                                            if self.bsp.brushes[i][2] & MASK_PLAYERSOLID]
+                if any(point_in_brush(self.bsp, i, p, -4.0) for i in self._player_brushes):
+                    hit = True
+                    break
+            self._stuck[key] = hit
+        return self._stuck[key]
+
+    def sends(self, e, _seen=None):
+        """Where a `trigger_teleport` puts a player: (point, yaw), or (None, 0.0).
+
+        Its first destination, unless a player there would be inside a brush. Then:
+
+        [b]A landmark teleport keeps the player's offset from the landmark[/b], so the
+        authored point is only where the landmark's own origin arrives. bhop_angst's
+        `tp_redin` is its own landmark, an 80-unit-thick sheet with a wall down its middle,
+        and `tp_redout` is in the matching wall at the other end: a player touching either
+        face arrives beside it. The nearest offset whose start and arrival are both clear
+        is taken.
+
+        [b]A destination inside another teleport is a cell that teleport empties.[/b]
+        surf_lt_omnific's secret-trail doors drop the player into a player-clip box round
+        a grenade, and the `*_tele_out` teleport in the box (switched on once the grenade
+        is taken) sends them back out; this game runs no logic, so the door sends straight
+        to where the cell does, followed through at most four cells. Only a cell whose
+        teleport starts disabled: an enabled one is a pit zone of its own, and the pits'
+        follow pass already sends through it, picking the right one where cells sit packed
+        together (bhop_tesquo_v2's stage hub is a grid of them 48 units apart).
+        """
+        hits = self.destinations(e.get("target", ""))
+        if not hits:
+            return None, 0.0
+        at, yaw = hits[0]
+        if not self.stuck(at, DESTINATION_LIFT):
+            return at, yaw
+        landmark = e.get("landmark", "").strip().lower()
+        box = brush_box(self.bsp, e)
+        if landmark and box is not None:
+            mark = next((entity_origin(o) for o in self.bsp.entities
+                         if o.get("targetname", "").strip().lower() == landmark and "origin" in o),
+                        None)
+            if mark is not None:
+                offsets = []
+                axes = []
+                for k in range(3):
+                    lo, hi = box[0][k] - mark[k], box[1][k] - mark[k]
+                    n = max(1, int((hi - lo) // 16.0))
+                    axes.append([lo + (hi - lo) * j / n for j in range(n + 1)])
+                offsets = sorted(((dx, dy, dz) for dx in axes[0] for dy in axes[1] for dz in axes[2]),
+                                 key=lambda d: d[0] * d[0] + d[1] * d[1] + d[2] * d[2])
+                for d in offsets[:4096]:
+                    there = (at[0] + d[0], at[1] + d[1], at[2] + d[2])
+                    if not self.stuck(there, DESTINATION_LIFT) \
+                            and not self.stuck((mark[0] + d[0], mark[1] + d[1], mark[2] + d[2])):
+                        self.resent[id(e)] = "landmark"
+                        return there, yaw
+        seen = set(_seen or ()) | {id(e)}
+        if len(seen) <= 4:
+            for o in self.bsp.entities:
+                if o.get("classname") != "trigger_teleport" or id(o) in seen \
+                        or str(o.get("StartDisabled", "0")).strip() != "1":
+                    continue
+                cell = brush_box(self.bsp, o)
+                if cell is None or not box_contains(cell, at, 0.0):
+                    continue
+                onward, onward_yaw = self.sends(o, seen)
+                if onward is not None and not self.stuck(onward, DESTINATION_LIFT):
+                    self.resent[id(e)] = "cell"
+                    return onward, onward_yaw
+        return at, yaw
 
     def teleports_to(self, name):
         """Every unclaimed `trigger_teleport` aimed at that destination name."""
@@ -2584,11 +2675,10 @@ def doorway_teleports(z, rule):
             continue
         if max(box[1][0] - box[0][0], box[1][1] - box[0][1]) > limit:
             continue
-        hits = z.destinations(e.get("target", ""))
-        if not hits:
+        at, yaw = z.sends(e)
+        if at is None:
             continue
         z.claimed.add(i)
-        at, yaw = hits[0]
         z.add("TELEPORT", 0, box=box, destination=at, yaw=yaw,
               comment="through to %s" % e.get("target", ""))
         made += 1
@@ -3261,6 +3351,15 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
     if any("team" in sp for sp in spawns):
         spawns = [sp for sp in spawns if "team" in sp]
 
+    # A spawn inside a brush is one a player cannot stand at, and where the map has others
+    # it is dropped: bhop_hellish_dream_css's first terrorist spot is buried in the lava
+    # 7000 units over the 52 spawns the round uses. The last one standing is kept and left
+    # to `lift_out_of_solid` and the playable check, so a map is never left with none.
+    clear = [sp for sp in spawns if not z.stuck(sp["origin_src"])]
+    if clear and len(clear) < len(spawns):
+        z.notes.append("%d spawns dropped that stand inside a brush" % (len(spawns) - len(clear)))
+        spawns = clear
+
     label_zones(z, doc.get("ignore_labels"))
     resolve_overrides(z, doc)
     # After the overrides, which may name a filtered teleport on purpose -- bhop_pit's
@@ -3302,7 +3401,8 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
     # slab grown over its own section's start would catch the player it just put there,
     # on every tick, for ever.
     for _i, e in z.entities("trigger_teleport"):
-        for at, _yaw in z.destinations(e.get("target", ""))[:1]:
+        at, _yaw = z.sends(e)
+        if at is not None:
             arrivals.append([at[0], at[1], at[2] + DESTINATION_LIFT])
     respawn = []
     for i, e in z.entities("trigger_teleport"):
@@ -3313,8 +3413,7 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
         # same, because a gate is a teleport too. Source sends the player to the
         # trigger's own destination and the run goes on, so that is what the zone carries
         # now; only a teleport whose target resolves to nothing still means the spawn.
-        sends = z.destinations(e.get("target", ""))
-        sends_to, sends_yaw = (sends[0] if sends else (None, 0.0))
+        sends_to, sends_yaw = z.sends(e)
         boxes = brush_boxes_indexed(bsp, e)
         if not boxes:
             box = brush_box(bsp, e)
@@ -3474,6 +3573,9 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
     if moved:
         z.notes.append("%d spawns stand in or over a teleport; they spawn where it sends" % moved)
 
+    if z.resent:
+        z.notes.append("teleports aimed into a brush sent on: %s"
+                       % ", ".join("%d by %s" % (n, how) for how, n in sorted(collections.Counter(z.resent.values()).items())))
     z.audit = teleport_audit(z)
     return z, spawns, respawn, push, other, dropped
 

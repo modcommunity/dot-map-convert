@@ -206,5 +206,74 @@ class FinishTeleports(unittest.TestCase):
         self.assertEqual(zone["destination"][0], 3000)
 
 
+class SendsOutOfSolid(unittest.TestCase):
+    """Zoner.sends: a destination inside a brush is followed to where the player really arrives."""
+
+    def setUp(self):
+        self.boxes = {}
+        self._brush_box = bsp_import.brush_box
+        bsp_import.brush_box = lambda bsp, e: self.boxes.get(e.get("targetname"))
+
+    def tearDown(self):
+        bsp_import.brush_box = self._brush_box
+
+    def zoner(self, entities, solid):
+        z = zoner(entities)
+        z.stuck = lambda at, lift=0.0: any(bsp_import.box_contains(b, at) for b in solid)
+        return z
+
+    def test_clear_destination_is_kept(self):
+        door = {"classname": "trigger_teleport", "targetname": "door", "target": "a"}
+        z = self.zoner([door, dest("a", 100, 0, 0)], [])
+        self.assertEqual(list(z.sends(door)[0]), [100.0, 0.0, 0.0])
+        self.assertEqual(z.resent, {})
+
+    def test_destination_in_a_cell_goes_where_the_cell_sends(self):
+        door = {"classname": "trigger_teleport", "targetname": "door", "target": "in"}
+        cell = {"classname": "trigger_teleport", "targetname": "cell", "target": "out", "StartDisabled": "1"}
+        self.boxes["cell"] = ((-64, -64, -64), (64, 64, 64))
+        z = self.zoner([door, cell, dest("in", 0, 0, 0), dest("out", 500, 0, 0)],
+                       [((-32, -32, -32), (32, 32, 32))])
+        self.assertEqual(list(z.sends(door)[0]), [500.0, 0.0, 0.0])
+        self.assertEqual(z.resent[id(door)], "cell")
+
+    def test_an_enabled_cell_is_left_to_the_pits_follow_pass(self):
+        door = {"classname": "trigger_teleport", "targetname": "door", "target": "in"}
+        cell = {"classname": "trigger_teleport", "targetname": "cell", "target": "out"}
+        self.boxes["cell"] = ((-64, -64, -64), (64, 64, 64))
+        z = self.zoner([door, cell, dest("in", 0, 0, 0), dest("out", 500, 0, 0)],
+                       [((-32, -32, -32), (32, 32, 32))])
+        self.assertEqual(list(z.sends(door)[0]), [0.0, 0.0, 0.0])
+        self.assertEqual(z.resent, {})
+
+    def test_landmark_teleport_takes_the_nearest_clear_offset(self):
+        door = {"classname": "trigger_teleport", "targetname": "door", "target": "to", "landmark": "door"}
+        mark = {"classname": "info_landmark", "targetname": "door", "origin": "0 0 0"}
+        self.boxes["door"] = ((-64, 0, 0), (64, 0, 0))
+        # The authored point and the landmark itself are inside walls; 48 units to +x (the 16-unit grid) both are clear.
+        z = self.zoner([door, mark, dest("to", 1000, 0, 0)],
+                       [((960, -8, -8), (1040, 8, 8)), ((-80, -8, -8), (40, 8, 8))])
+        at = z.sends(door)[0]
+        self.assertEqual(list(at), [1048.0, 0.0, 0.0])
+        self.assertEqual(z.resent[id(door)], "landmark")
+
+    def test_unresolved_destination_is_left_for_the_audit(self):
+        door = {"classname": "trigger_teleport", "targetname": "door", "target": "a"}
+        z = self.zoner([door, dest("a", 0, 0, 0)], [((-8, -8, -8), (8, 8, 8))])
+        self.assertEqual(list(z.sends(door)[0]), [0.0, 0.0, 0.0])
+
+    def test_stuck_probes_the_lifted_point(self):
+        z = zoner([])
+        z.bsp.model_brushes = lambda m: [0]
+        z.bsp.brushes = [(0, 1, bsp_import.MASK_PLAYERSOLID)]
+        inside = self._point_in_brush = bsp_import.point_in_brush
+        bsp_import.point_in_brush = lambda bsp, i, p, eps: p[2] < 20  # a floor 20 units thick
+        try:
+            self.assertTrue(z.stuck((0, 0, 0)))
+            self.assertFalse(z.stuck((0, 0, 0), bsp_import.DESTINATION_LIFT))
+        finally:
+            bsp_import.point_in_brush = inside
+
+
 if __name__ == "__main__":
     unittest.main()
