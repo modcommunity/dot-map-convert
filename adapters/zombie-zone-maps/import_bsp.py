@@ -642,6 +642,7 @@ class LinkSolids:
     def __init__(self):
         self.cells = collections.defaultdict(list)
         self.count = 0
+        self.grown = {}
 
     def add(self, planes, lo, hi):
         self.count += 1
@@ -715,6 +716,46 @@ class LinkSolids:
                         if hi[0] < min(a[0], b[0]) or lo[0] > max(a[0], b[0]) or hi[2] < min(a[2], b[2]) or lo[2] > max(a[2], b[2]):
                             continue
                         if self._crosses(planes, a, b):
+                            return True
+        return False
+
+    # The game's prune body (game/zz_nav_prune.gd, bare: no margin): a capsule of this radius from LIFT to HEIGHT over the
+    # line, tried every EDGE_STEP between the ends. The two rays above miss what it hits: a door jamb a diagonal link
+    # passes 0.2 m from, a window sill over the lift.
+    BODY_RADIUS = 0.32
+    BODY_LIFT = 0.3
+    BODY_HEIGHT = 1.75
+    BODY_STEP = 0.25
+    BODY_CLIMB = 0.6    # the game's zz_nav_prune.CLIMB: a bigger level change is crossed by a column, not along the line
+
+    def _grown(self, planes):
+        """`planes` pushed out by the body's radius (the capsule's axis is then tested as a segment; corners grow square, a little wider than round)."""
+        hit = self.grown.get(id(planes))    # every piece is held by self.cells, so an id is never reused
+        if hit is None:
+            hit = self.grown[id(planes)] = [(nx, ny, nz, d + self.BODY_RADIUS * math.sqrt(nx * nx + ny * ny + nz * nz)) for nx, ny, nz, d in planes]
+        return hit
+
+    def body_blocked(self, p, q):
+        """Whether the game's prune cuts the edge p-q: its bare capsule hits a solid at a sample between the ends. A level change over BODY_CLIMB is left to the rays."""
+        if abs(p[1] - q[1]) > self.BODY_CLIMB:
+            return False
+        r = self.BODY_RADIUS
+        steps = int(math.ceil(math.dist(p, q) / self.BODY_STEP))
+        for i in range(1, steps):
+            t = i / steps
+            c = [p[k] + (q[k] - p[k]) * t for k in range(3)]
+            a = [c[0], c[1] + self.BODY_LIFT + r, c[2]]
+            b = [c[0], c[1] + self.BODY_HEIGHT - r, c[2]]
+            seen = set()
+            for gx in range(int((c[0] - r) // self.CELL), int((c[0] + r) // self.CELL) + 1):
+                for gz in range(int((c[2] - r) // self.CELL), int((c[2] + r) // self.CELL) + 1):
+                    for planes, lo, hi in self.cells.get((gx, gz), ()):
+                        if id(planes) in seen:
+                            continue
+                        seen.add(id(planes))
+                        if lo[1] - r > b[1] or hi[1] + r < a[1] or lo[0] - r > c[0] or hi[0] + r < c[0] or lo[2] - r > c[2] or hi[2] + r < c[2]:
+                            continue
+                        if self._crosses(self._grown(planes), a, b):
                             return True
         return False
 
@@ -825,8 +866,8 @@ def through_floor(slabs, l, trim=0.15):
 POCKET = 40    # points: the importer's own line between a pocket and a part of the map (filter_wall_links)
 
 
-def clear_join(G, solids, i, j, dy_max, reach=8.0):
-    """A link between the components of points i and j that the physics world and a 0.25 m body let through, or None.
+def clear_join(G, solids, i, j, dy_max, reach=8.0, body=False):
+    """A link between the components of points i and j that the physics world and a 0.25 m body (with [param body], also the game's prune body) let through, or None.
 
     The shortest one wins; a join the flood proposed through a prop is replaced by the way round it."""
     ri, rj = G.find(i), G.find(j)
@@ -846,6 +887,8 @@ def clear_join(G, solids, i, j, dy_max, reach=8.0):
             continue
         nx, nz = -(q[2] - p[2]) / max(math.hypot(q[0] - p[0], q[2] - p[2]), 1e-6), (q[0] - p[0]) / max(math.hypot(q[0] - p[0], q[2] - p[2]), 1e-6)
         if any(solids.blocked((p[0] + nx * o, p[1], p[2] + nz * o), (q[0] + nx * o, q[1], q[2] + nz * o)) for o in (-0.25, 0.25)):
+            continue
+        if body and solids.body_blocked(p, q):
             continue
         return [round(v, 3) for v in (*p, *q)]
     return None
@@ -881,6 +924,7 @@ def cut_blocked(doc, extra, fixed):
     G = nav_emulate.Graph(list(doc["boxes"]) + list(xb), doc.get("props", []), sizes, floors, spacing=float(nav.get("spacing", 1.0)), clearance=float(nav.get("clearance", 0.35)), terrain_pts=doc_terrain_pts(doc), solid_props=doc.get("solid_props", []))
     fixed_ = {tuple(l) for l in fixed}
     bars = [b["at"] for b in doc["boxes"] if b.get("barricade")]
+    bare = list(G.parent)     # the floors' own joins, before any link: the body pass below starts again from these
 
     def at_barricade(l):
         # The game's world does not block these (its probe finds none), and cutting one seals the horde off the boards it walks to.
@@ -936,6 +980,33 @@ def cut_blocked(doc, extra, fixed):
                 stuck += 1
             kept.append(l)
         out.append(kept)
+    # The game's prune also sweeps its body (LinkSolids.body_blocked) along every edge and cuts the ones it does not fit
+    # through, so a kept link that is the only join and too tight for that body is no join in the game (Raven Street's
+    # back rooms: diagonal links through doors no grid point is centred in, 715 of 715 on the main ground here, a post
+    # unreachable there). Replace each with a line the body walks, or name it so the spec can add an extra_floors strip.
+    G.parent = bare
+    tight = []
+    for n, ls in enumerate(out):
+        for l in ls:
+            i, j = ends(l)
+            if i < 0 or j < 0:
+                continue
+            if tuple(l) not in fixed_ and not at_barricade(l) and solids.body_blocked(l[:3], l[3:]):
+                tight.append((n, l, i, j))
+            else:
+                G.union(i, j)
+    for n, l, i, j in tight:
+        if G.find(i) == G.find(j):
+            continue    # the game cuts it and the ground stays joined
+        r = clear_join(G, solids, i, j, abs(l[4] - l[1]), body=True)
+        if r:
+            out[n][out[n].index(l)] = r
+            cut[n] += 1
+            G.union(i, j)
+            continue
+        G.union(i, j)
+        print("  body-sealed join %s: the game's prune body does not fit along it and no line it fits is near;"
+              " an extra_floors strip down the opening's centre line gives it points to walk" % ([round(v, 2) for v in l],))
     doc["nav"]["links"] = out[0]
     if extra:
         extra["links"] = out[1]
@@ -948,9 +1019,11 @@ def reseat_spawns(doc):
     nav = doc["nav"]
     sizes = json.load(open(os.path.join(HERE, "prop_sizes.json")))["props"]
     G = nav_emulate.Graph(doc["boxes"], doc.get("props", []), sizes, nav["floors"], spacing=float(nav.get("spacing", 1.0)), clearance=float(nav.get("clearance", 0.35)), terrain_pts=TERRAIN_PTS, solid_props=doc.get("solid_props", []))
+    solids = link_solids(doc, [])
     for l in nav["links"]:
         i, j = G.nearest(l[0], l[1], l[2], 2.0), G.nearest(l[3], l[4], l[5], 2.0)
-        if i >= 0 and j >= 0:
+        # A link the game's prune body does not fit along joins nothing in the game (cut_blocked names those).
+        if i >= 0 and j >= 0 and not solids.body_blocked(l[:3], l[3:]):
             G.union(i, j)
     if not G.pts:
         return doc
