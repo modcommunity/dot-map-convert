@@ -521,6 +521,32 @@ def _nav_tests(surf, tsurf, near_tread, blocked):
     return is_open, is_wide
 
 
+def doorway_pairs(pts, big, link_dy):
+    """(distance, i, j) for each point i off the main ground and each point j on it at most 5 m away and
+    link_dy apart in height, sorted. The points on the ground are binned by 5 m square, so each small
+    island looks at the 5 x 5 bins round it, not at every point of the map (hours on gm_boreas)."""
+    bins = {}
+    for j, pb_ in enumerate(pts):
+        if big[j]:
+            bins.setdefault((int(math.floor(pb_[0] / 5.0)), int(math.floor(pb_[2] / 5.0))), []).append(j)
+    reach = []
+    for i, pa_ in enumerate(pts):
+        if big[i]:
+            continue
+        bx, bz = int(math.floor(pa_[0] / 5.0)), int(math.floor(pa_[2] / 5.0))
+        for dx in range(-2, 3):
+            for dz in range(-2, 3):
+                for j in bins.get((bx + dx, bz + dz), ()):
+                    pb_ = pts[j]
+                    if abs(pa_[0] - pb_[0]) > 5 or abs(pa_[2] - pb_[2]) > 5:
+                        continue
+                    dd = math.dist(pa_, pb_)
+                    if dd <= 5.0 and abs(pa_[1] - pb_[1]) <= link_dy:
+                        reach.append((dd, i, j))
+    reach.sort()
+    return reach
+
+
 def reach_more(geom, seen, blocked, cols):
     """The cells the wide flood (build_nav(..., wide=True)) reaches beyond `seen` once the blocks are `blocked`.
 
@@ -2707,17 +2733,7 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
         for i in range(len(G.pts)):
             r = G.find(i)
             sizes_[r] = sizes_.get(r, 0) + 1
-        reach = []
-        for i, pa_ in enumerate(G.pts):
-            if sizes_[G.find(i)] >= 150:
-                continue
-            for j, pb_ in enumerate(G.pts):
-                if sizes_[G.find(j)] < 150 or abs(pa_[0] - pb_[0]) > 5 or abs(pa_[2] - pb_[2]) > 5:
-                    continue
-                dd = math.dist(pa_, pb_)
-                if dd <= 5.0 and abs(pa_[1] - pb_[1]) <= spec.get("link_dy", 0.5):
-                    reach.append((dd, i, j))
-        reach.sort()
+        reach = doorway_pairs(G.pts, [sizes_[G.find(i)] >= 150 for i in range(len(G.pts))], spec.get("link_dy", 0.5))
         doors = 0
         for dd, i, j in reach:
             if G.find(i) != G.find(j) and not link_blocked(wall_obs, G.pts[i], G.pts[j], grow=0.25, min_h=0.4 if spec.get("strict_wall_links") else 0.55):
