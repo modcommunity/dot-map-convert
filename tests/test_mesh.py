@@ -332,6 +332,10 @@ class Classes(unittest.TestCase):
         bsp.entities.append({"classname": "made_up_entity"})
         self.assertEqual(classes.report(bsp)["unknown"], {"made_up_entity": 1})
 
+    def test_pushable_and_beam_spotlight_are_decided(self):
+        self.assertEqual(classes.treatment("func_pushable")[0], "world")
+        self.assertEqual(classes.treatment("beam_spotlight")[0], "dropped")
+
     def test_the_document_is_current(self):
         # docs/entity-classes.md is written from the table: every row is in it
         with open(os.path.join(os.path.dirname(HERE), "docs", "entity-classes.md")) as f:
