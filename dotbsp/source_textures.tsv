@@ -819,3 +819,7 @@ CONTAGION/LIGHTS/*	flat
 PANEL-12	metal
 UNIONCITY2/STAIRS/*	concrete
 UNIONCITY2/SKYBOX_TEXTURES/*	invisible
+# --- ze_biohazard_manor (aeris004), zm_hellarch (decox): the map's own textures, named with a bare leading slash
+*BIGRUG7*	carpet_pattern
+*WALL7FLOR*	wood_floor
+*FORREST_FOG*	invisible

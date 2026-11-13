@@ -234,6 +234,8 @@ class RuleSet:
         return out
 
     def _regex(self, kind, name):
+        if not name and kind in ("models", "sounds"):
+            return None     # a prop or sound entity with no model/sound key names nothing to convert: not a gap
         for t in self._high_first():
             row = getattr(t, kind).get(name)
             if row is not None:
