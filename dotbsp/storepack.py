@@ -330,6 +330,27 @@ def version_of(dest, files, vram=True, deps=()):
     return "h" + h.hexdigest()[:8]
 
 
+def read_burnt(path):
+    """The `id@version` names a site will never take again (a FAILED upload burns its version number for good), one per
+    line or space-separated, `#` comments; empty for no file."""
+    if not path:
+        return set()
+    out = set()
+    with open(path) as f:
+        for line in f:
+            out.update(line.split("#", 1)[0].split())
+    return out
+
+
+def unburnt(sid, version, burnt):
+    """`version`, or when `sid@version` is burnt a version derived from it (re-derived until free): the same content
+    always lands on the same free version, and every slice depending on it moves with it, since a dependency's version
+    is part of the dependent's hash."""
+    while "%s@%s" % (sid, version) in burnt:
+        version = "h" + hashlib.sha256(("burnt %s@%s" % (sid, version)).encode()).hexdigest()[:8]
+    return version
+
+
 def item_bytes(pbr_store, model_store, item):
     """Source size of one item, to rank slices (the imported size follows it closely)."""
     def du(path):
@@ -448,6 +469,7 @@ def run_cmd(args):
         subprocess.run([godot, "--headless", "--path", args.cloud, "--import"], check=True, timeout=1800, stdout=subprocess.DEVNULL)
     cli = os.path.join(args.cloud, "addons/dot_cloud/publish/dot_cloud_cli.gd")
     fallback = stores_fallback(pbr_store)
+    burnt = read_burnt(getattr(args, "burnt", None))
     for kind, name, dest, files, g, owners, rows in built:
         try:
             write_licence(dest, files, owners, rows, fallback)
@@ -460,7 +482,7 @@ def run_cmd(args):
         if kind != "shared":
             continue
         sid = slice_id(args.owner, args.prefix + name)
-        version = version_of(dest, files, vram=vram)
+        version = unburnt(sid, version_of(dest, files, vram=vram), burnt)
         publish_slice(args, godot, cli, sid, version, dest, [])
         version_of_shared[g] = {"id": sid, "version": version}
     for kind, name, dest, files, g, _, _ in built:
@@ -479,12 +501,12 @@ def run_cmd(args):
                     f.write("\n")
                 write_licence(ndest, [], {}, {})
                 nid = slice_id(args.owner, "%s%s-g%d-%d" % (args.prefix, name, li + 1, ni))
-                nver = version_of(ndest, ["group.json", "licence.json"], vram=vram, deps=ndeps)
+                nver = unburnt(nid, version_of(ndest, ["group.json", "licence.json"], vram=vram, deps=ndeps), burnt)
                 publish_slice(args, godot, cli, nid, nver, ndest, ndeps)
                 nxt.append({"id": nid, "version": nver})
             top = nxt
         sid = slice_id(args.owner, args.prefix + name)
-        version = version_of(dest, files, vram=vram, deps=top)
+        version = unburnt(sid, version_of(dest, files, vram=vram, deps=top), burnt)
         publish_slice(args, godot, cli, sid, version, dest, top)
         for mp, _ in groups[name]:
             if stamp(mp, sid, version, leaves):
@@ -523,9 +545,12 @@ def slice_id(owner, name):
 
 def stamp(manifest_path, store_id, version, shared=()):
     """Writes `licence.store_pack` ({id, version, shared: [{id, version}]}) into a map manifest; returns whether it changed.
-    `shared` lists every shared slice the root pulls in, flat, for `DotMapStore.apply`."""
+    `shared` lists every shared slice the root pulls in, flat, for `DotMapStore.apply`. Keeps the file's layout: a compact
+    one-line manifest (what the converter writes) stays compact, an indented one stays indented."""
     with open(manifest_path) as f:
-        doc = json.load(f)
+        text = f.read()
+    doc = json.loads(text)
+    compact = "\n" not in text.rstrip("\n")
     pack = {"id": store_id, "version": version}
     if shared:
         pack["shared"] = [{"id": d["id"], "version": d["version"]} for d in shared]
@@ -533,6 +558,9 @@ def stamp(manifest_path, store_id, version, shared=()):
         return False
     doc["licence"]["store_pack"] = pack
     with open(manifest_path, "w") as f:
-        json.dump(doc, f, indent=1, sort_keys=True)
+        if compact:
+            json.dump(doc, f, sort_keys=True, separators=(",", ":"))
+        else:
+            json.dump(doc, f, indent=1, sort_keys=True)
         f.write("\n")
     return True
