@@ -32,3 +32,4 @@ achievement	bell	Kenney Impact Sounds	https://kenney.nl/assets/impact-sounds	Ken
 clock	button	Kenney Interface Sounds	https://kenney.nl/assets/interface-sounds	Kenney	CC0-1.0
 (critical|headshot)	button	Kenney Interface Sounds	https://kenney.nl/assets/interface-sounds	Kenney	CC0-1.0
 sdm/(okuu|sounanoka|uuu|vuvuzela|zawarudo)|happy_birthday					
+ambient/creatures/|^bot\.stuck					
