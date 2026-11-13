@@ -14,7 +14,7 @@ import os
 import struct
 import sys
 
-from . import models as _models, reader, store, units
+from . import models as _models, reader, store, units, vpk as _vpk
 
 DIMS = "model_dims.tsv"
 RANKING = "ranking.tsv"
@@ -39,18 +39,12 @@ class Vpk:
     """The model headers of a game directory (`<name>_dir.vpk` and its parts), for the size of a stock model."""
 
     def __init__(self, dir_vpk):
-        sys.path.insert(0, os.path.expanduser("~/mapsrc/dumps/tools"))
-        import vpklib
-        self.lib = vpklib
-        self.base = dir_vpk[:-len("_dir.vpk")]
-        ents, self.end, self.data = vpklib.read_dir(dir_vpk)
-        self.mdl = {e["path"].lower(): e for e in ents if e["path"].lower().endswith(".mdl")}
+        self.vpk = _vpk.Vpk(dir_vpk)
 
     def bounds(self, model):
-        e = self.mdl.get(model)
-        if e is None:
+        b = self.vpk.get(model)
+        if b is None:
             return None
-        b = self.lib.read(e, self.base + "_dir.vpk", self.data, self.end, self.base)
         if len(b) < 152 or b[:4] != b"IDST":
             return None
         lo = struct.unpack_from("<3f", b, 104)

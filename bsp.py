@@ -482,6 +482,7 @@ def main(argv):
     rg.add_argument("--baseline", help="the coverage to ratchet against; default <prefix>.coverage.json")
     rg.add_argument("--coverage", help="where to write the coverage; default <prefix>.coverage.json")
     rg.add_argument("--catalogue", help="the class catalogue; default rules/entity_defs.json")
+    rg.add_argument("--orig-textures", action="store_true", help="also write the map's own textures (pakfile, then installed base games) under textures/orig and name them per surface; INTERNAL: only for a <map>_orig pack, never published")
     rg.add_argument("--name")
     rg.add_argument("--scale", default="visual")
     rg.add_argument("--y0", type=float, default=0.0)
