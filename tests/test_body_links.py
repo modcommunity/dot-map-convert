@@ -8,13 +8,15 @@ ROOT = os.path.dirname(HERE)
 sys.path[:0] = [ROOT, os.path.join(ROOT, "adapters", "zombie-zone-maps")]
 os.environ.setdefault("DOTBSP_PATH", ROOT)
 
-sys.path.append(os.path.join(os.path.dirname(ROOT), "zombie-zone-maps", "tools"))
+# The map repository is the sibling checkout, or $ZOMBIE_ZONE_MAPS_PATH (a worktree is not named like its repository).
+ZZM = os.environ.get("ZOMBIE_ZONE_MAPS_PATH") or os.path.join(os.path.dirname(ROOT), "zombie-zone-maps")
+sys.path.append(os.path.join(ZZM, "tools"))
 try:
     import import_bsp as I  # noqa: E402
 except ImportError:
     I = None
 else:
-    I.HERE = os.path.join(os.path.dirname(ROOT), "zombie-zone-maps", "tools")    # prop_sizes.json lives with the map repository
+    I.HERE = os.path.join(ZZM, "tools")    # prop_sizes.json lives with the map repository
 
 # 0.15 m from the jamb at z 4.3: the rays at 0.4 and 0.9 m pass the opening, a 0.32 m body does not.
 GRAZE = [8.5, 0.0, 4.45, 12.1, 0.0, 4.45]
