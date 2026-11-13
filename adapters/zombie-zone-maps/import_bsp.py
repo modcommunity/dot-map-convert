@@ -902,6 +902,170 @@ def clear_join(G, solids, i, j, dy_max, reach=8.0, body=False):
     return None
 
 
+STRIP_HALF = 0.1    # half the side of a square body_strip lays: a floor at most half a spacing across is sampled at its centre, so each square is one point where it is put
+STRIP_SCAN = 0.8    # how far across the link body_strip looks for the line a body fits along
+STRIP_STEP = 0.02
+STRIP_WHY = [""]    # why the last body_strip found none, for the body-sealed message
+
+
+def body_strip(G, solids, l, i, j, boxes, floors):
+    """A row of small extra_floors squares [x0, z0, x1, z1, y] whose points the game's prune body walks from point i's piece of `G` to j's, or None; their points are added to `G`.
+
+    The opening a body-sealed join crosses is narrower than two graph points (a doorway a metre wide off the metre
+    grid): no grid point is in it and every line between grid points grazes a jamb. A floor at most half a spacing
+    across is sampled at its centre, so a square that small is one point exactly where it is laid. The row runs down
+    the middle of the widest line the body fits along, each point clear of the obstacles and more than half a spacing
+    from every graph point (the builder drops a point that near one it already has). Only a level join takes one (a
+    square has one height), and only where no box at that height would turn into floor."""
+    import nav_emulate
+    sp = G.spacing
+    p, q = l[:3], l[3:]
+    if abs(p[1] - q[1]) > sp * 0.5 or G.find(i) == G.find(j):
+        STRIP_WHY[0] = "a level change" if G.find(i) != G.find(j) else "its ends are already joined"
+        return None
+    ri, rj = G.find(i), G.find(j)
+    STRIP_WHY[0] = "no line along it the body fits"
+    axes = (0, 2) if abs(q[0] - p[0]) >= abs(q[2] - p[2]) else (2, 0)
+    for ax in axes:
+        lat = 2 - ax
+        lo, hi = min(p[ax], q[ax]), max(p[ax], q[ax])
+        if hi - lo < 0.5:
+            continue
+        mid = (p[lat] + q[lat]) / 2
+        for y in sorted({round(p[1], 3), round(q[1], 3), round((p[1] + q[1]) / 2, 3)}):
+            def at(a, c):
+                v = [0.0, y, 0.0]
+                v[ax], v[lat] = a, c
+                return v
+            n = int(round(2 * STRIP_SCAN / STRIP_STEP))
+            clear = [not solids.body_blocked(at(lo - 0.25, mid - STRIP_SCAN + k * STRIP_STEP), at(hi + 0.25, mid - STRIP_SCAN + k * STRIP_STEP)) for k in range(n + 1)]
+            runs, k = [], 0
+            while k <= n:
+                if clear[k]:
+                    e = k
+                    while e + 1 <= n and clear[e + 1]:
+                        e += 1
+                    runs.append((k, e))
+                    k = e + 1
+                else:
+                    k += 1
+            for s, e in sorted(runs, key=lambda r: abs(mid - STRIP_SCAN + (r[0] + r[1]) / 2 * STRIP_STEP - mid)):
+                c = round(mid - STRIP_SCAN + (s + e) / 2 * STRIP_STEP, 2)
+                pts = strip_points(G, lambda a, c=c: at(a, c), lo - sp, hi + sp, y)
+                STRIP_WHY[0] = "the line the body fits is inside the graph's clearance or its points do not join"
+                if pts and strip_joins(G, solids, pts, ri, rj, boxes, floors, nav_emulate):
+                    return [[round(v[0] - STRIP_HALF, 2), round(v[2] - STRIP_HALF, 2), round(v[0] + STRIP_HALF, 2), round(v[2] + STRIP_HALF, 2), y] for v in pts]
+    return None
+
+
+def strip_points(G, at, a0, a1, y):
+    """Points down the line `at(a)` from a0 to a1 the builder would keep: clear of the obstacles, more than half a
+    spacing from any graph point and from each other, each the farthest such within a spacing of the last."""
+    sp = G.spacing
+    reach = sp * 1.5
+    step = 0.05
+
+    def ok(a):
+        v = at(a)
+        v = (round(v[0], 2), y, round(v[2], 2))
+        if G.blocked(*v):
+            return None
+        hx, hz = int(math.floor(v[0] / reach)), int(math.floor(v[2] / reach))
+        for dx in (-1, 0, 1):
+            for dz in (-1, 0, 1):
+                for k in G.near.get((hx + dx, hz + dz), ()):
+                    w = G.pts[k]
+                    if abs(w[1] - y) <= sp * 0.5 and math.hypot(w[0] - v[0], w[2] - v[2]) < sp * 0.5 + 0.02:
+                        return None
+        return v
+    out, a = [], a0
+    while a <= a1:
+        # The farthest keepable point within a spacing of the last; failing that the next one along.
+        pick = None
+        if out:
+            k = int(sp / step)
+            while k * step > sp * 0.5 + 0.02 and pick is None:
+                pick = ok(a + k * step) and a + k * step
+                k -= 1
+        if pick is None:
+            b = a + (sp * 0.5 + 0.03 if out else 0.0)
+            while b <= a1 and ok(b) is None:
+                b += step
+            if b > a1:
+                break
+            pick = b
+        out.append(ok(pick))
+        a = pick
+    return out
+
+
+def strip_joins(G, solids, pts, ri, rj, boxes, floors, nav_emulate):
+    """Whether points `pts` join pieces ri and rj of `G` with edges the game builds and its prune body keeps; when they
+    do, the shortest run of them that still joins goes into `G` (a long link would otherwise lay a square every metre
+    of it) and `pts` is cut to that run."""
+    y = pts[0][1]
+    # A box whose top a square meets would turn from an obstacle into floor and change the graph round it.
+    for b in boxes:
+        if not b.get("solid", True) or b.get("gate") or b.get("kind") == "sky" or "nav" in b:
+            continue
+        nb = nav_emulate._bounds(b)
+        if abs(nb[4] - y) > 0.12 or nav_emulate._is_floor(nb, floors):
+            continue
+        if any(nb[0] < v[0] + STRIP_HALF and nb[3] > v[0] - STRIP_HALF and nb[2] < v[2] + STRIP_HALF and nb[5] > v[2] - STRIP_HALF for v in pts):
+            return False
+    edges = strip_edges(G, solids, pts, ri, rj)
+    if edges is None:
+        return False
+    s, e = 0, len(pts)
+    while s + 1 < e and strip_edges(G, solids, pts[s + 1:e], ri, rj) is not None:
+        s += 1
+    while e - 1 > s and strip_edges(G, solids, pts[s:e - 1], ri, rj) is not None:
+        e -= 1
+    pts[:] = pts[s:e]
+    edges = strip_edges(G, solids, pts, ri, rj)
+    reach = G.spacing * 1.5
+    base = len(G.pts)
+    for v in pts:
+        G.near.setdefault((int(math.floor(v[0] / reach)), int(math.floor(v[2] / reach))), []).append(len(G.pts))
+        G.pts.append(v)
+        G.slopes.append(0.0)
+        G.parent.append(len(G.parent))
+    for n, w in edges:
+        G.union(base + n, base + w[1] if isinstance(w, tuple) else w)
+    return True
+
+
+def strip_edges(G, solids, pts, ri, rj):
+    """The edges points `pts` get in `G` (as the game builds them, less those its prune body cannot walk), or None when they do not join pieces ri and rj."""
+    sp = G.spacing
+    reach = sp * 1.5
+    parent = {}
+
+    def find(x):
+        while parent.setdefault(x, x) != x:
+            x = parent[x]
+        return x
+
+    def edge(u, w):
+        if (u[0] - w[0]) ** 2 + (u[1] - w[1]) ** 2 + (u[2] - w[2]) ** 2 > reach * reach - 1e-3 or abs(u[1] - w[1]) > sp * 0.5:
+            return False
+        return not G.crosses(u, w) and not solids.body_blocked(u, w)
+    edges = []
+    for n, v in enumerate(pts):
+        for m in range(n + 1, len(pts)):
+            if edge(v, pts[m]):
+                parent[find(("n", n))] = find(("n", m))
+                edges.append((n, ("n", m)))
+        hx, hz = int(math.floor(v[0] / reach)), int(math.floor(v[2] / reach))
+        for dx in (-1, 0, 1):
+            for dz in (-1, 0, 1):
+                for g in G.near.get((hx + dx, hz + dz), ()):
+                    if edge(v, G.pts[g]):
+                        parent[find(("n", n))] = find(("g", G.find(g)))
+                        edges.append((n, g))
+    return edges if find(("g", ri)) == find(("g", rj)) else None
+
+
 def doc_terrain_pts(doc):
     """The terrain walk points of a finished document (what the game's graph is built on), decoded from its `terrain`; none without terrain.
 
@@ -994,6 +1158,7 @@ def cut_blocked(doc, extra, fixed):
     # unreachable there). Replace each with a line the body walks, or name it so the spec can add an extra_floors strip.
     G.parent = bare
     tight = []
+    strips = 0
     for n, ls in enumerate(out):
         for l in ls:
             i, j = ends(l)
@@ -1012,9 +1177,21 @@ def cut_blocked(doc, extra, fixed):
             cut[n] += 1
             G.union(i, j)
             continue
+        # No line between graph points fits: lay a strip down the line the body fits along, so the graph has points
+        # there. The link itself is left out, the game's prune cuts it.
+        strip = body_strip(G, solids, l, i, j, list(doc["boxes"]) + list(xb), floors)
+        if strip:
+            (xf if n else doc["nav"]["floors"]).extend(strip)
+            floors.extend(strip)
+            out[n].remove(l)
+            cut[n] += 1
+            strips += 1
+            continue
         G.union(i, j)
-        print("  body-sealed join %s: the game's prune body does not fit along it and no line it fits is near;"
-              " an extra_floors strip down the opening's centre line gives it points to walk" % ([round(v, 2) for v in l],))
+        print("  body-sealed join %s: the game's prune body does not fit along it, no line it fits is near and no row of"
+              " floor squares joins it: %s" % ([round(v, 2) for v in l], STRIP_WHY[0]))
+    if strips:
+        print("  body strips: %d body-sealed join(s) given a row of nav floor squares down the line the game's prune body fits along" % strips)
     doc["nav"]["links"] = out[0]
     if extra:
         extra["links"] = out[1]

@@ -20,10 +20,12 @@ else:
 GRAZE = [8.5, 0.0, 4.45, 12.1, 0.0, 4.45]
 
 
+def wall(z0, z1):
+    return {"at": [10.3, 1.2, (z0 + z1) / 2], "size": [0.6, 2.4, z1 - z0], "mat": "concrete"}
+
+
 def doc():
     """Two rooms either side of a 0.6 m wall at x 10..10.6 with a 0.9 m door (z 4.3..5.2); the grid's z 4.75 row runs down its middle."""
-    def wall(z0, z1):
-        return {"at": [10.3, 1.2, (z0 + z1) / 2], "size": [0.6, 2.4, z1 - z0], "mat": "concrete"}
     return {"id": "t", "boxes": [wall(0.0, 4.3), wall(5.2, 10.0)], "props": [], "solid_props": [], "spawns": {},
             "nav": {"spacing": 1.0, "clearance": 0.35, "floors": [[0, 0.25, 10, 10, 0.0], [10.6, 0.25, 20, 10, 0.0]],
                     "links": [list(GRAZE)]}}
@@ -43,6 +45,26 @@ class BodyLinks(unittest.TestCase):
         self.assertEqual((n, stuck), (1, 0))
         self.assertEqual(d["nav"]["links"], [[9.5, 0.0, 4.75, 11.1, 0.0, 4.75]])
         self.assertEqual(I.cut_blocked(d, None, [])[:3], (0, 0, 0))
+
+    def test_sealed_join_gets_a_strip(self):
+        # A 0.8 m door off the metre grid (z 4.0..4.8): the body fits only 4.32..4.48, no line between grid points does.
+        d = doc()
+        d["boxes"] = [wall(0.0, 4.0), wall(4.8, 10.0)]
+        d["nav"]["links"] = [[8.5, 0.0, 4.65, 12.1, 0.0, 4.65]]
+        n, _m, stuck = I.cut_blocked(d, None, [])
+        self.assertEqual((n, stuck), (1, 0))
+        self.assertEqual(d["nav"]["links"], [])
+        squares = d["nav"]["floors"][2:]
+        self.assertTrue(squares)
+        for f in squares:
+            self.assertLessEqual(max(f[2] - f[0], f[3] - f[1]), 0.5)
+            self.assertTrue(4.32 <= (f[1] + f[3]) / 2 <= 4.48)
+        # The graph rebuilt from the document, as the game builds it, now joins the two rooms.
+        import nav_emulate
+        G = nav_emulate.Graph(d["boxes"], [], {}, d["nav"]["floors"])
+        self.assertEqual(G.find(G.nearest(8.5, 0.0, 4.65, 2)), G.find(G.nearest(12.1, 0.0, 4.65, 2)))
+        self.assertEqual(I.cut_blocked(d, None, [])[:3], (0, 0, 0))
+        self.assertEqual(len(d["nav"]["floors"]), 2 + len(squares))
 
     def test_fixed_link_stays(self):
         d = doc()
