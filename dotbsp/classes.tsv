@@ -8,6 +8,7 @@ func_breakable	world	a brush that breaks when damaged; drawn and solid where it 
 func_breakable_surf	world	breakable glass panes; drawn and solid -- listed in the manifest's `breakables`; DotMapGlass breaks it	
 func_physbox	world	a brush simulated as a physics object; drawn and solid where it rests, not simulated	
 func_physbox_multiplayer	world	the networked physbox; as func_physbox	
+func_pushable	world	a brush a player can push; drawn and solid where it rests, not simulated	
 func_monitor	world	a brush showing a camera's view; drawn as its plain surface	
 func_reflective_glass	world	a mirror-like glass brush; drawn as glass	
 func_lod	world	a brush that fades out with distance; drawn always	
@@ -109,6 +110,7 @@ env_smoketrail	point	a smoke trail -- an effect position
 env_fire_trail	point	a fire trail -- an effect position	
 env_spritetrail	point	a sprite trail on a moving thing -- an effect position	
 env_beam	point	a beam between two points -- an effect	
+beam_spotlight	dropped	a visible light cone from a lamp; an effect only, the map's real lights are separate entities -- left out	
 env_laser	point	a laser beam that may hurt -- an effect	
 point_tesla	point	electric arcs -- an effect position	
 env_dustpuff	point	a dust puff -- an effect position	

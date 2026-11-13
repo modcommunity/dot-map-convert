@@ -119,6 +119,7 @@ What a class becomes:
 | `info_player_human` | 11 | a survivors' spawn of a zombie mode | `point` |  |
 | `info_player_zombie` | 11 | a zombies' spawn of a zombie mode | `point` |  |
 | `func_physbox_multiplayer` | 10 | the networked physbox; as func_physbox | `world` |  |
+| `func_pushable` | 3 | a brush a player can push | `world`: drawn and solid where it rests, not simulated |  |
 | `func_tanktrain` | 10 | a drivable tank train; as func_tracktrain | `mover` |  |
 | `game_text` | 10 | shows text on screens | `data`: logic; its text is kept |  |
 | `phys_hinge` | 10 | a hinge constraint | `data`: nothing is simulated |  |
@@ -129,6 +130,7 @@ What a class becomes:
 | `light_dynamic` | 9 | a light that may move or switch at run time | `point` |  |
 | `point_camera` | 9 | a camera a monitor shows | `data`: logic |  |
 | `env_beam` | 8 | a beam between two points | `point`: an effect |  |
+| `beam_spotlight` | 2 | a visible light cone from a lamp | `dropped`: an effect only, the map's real lights are separate entities -- left out |  |
 | `env_hudhint` | 8 | a hint on the screen | `data`: logic |  |
 | `env_wind` | 8 | wind for trees and particles | `point` |  |
 | `filter_damage_type` | 8 | passes damage by type | `data`: logic |  |
