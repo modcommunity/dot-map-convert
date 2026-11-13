@@ -520,6 +520,7 @@ def main(argv):
     sp.add_argument("--combined", action="store_true", help="one slice for all the packs instead of one each")
     sp.add_argument("--shared", type=int, default=8, help="per map, how many of its biggest groups of items drawn by the same maps become shared slices (0: one self-contained slice per map)")
     sp.add_argument("--lossless", action="store_true", help="import textures lossless instead of VRAM-compressed")
+    sp.add_argument("--burnt", help="a file of id@version slice names the site refuses (FAILED uploads); those slices and their dependents get new versions")
     sp.add_argument("--dry-run", action="store_true", help="build the slice folders and stop")
     bu = sub.add_parser("bundle", help="copy world folders with exactly the library models they draw into a pack (dotbsp/bundle.py)")
     bu.add_argument("worlds", nargs="+", help="converted world folders")

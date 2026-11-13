@@ -122,6 +122,37 @@ class Slice(unittest.TestCase):
         self.assertNotEqual(a, storepack.version_of(dest, files))
         self.assertNotEqual(a, storepack.version_of(dest, files, deps=[{"id": "o/x", "version": "h2"}]))
 
+    def test_stamp_keeps_the_layout(self):
+        mp = os.path.join(self.t, "manifest.json")
+        with open(mp, "w") as f:
+            json.dump(DOC, f, sort_keys=True, separators=(",", ":"))
+            f.write("\n")
+        self.assertTrue(storepack.stamp(mp, "o/n", "h1"))
+        with open(mp) as f:
+            text = f.read()
+        self.assertEqual(text.count("\n"), 1)
+        self.assertEqual(json.loads(text)["licence"]["store_pack"], {"id": "o/n", "version": "h1"})
+        with open(mp, "w") as f:
+            json.dump(DOC, f, indent=1, sort_keys=True)
+        self.assertTrue(storepack.stamp(mp, "o/n", "h2"))
+        with open(mp) as f:
+            self.assertGreater(f.read().count("\n"), 3)
+
+    def test_burnt_versions_move_and_stay_stable(self):
+        self.assertEqual(storepack.unburnt("o/a", "h1", set()), "h1")
+        moved = storepack.unburnt("o/a", "h1", {"o/a@h1"})
+        self.assertRegex(moved, r"^h[0-9a-f]{8}$")
+        self.assertNotEqual(moved, "h1")
+        self.assertEqual(moved, storepack.unburnt("o/a", "h1", {"o/a@h1"}))
+        self.assertEqual(storepack.unburnt("o/b", "h1", {"o/a@h1"}), "h1")
+        twice = storepack.unburnt("o/a", "h1", {"o/a@h1", "o/a@" + moved})
+        self.assertNotIn(twice, ("h1", moved))
+        p = os.path.join(self.t, "burnt.txt")
+        with open(p, "w") as f:
+            f.write("# FAILED on prod\no/a@h1 o/b@h2\n\no/c@h3  # note\n")
+        self.assertEqual(storepack.read_burnt(p), {"o/a@h1", "o/b@h2", "o/c@h3"})
+        self.assertEqual(storepack.read_burnt(None), set())
+
     def test_stamp_lists_shared_slices(self):
         mp = os.path.join(self.t, "manifest.json")
         with open(mp, "w") as f:
