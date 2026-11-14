@@ -11,3 +11,8 @@ concrete/computerwall005d	concrete_wall_004	cp-orange-x3 walls: even grey concre
 concrete/computerwall006	Concrete009	cp-orange-x3: smooth concrete, not the coarse pebble Concrete011
 models/props_2fort/building_farm01_wall	weathered_planks	2fort farm wall is weathered timber, not blotchy blue-tan paint
 models/props_badlands/buildings_redwood_walls01	WoodSiding003	redwood wall is wood siding, not peeling plaster
+less/neondarkgray	kenney_prototype_dark_01	surf_wazor / surf_lithium: custom or effect texture, mapped to a CC0 set
+models/combine_advisor/mask	PaintedMetal009	surf_wazor / surf_lithium: custom or effect texture, mapped to a CC0 set
+models/effects/comball_sphere	PaintedMetal009	surf_wazor / surf_lithium: custom or effect texture, mapped to a CC0 set
+models/props_combine/portalball001_sheet	PaintedMetal009	surf_wazor / surf_lithium: custom or effect texture, mapped to a CC0 set
+customs/lithium_credits kopie	Concrete034	surf_wazor / surf_lithium: custom or effect texture, mapped to a CC0 set
