@@ -803,7 +803,7 @@ def main(argv):
     slide = False
     cover = 0
     dusk = False
-    max_lights = 128
+    max_lights = 0  # 0 = keep every light: the games no longer cap a map (hide-n-seek cc47546, murder-mystery 9fe8314)
     cover = 0
     cover_gap = 3.0
     blurb = ""
@@ -1024,7 +1024,7 @@ def main(argv):
             c = c + [255.0, 255.0, 255.0, 200.0][len(c):]  # "r g b" without the brightness
             c = (list(c) + [255.0, 255.0, 255.0, 200.0][len(c):])[:4] if len(c) < 4 else c   # "r g b" without a brightness
             lights.append((gx, gy, gz, min(1.2, c[3] / 200.0), [c[0] / 255, c[1] / 255, c[2] / 255]))
-    # --max-lights=N (default 128, 0 = keep every light) and a browser draws 8 a surface: keep the author's lights
+    # --max-lights=N (default 0 = keep every light) and a browser draws 8 a surface: keep the author's lights
     # at least `gap` metres apart, widening the gap until they fit, each kept one a little stronger for those it stood for.
     lights += [(gx, gy, gz, en, col) for gx, gy, gz, en, col in atmosphere["lights"]]
     kept_l, gap = (lights, 0.0) if max_lights <= 0 else dlights.thin_by_gap(lights, max_lights)
