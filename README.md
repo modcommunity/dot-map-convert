@@ -14,7 +14,7 @@ python3 -P bsp.py classes <map | dir> --keys    # per map: keys, outputs and inp
 python3 -P defs/runtime.py                      # rewrites addons/dot_map/io/catalogue.json (what DotMapIO.load_catalogue reads) from rules/entity_defs.json
 python3 -P tests/test_mesh.py              # the mesh, movers and class table on maps written from scratch
 python3 -P tests/test_licence.py           # the raw store, the licence pass, environment and sound data
-python3 -P tests/test_provides_licence.py    # build_provides refuses a sourced document with no licence.json entry
+python3 -P tests/test_provides_licence.py    # build_provides refuses a sourced document with no licence.json entry; collection= lands in each map pack
 python3 -P tests/test_regen.py             # rule tiers, fallbacks, regen, coverage, ratchet
 python3 -P tests/test_store.py             # the lossless store, repeated keys, outputs of any name
 python3 -P tests/test_audit.py             # the brush and floor audit on maps written from scratch

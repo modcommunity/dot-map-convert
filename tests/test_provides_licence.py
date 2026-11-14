@@ -53,6 +53,26 @@ class T(unittest.TestCase):
         self.assertFalse(c(["maps/a"], "maps/ab.json"))
         self.assertFalse(c([""], "maps/a.json"))
 
+    def _each_root(self):
+        root = tempfile.mkdtemp()
+        os.makedirs(os.path.join(root, "maps", "surf_a"))
+        json.dump({"name": "A"}, open(os.path.join(root, "maps", "surf_a", "surf_a.json"), "w"))
+        return root
+
+    def test_each_names_its_collection(self):
+        root = self._each_root()
+        kind = lambda mid: "arena"  # noqa: E731
+        self.assertEqual(build_provides.run(root, ["g/x"], pack="each", map_kind=kind, argv=[], collection="fc-surf-dm-maps"), 0)
+        doc = json.load(open(os.path.join(root, "maps", "surf_a", "provides.json")))
+        self.assertEqual(doc["collection"], "fc-surf-dm-maps")
+        self.assertEqual(build_provides.run(root, ["g/x"], pack="each", map_kind=kind, argv=["--check"], collection="fc-surf-dm-maps"), 0)
+        # Dropping the collection makes the written files stale, so a repo cannot lose it silently.
+        self.assertEqual(build_provides.run(root, ["g/x"], pack="each", map_kind=kind, argv=["--check"]), 1)
+
+    def test_each_refuses_a_bad_collection(self):
+        root = self._each_root()
+        self.assertEqual(build_provides.run(root, ["g/x"], pack="each", map_kind=lambda m: "k", argv=[], collection="Bad Name"), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

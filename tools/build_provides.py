@@ -6,7 +6,9 @@ A repo's tools/build_provides.py is a thin config that imports this and calls `r
     sys.path.insert(0, <dot-map-convert>/tools); import build_provides; sys.exit(build_provides.run(ROOT, ...))
 
     pack="single": one provides.json at the root, one `map` entry per document in `directory`
-    pack="each":   maps/<id>/provides.json and licence.json per folder (each folder is its own pack), entry scene = <id>.json
+    pack="each":   maps/<id>/provides.json and licence.json per folder (each folder is its own pack), entry scene = <id>.json;
+                   collection="<repo>" names the owner's Workshop page every map pack joins as a member (the site never
+                   gives a pack that names one a page of its own), so a bare publish of one map lands in the map pack
 
 A document with a source/source_url that no licence.json entry covers fails (both modes).
 
@@ -119,9 +121,12 @@ def _pack_licence(root, mid, worlds=False):
     return json.dumps([base] + mine, indent=2) + "\n"
 
 
-def _each(root, games, skip, map_kind, argv, worlds=False):
+def _each(root, games, skip, map_kind, argv, worlds=False, collection=None):
     check = "--check" in argv
     bad = []
+    if collection is not None and not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", collection):
+        print("bad collection name " + repr(collection))
+        return 1
     count = 0
     for mid in sorted(os.listdir(os.path.join(root, "maps"))):
         folder = os.path.join(root, "maps", mid)
@@ -138,6 +143,8 @@ def _each(root, games, skip, map_kind, argv, worlds=False):
         name = " ".join(w if w.isdigit() else w.capitalize() for w in re.split("[_-]", mid))
         doc = {"schema": 1, "title": name, "kinds": ["map"], "games": games,
                "entries": [_entry(mid, name, mid + ".json", map_kind(mid))]}
+        if collection:
+            doc["collection"] = collection
         text = json.dumps(doc, indent=4) + "\n"
         path = os.path.join(folder, "provides.json")
         count += 1
@@ -159,8 +166,9 @@ def _each(root, games, skip, map_kind, argv, worlds=False):
     return 1 if bad else 0
 
 
-def run(root, games, pack="single", title="", directory="maps", doc_kind=None, map_kind=None, skip=(), argv=None, worlds=False):
+def run(root, games, pack="single", title="", directory="maps", doc_kind=None, map_kind=None, skip=(), argv=None, worlds=False,
+        collection=None):
     argv = sys.argv if argv is None else argv
     if pack == "each":
-        return _each(root, games, set(skip), map_kind, argv, worlds)
+        return _each(root, games, set(skip), map_kind, argv, worlds, collection)
     return _single(root, title, games, directory, doc_kind, map_kind, argv)
