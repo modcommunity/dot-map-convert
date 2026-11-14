@@ -259,8 +259,36 @@ class SendsOutOfSolid(unittest.TestCase):
 
     def test_unresolved_destination_is_left_for_the_audit(self):
         door = {"classname": "trigger_teleport", "targetname": "door", "target": "a"}
-        z = self.zoner([door, dest("a", 0, 0, 0)], [((-8, -8, -8), (8, 8, 8))])
+        # Solid for 200 units round: nothing within reach to step out to.
+        z = self.zoner([door, dest("a", 0, 0, 0)], [((-200, -200, -8), (200, 200, 8))])
         self.assertEqual(list(z.sends(door)[0]), [0.0, 0.0, 0.0])
+        self.assertEqual(z.resent, {})
+
+    def test_destination_in_a_small_solid_steps_out_of_it(self):
+        door = {"classname": "trigger_teleport", "targetname": "door", "target": "a"}
+        z = self.zoner([door, dest("a", 0, 0, 0)], [((-13, -16, -8), (13, 16, 8))])
+        self.assertEqual(list(z.sends(door)[0]), [-16.0, 0.0, 0.0])
+        self.assertEqual(z.resent[id(door)], "step out")
+
+    def test_destination_in_a_func_wall_steps_out_of_it(self):
+        door = {"classname": "trigger_teleport", "targetname": "door", "target": "a"}
+        wall = {"classname": "func_wall", "targetname": "wall", "model": "*5"}
+        self.boxes["wall"] = ((-16, -8, 0), (16, 8, 80))
+        z = self.zoner([door, wall, dest("a", 0, 0, 0)], [])
+        self.assertTrue(z.walled((0, 0, 0)))
+        self.assertFalse(z.walled((0, 40, 0)))
+        self.assertEqual(list(z.sends(door)[0]), [-16.0, 0.0, 0.0])
+        self.assertEqual(z.resent[id(door)], "step out")
+
+    def test_parented_teleport_that_starts_disabled_is_dropped(self):
+        moving = {"classname": "trigger_teleport", "targetname": "t1", "target": "a",
+                  "parentname": "mover", "StartDisabled": "1"}
+        fixed = {"classname": "trigger_teleport", "targetname": "t2", "target": "a", "StartDisabled": "1"}
+        live = {"classname": "trigger_teleport", "targetname": "t3", "target": "a", "parentname": "mover"}
+        z = zoner([moving, fixed, live, dest("a", 0, 0, 0)])
+        bsp_import.parented_teleports(z)
+        self.assertEqual(sorted(z.claimed), [0])
+        self.assertTrue(any("start disabled on a moving parent" in n for n in z.notes))
 
     def test_stuck_probes_the_lifted_point(self):
         z = zoner([])
