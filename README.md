@@ -1,5 +1,3 @@
-# dot-map-convert: the family's one BSP map converter
-
 Reads community maps in the VBSP v19-21 format, inventories a folder of them, and writes each as one documented intermediate JSON that a game's thin adapter turns into that game's own map document. Python 3, standard library only (plus `unrar` or `7z` on the path to list `.rar`/`.7z` downloads, and `fastgmad` for `.gma` workshop archives).
 
 It is the one place the family reads Source-engine (VBSP) maps. A map repository keeps only its data and a thin adapter; the reader, the brush cutter, the texture, model and sound mapping and the audits live here, so a fix reaches every game.
