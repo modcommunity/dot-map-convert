@@ -2011,6 +2011,7 @@ class Zoner:
         self.pit_zones = {}
         self._player_brushes = None
         self._stuck = {}
+        self._walls = None
         # {id(entity): how} for the teleports `sends` moved off a destination in a brush.
         self.resent = {}
 
@@ -2102,7 +2103,7 @@ class Zoner:
         if not hits:
             return None, 0.0
         at, yaw = hits[0]
-        if not self.stuck(at, DESTINATION_LIFT):
+        if not self.stuck(at, DESTINATION_LIFT) and not self.walled(at, DESTINATION_LIFT):
             return at, yaw
         landmark = e.get("landmark", "").strip().lower()
         box = brush_box(self.bsp, e)
@@ -2138,7 +2139,52 @@ class Zoner:
                 if onward is not None and not self.stuck(onward, DESTINATION_LIFT):
                     self.resent[id(e)] = "cell"
                     return onward, onward_yaw
+        # Not one that stands in an enabled teleport: the pits' follow pass sends it on.
+        in_cell = any(o.get("classname") == "trigger_teleport"
+                      and str(o.get("StartDisabled", "0")).strip() != "1"
+                      and (b := brush_box(self.bsp, o)) is not None and box_contains(b, at, 0.0)
+                      for o in self.bsp.entities)
+        clear = None if in_cell else self.step_out(at)
+        if clear is not None:
+            self.resent[id(e)] = "step out"
+            return clear, yaw
         return at, yaw
+
+    def walled(self, at, lift=0.0):
+        """Whether a player put at [param at] raised by [param lift] stands inside a `func_wall`.
+
+        A `func_wall` is a solid brush entity the world model does not carry, so `stuck`
+        cannot see it: surf_XIV_v2a's `sspawn_tele_restraint` is a 32 x 16 x 24 slab over the
+        winners' platform destination, which a player teleported there stands inside.
+        """
+        if self._walls is None:
+            self._walls = [b for b in (brush_box(self.bsp, e) for e in self.bsp.entities
+                                       if e.get("classname") == "func_wall"
+                                       and e.get("model", "").startswith("*")) if b is not None]
+        return any(box_contains(b, (at[0], at[1], at[2] + lift + h), -4.0)
+                   for b in self._walls for h in (8.0, 36.0))
+
+    def step_out(self, at, reach=192.0, step=16.0):
+        """The nearest clear spot on the same floor to a destination a player would stand inside, or None.
+
+        [b]A destination the mapper put inside a small solid is stepped out of.[/b] surf_pavilion's
+        ten `bowling_N_dest` each stand in a 26 x 33 x 80 player-clip box (a lane's ball
+        catcher): Source nudges a player out of it, this game's player stands stuck. The
+        nearest point within [param reach] units on the same level that is not inside a
+        brush is taken; the lanes have no floor under them either way, so the player falls
+        from there as from the authored point. Where nothing near is clear it stays.
+        """
+        n = int(reach // step)
+        ring = sorted(((dx * step, dy * step) for dx in range(-n, n + 1) for dy in range(-n, n + 1)
+                       if dx or dy), key=lambda d: (d[0] * d[0] + d[1] * d[1], d[0], d[1]))
+        for dx, dy in ring:
+            if dx * dx + dy * dy > reach * reach:
+                break
+            there = (at[0] + dx, at[1] + dy, at[2])
+            if self.stuck(there, DESTINATION_LIFT) or self.walled(there, DESTINATION_LIFT):
+                continue
+            return there
+        return None
 
     def teleports_to(self, name):
         """Every unclaimed `trigger_teleport` aimed at that destination name."""
@@ -3199,6 +3245,27 @@ def train_movers(bsp, limit=256):
     return out
 
 
+def parented_teleports(z):
+    """Drop the teleports that start disabled and ride a moving parent. Not opt-in: a fact.
+
+    A `trigger_teleport` with a `parentname` travels with that entity, and one that starts
+    disabled does nothing until map logic switches it on, so neither where the compiler left
+    it nor its default state is a place a player is sent from. surf_ny_advance's
+    `deposit_trigger` (the cart's deposit, parented to `deposit_mover`, off at the start) sat
+    in a room `left_side_tele` sends people to: imported as a pit, that teleport's own
+    destination became a hub that sent round to nowhere.
+    """
+    names = []
+    for i, e in list(z.entities("trigger_teleport")):
+        if e.get("parentname", "").strip() and _starts_off(e):
+            z.claimed.add(i)
+            names.append(e.get("targetname", "") or "#%d" % i)
+    if names:
+        z.notes.append("%d teleports dropped that start disabled on a moving parent (%s)"
+                       % (len(names), ", ".join(names[:12])))
+    return len(names)
+
+
 def sealed_teleports(z, rule):
     """Drop the teleports aimed at a destination that is a room with no way out.
 
@@ -3370,6 +3437,8 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
         conditional_teleports(z, doc["conditional_teleports"])
     if "round_teleports" in doc:
         round_teleports(z, doc["round_teleports"])
+    # After the zones file's own lists, so one that names these teleports still resolves.
+    parented_teleports(z)
     if "sealed_teleports" in doc:
         sealed_teleports(z, doc["sealed_teleports"])
     if "doorways" in doc:
