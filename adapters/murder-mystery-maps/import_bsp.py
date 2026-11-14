@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community .bsp (VBSP 19/20) into a murder_map document.
 
-    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--hang-doorways] [--dress=N] [--no-doors] [--slide-doors] [--floor=m] [--min-size=m] [--terrain[=material]] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--dusk] [--skip-start=N] [--skip-door=x,z] [--one-way=x,z] [--cover=N] [--cover-gap=m] [--blurb=text] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--max-wire=bytes]
+    tools/import_bsp.py <map.bsp> <id> "<Name>" <author> <page-url> [--out=maps/<id>.json] [--style=yard] [--field=round_seconds=300] [--drop-beside=x,z,kind] [--clear=x0,z0,x1,z1] [--prune-pockets] [--widen-doors] [--hang-doorways] [--dress=N] [--no-doors] [--slide-doors] [--floor=m] [--min-size=m] [--terrain[=material]] [--terrain-budget=bytes] [--graft-terrain=<doc.json>] [--dusk] [--skip-start=N] [--skip-door=x,z] [--one-way=x,z] [--cover=N] [--cover-gap=m] [--blurb=text] [--drop-kind=id] [--thin=id:N] [--merge-boxes] [--min-box-volume=0.05] [--min-box-thickness=0.15] [--max-boxes=N] [--max-wire=bytes] [--max-lights=N]
 
 --merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> shrink a trim-heavy map under the 6000-box limit: touching
 same-material boxes join, then detail boxes below that size go (a panel a metre long stays). Off by default; counts are printed.
@@ -1024,14 +1024,15 @@ def main(argv):
             c = c + [255.0, 255.0, 255.0, 200.0][len(c):]  # "r g b" without the brightness
             c = (list(c) + [255.0, 255.0, 255.0, 200.0][len(c):])[:4] if len(c) < 4 else c   # "r g b" without a brightness
             lights.append((gx, gy, gz, min(1.2, c[3] / 200.0), [c[0] / 255, c[1] / 255, c[2] / 255]))
-    # A map documents at most 128 lights and a browser draws 8 a surface: keep the author's lights at least
-    # `gap` metres apart, widening the gap until they fit, each kept one a little stronger for those it stood for.
+    # --max-lights=N (default 128, 0 = keep every light) and a browser draws 8 a surface: keep the author's lights
+    # at least `gap` metres apart, widening the gap until they fit, each kept one a little stronger for those it stood for.
     lights += [(gx, gy, gz, en, col) for gx, gy, gz, en, col in atmosphere["lights"]]
-    kept_l, gap = dlights.thin_by_gap(lights, max_lights)
+    kept_l, gap = (lights, 0.0) if max_lights <= 0 else dlights.thin_by_gap(lights, max_lights)
     for gx, gy, gz, en, col in kept_l:
         m.light(gx, gy, gz, rng=9.0 + gap, energy=dlights.strengthen(en, gap), colour=col)
     if gap:
         print("lights: %d of the author's %d kept, %.1f m apart" % (len(kept_l), len(lights), gap))
+        print("warning: %d lights dropped by --max-lights=%d (--max-lights=0 keeps all)" % (len(lights) - len(kept_l), max_lights), file=sys.stderr)
     def floor_corners_ok(x, z, pid, yaw, y):
         """A prop standing on the ground has solid floor under every corner of its footprint:
         the author's cellar stair is a hole in the floor, and a crate on its rim hung half over it."""
