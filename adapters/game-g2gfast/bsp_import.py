@@ -2151,7 +2151,12 @@ class Zoner:
         return at, yaw
 
     def walled(self, at, lift=0.0):
-        """Whether a player put at [param at] raised by [param lift] stands inside a `func_wall`.
+        """Whether a player put at [param at] raised by [param lift] stands inside a `func_wall`
+        or a `func_wall_toggle` that starts hidden (spawnflag 1).
+
+        A start-hidden toggle wall is non-solid in Source until logic shows it, yet its hull is
+        kept solid here, so a destination the mapper put in its hidden volume
+        (dm_ScarletDevilMansion's `teletestexittrap4`, inside the box `za`) is stepped out of too.
 
         A `func_wall` is a solid brush entity the world model does not carry, so `stuck`
         cannot see it: surf_XIV_v2a's `sspawn_tele_restraint` is a 32 x 16 x 24 slab over the
@@ -2159,7 +2164,9 @@ class Zoner:
         """
         if self._walls is None:
             self._walls = [b for b in (brush_box(self.bsp, e) for e in self.bsp.entities
-                                       if e.get("classname") == "func_wall"
+                                       if (e.get("classname") == "func_wall"
+                                           or (e.get("classname") == "func_wall_toggle"
+                                               and bsp_mechanics._int(e, "spawnflags") & 1))
                                        and e.get("model", "").startswith("*")) if b is not None]
         return any(box_contains(b, (at[0], at[1], at[2] + lift + h), -4.0)
                    for b in self._walls for h in (8.0, 36.0))
