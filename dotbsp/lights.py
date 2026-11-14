@@ -94,7 +94,7 @@ def thin_by_gap(points, max_lights, step=0.5, first=None):
 
     gap = 0.0 if first is None else first - step
     kept = list(points)
-    while len(kept) > max_lights:
+    while max_lights > 0 and len(kept) > max_lights:  # 0 = keep every light
         gap += step
         kept = []
         for l in points:
