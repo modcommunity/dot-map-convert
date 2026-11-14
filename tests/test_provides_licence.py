@@ -73,6 +73,18 @@ class T(unittest.TestCase):
         root = self._each_root()
         self.assertEqual(build_provides.run(root, ["g/x"], pack="each", map_kind=lambda m: "k", argv=[], collection="Bad Name"), 1)
 
+    def test_licence_uses_repo_name_not_folder(self):
+        import subprocess
+        root = self._each_root()
+        subprocess.run(["git", "-C", root, "init", "-q"], check=True)
+        subprocess.run(["git", "-C", root, "remote", "add", "origin", "git@github.com:zees-games/real-name.git"], check=True)
+        json.dump([{"paths": ["maps/surf_a"], "licence": "none stated", "exception": "credited-community-map"}],
+                  open(os.path.join(root, "licence.json"), "w"))
+        self.assertEqual(build_provides.run(root, ["g/x"], pack="each", map_kind=lambda m: "k", argv=[]), 0)
+        lic = json.load(open(os.path.join(root, "maps", "surf_a", "licence.json")))
+        self.assertEqual(lic[0]["url"], "https://github.com/zees-games/real-name")
+        self.assertEqual(lic[0]["title"], "real-name (original content)")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -20,6 +20,7 @@ the pack root, as the publisher requires.
 import json
 import os
 import re
+import subprocess
 import sys
 
 
@@ -98,6 +99,18 @@ def _single(root, title, games, directory, doc_kind, map_kind, argv):
     return 0
 
 
+def _repo_name(root):
+    """The repo's real name: the origin remote's last path part, so a worktree or renamed checkout folder does not leak into licence text."""
+    try:
+        url = subprocess.run(["git", "-C", root, "remote", "get-url", "origin"], capture_output=True, text=True, timeout=10).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        url = ""
+    name = re.split(r"[/:]", url.rstrip("/"))[-1] if url else ""
+    if name.endswith(".git"):
+        name = name[:-4]
+    return name or os.path.basename(os.path.abspath(root))
+
+
 def _pack_licence(root, mid, worlds=False):
     """maps/<id>/licence.json text: base entry for original content plus the map's entry, prefixes relative to the pack root.
 
@@ -114,8 +127,8 @@ def _pack_licence(root, mid, worlds=False):
     base = next((dict(e) for e in entries if e.get("paths") == [""] and not e.get("exception")), None)
     if base is None:
         base = {"paths": [""], "licence": "MIT", "author": "TMC",
-                "url": "https://github.com/zees-games/" + os.path.basename(os.path.abspath(root)),
-                "title": os.path.basename(os.path.abspath(root)) + " (original content)"}
+                "url": "https://github.com/zees-games/" + _repo_name(root),
+                "title": _repo_name(root) + " (original content)"}
     for e in mine:
         e["paths"] = [mid, "textures/"] + (["worlds/" + mid + "/"] if worlds else [])
     return json.dumps([base] + mine, indent=2) + "\n"
