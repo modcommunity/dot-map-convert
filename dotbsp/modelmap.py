@@ -27,7 +27,7 @@ LOOSE = 1.4             # the second pass: a library model of the right kind tha
 REACH = 0.85            # largest shape distance (log units) a library model may have from the original
 BIAS = {"Poly Haven": -0.12, "Quaternius": -0.06, "Sketchfab": -0.1}
 OWN_AUTHOR = "TMC (generated for dot-map)"
-OWN_URL = "https://github.com/modcommunity/dot-map"
+OWN_URL = "https://github.com/gamespice-platform/map"
 
 
 def library_root():

@@ -15,7 +15,7 @@ import bpy
 import bmesh
 
 AUTHOR = "TMC (modelled for dot-map)"
-URL = "https://github.com/modcommunity/dot-map"
+URL = "https://github.com/gamespice-platform/map"
 
 
 def mat(name, rgb, rough=0.6, metal=0.0, alpha=1.0):

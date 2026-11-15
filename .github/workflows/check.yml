@@ -16,7 +16,7 @@ jobs:
                   path: dot-map-convert
             - uses: actions/checkout@v4
               with:
-                  repository: modcommunity/dot-map
+                  repository: gamespice-platform/map
                   path: dot-map
             - name: Python dependencies
               run: |
