@@ -201,7 +201,7 @@ class Defects(unittest.TestCase):
                   "props_buildings/buildingskybox_002a.mdl", "props_furniture/picture_frame8.mdl"):
             self.assertTrue(standins.is_skybox(m) or standins.is_detail(m), m)
         self.assertFalse(standins.is_detail("props_c17/furniturechair001a.mdl"))
-        self.assertFalse(standins.is_detail("props_vents/vent_medium_grill002.mdl"))   # an own CC0 vent model since 724a483
+        self.assertFalse(standins.is_detail("props_vents/vent_medium_grill002.mdl"))   # an own CC0 vent model since 8c11a4b
 
     def test_measured_block_for_a_packed_model_no_stand_in_fits(self):
         from dotbsp import standins

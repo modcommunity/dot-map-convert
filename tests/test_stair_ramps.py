@@ -95,7 +95,7 @@ class StairRamps(unittest.TestCase):
         self.assertIn("short of its landing", notes[0])
 
     def test_modelmap_rerun_keeps_the_hand_set_stairs_row(self):
-        # 724a483 reran modelmap and the row went (the model is in no ranking): the stairs lost their collision.
+        # 8c11a4b reran modelmap and the row went (the model is in no ranking): the stairs lost their collision.
         from dotbsp import modelmap
         kept = modelmap.unranked_rows(os.path.join(modelmap.RULES, modelmap.PICKS), set())
         self.assertIn(STAIRS, [r[0] for r in kept])

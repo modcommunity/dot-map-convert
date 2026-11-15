@@ -803,7 +803,7 @@ def main(argv):
     slide = False
     cover = 0
     dusk = False
-    max_lights = 0  # 0 = keep every light: the games no longer cap a map (hide-n-seek cc47546, murder-mystery 9fe8314)
+    max_lights = 0  # 0 = keep every light: the games no longer cap a map (hide-n-seek 32aefa4, murder-mystery 71628ac)
     cover = 0
     cover_gap = 3.0
     blurb = ""
