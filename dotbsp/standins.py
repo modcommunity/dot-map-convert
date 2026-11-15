@@ -2,7 +2,7 @@
 
 A map's own models and sounds are the author's and are never shipped. `free_models.tsv` maps a
 model path to a glb in `addons/dot_map/props/`, `free_sounds.tsv` a sound name to an ogg in
-`addons/dot_map/sounds/` or to a dot-audio stock bed. Both are regex tables, first match wins,
+`addons/dot_map/sounds/` or to a Gamespice audio stock bed. Both are regex tables, first match wins,
 with source, URL, author and licence per row so `licence.check` can refuse anything not free.
 What matches nothing stays a `placeholder_box` / silent: a wrong chair is better than a box,
 a wrong voice is not better than silence.

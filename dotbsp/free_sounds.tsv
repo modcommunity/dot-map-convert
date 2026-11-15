@@ -12,12 +12,12 @@ waterrun|water|wave|sink|pipe_water|leech|swim|river|stream	water_run	Kenney Fol
 boil|slime|acid|lava|bubble	bubbling	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
 fire|flame|burn|torch	fire	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
 steam|jet|vent|hiss	machine_low	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
-wind|windmill|breeze	amb_wind	dot-audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (dot-audio authors)	CC0-1.0
-rain|storm	amb_rain	dot-audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (dot-audio authors)	CC0-1.0
-night|cricket	amb_night	dot-audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (dot-audio authors)	CC0-1.0
-cave|dungeon|tunnel	amb_cave	dot-audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (dot-audio authors)	CC0-1.0
-eerie|atmosphere|ambience|creepy|horror|drone	amb_eerie	dot-audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (dot-audio authors)	CC0-1.0
-city|street|traffic|crowd|cantina|radio_am|am_radio	amb_city	dot-audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (dot-audio authors)	CC0-1.0
+wind|windmill|breeze	amb_wind	Gamespice audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (Gamespice audio authors)	CC0-1.0
+rain|storm	amb_rain	Gamespice audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (Gamespice audio authors)	CC0-1.0
+night|cricket	amb_night	Gamespice audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (Gamespice audio authors)	CC0-1.0
+cave|dungeon|tunnel	amb_cave	Gamespice audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (Gamespice audio authors)	CC0-1.0
+eerie|atmosphere|ambience|creepy|horror|drone	amb_eerie	Gamespice audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (Gamespice audio authors)	CC0-1.0
+city|street|traffic|crowd|cantina|radio_am|am_radio	amb_city	Gamespice audio stock ambience (synthesised)	https://github.com/gamespice-platform/audio	TMC (Gamespice audio authors)	CC0-1.0
 bell|alarm|siren|buzzer	bell	Kenney Impact Sounds	https://kenney.nl/assets/impact-sounds	Kenney	CC0-1.0
 shield|energy|electric|teleport|combine|whiteflash|forcefield|portal|laser	energy	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
 generator|substation|machine|engine|fan|motor|diesel|airboat|hum|turbine|factory|industrial	machine	Kenney Sci-Fi Sounds	https://kenney.nl/assets/sci-fi-sounds	Kenney	CC0-1.0
