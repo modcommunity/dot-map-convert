@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 
 # Cloudflare in front of the CDN answers 403 to Python's default agent.
-USER_AGENT = "dot-map-convert-storecheck/1 (+https://github.com/modcommunity/dot-map-convert)"
+USER_AGENT = "dot-map-convert-storecheck/1 (+https://github.com/gamespice-platform/map-convert)"
 
 
 class FetchError(Exception):
