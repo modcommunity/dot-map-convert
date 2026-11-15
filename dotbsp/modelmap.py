@@ -26,6 +26,8 @@ SLAB = 0.1              # a target side under this many metres is not matched on
 LOOSE = 1.4             # the second pass: a library model of the right kind that is only roughly the shape
 REACH = 0.85            # largest shape distance (log units) a library model may have from the original
 BIAS = {"Poly Haven": -0.12, "Quaternius": -0.06, "Sketchfab": -0.1}
+OWN_SOURCE = "Gamespice generated model"
+OWN_SOURCES = ("Gamespice generated", "TMC")  # prefixes; TMC is the legacy label, still read
 OWN_AUTHOR = "Gamespice (generated for map)"
 OWN_URL = "https://github.com/gamespice-platform/map"
 
@@ -47,7 +49,7 @@ def manifest(root=None):
             files = c[9].split(",")
             out.append({"id": c[0], "source": c[1], "url": c[2], "author": c[3], "licence": c[4], "tags": c[5],
                         "dims": (float(c[6]), float(c[7]), float(c[8])), "file": files[0],
-                        "own": c[1].startswith("TMC")})
+                        "own": c[1].startswith(OWN_SOURCES)})
     return out
 
 
@@ -138,7 +140,7 @@ def _write_own(folder, ident, kind, w, h, d, colour):
         with open(path, "wb") as f:
             f.write(box_glb(w, h, d, rgb))
     with open(os.path.join(folder, "model.json"), "w") as f:
-        json.dump({"id": ident, "source": "TMC generated model", "url": OWN_URL, "author": OWN_AUTHOR, "licence": "CC0-1.0",
+        json.dump({"id": ident, "source": OWN_SOURCE, "url": OWN_URL, "author": OWN_AUTHOR, "licence": "CC0-1.0",
                    "tags": "own,%s" % kind, "dims": [w, h, d], "files": ["own/%s/%s.glb" % (ident, ident)]}, f)
 
 
@@ -149,7 +151,7 @@ def own_model(root, kind, size, colour):
     folder = os.path.join(root, "own", ident)
     if not os.path.isfile(os.path.join(folder, ident + ".glb")):
         _write_own(folder, ident, kind, w, h, d, colour)
-    return {"id": ident, "source": "TMC generated model", "url": OWN_URL, "author": OWN_AUTHOR, "licence": "CC0-1.0",
+    return {"id": ident, "source": OWN_SOURCE, "url": OWN_URL, "author": OWN_AUTHOR, "licence": "CC0-1.0",
             "dims": (w, h, d), "file": "own/%s/%s.glb" % (ident, ident), "own": True}
 
 

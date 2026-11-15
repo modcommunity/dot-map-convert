@@ -126,7 +126,7 @@ def _pack_licence(root, mid, worlds=False):
         return None
     base = next((dict(e) for e in entries if e.get("paths") == [""] and not e.get("exception")), None)
     if base is None:
-        base = {"paths": [""], "licence": "MIT", "author": "TMC",
+        base = {"paths": [""], "licence": "MIT", "author": "Gamespice",
                 "url": "https://github.com/zees-games/" + _repo_name(root),
                 "title": _repo_name(root) + " (original content)"}
     for e in mine:

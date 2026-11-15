@@ -76,6 +76,13 @@ class ModelMap(unittest.TestCase):
             finally:
                 modelmap._FIXED.clear()
 
+    def test_own_flag_accepts_gamespice_and_legacy_tmc_sources(self):
+        for src, own in (("Gamespice generated model", True), ("TMC generated model", True), ("Poly Haven", False)):
+            with tempfile.TemporaryDirectory() as root:
+                with open(os.path.join(root, "manifest.tsv"), "w", encoding="utf-8") as f:
+                    f.write("m1\t%s\thttps://x\ta\tCC0-1.0\tt\t1\t1\t1\tm1/m1.glb\n" % src)
+                self.assertEqual(modelmap.manifest(root)[0]["own"], own, src)
+
     def test_generic_shape_pick_skips_weapons(self):
         lib = [rec("ph_stick_grenade", (0.08, 0.33, 0.08)), rec("ph_candle_holder", (0.08, 0.33, 0.08))]
         got = modelmap.pick("m", (0.08, 0.33, 0.08), modelmap.GENERIC, lib)

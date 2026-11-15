@@ -3,7 +3,7 @@ address sign, tiered fountain, plush doll). Blender, headless:
 
     blender -b --factory-startup --python tools/models/fixtures.py -- <library models dir> [id ...]
 
-Writes `<dir>/own/<id>/<id>.glb` and `model.json` (CC0, TMC); re-run `~/art-library/tools/index_models.py` after. Z up in
+Writes `<dir>/own/<id>/<id>.glb` and `model.json` (CC0, Gamespice); re-run `~/art-library/tools/index_models.py` after. Z up in
 Blender, front toward -Y (glTF +Z), origin at the bottom centre. Sizes are the originals' real ones in metres.
 """
 import json
