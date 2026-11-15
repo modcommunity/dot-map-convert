@@ -65,7 +65,7 @@ class ModelMap(unittest.TestCase):
     def test_fixed_pick_sizes_a_weapon_by_its_category(self):
         with tempfile.TemporaryDirectory() as root:
             with open(os.path.join(root, "manifest.tsv"), "w", encoding="utf-8") as f:
-                f.write("dm_weaponpistol\tdot-map Blender model\thttps://x\tTMC\tCC0-1.0\tpistol\t0.22\t0.155\t0.03\tdotmap/dm_weaponpistol/dm_weaponpistol.glb\n")
+                f.write("dm_weaponpistol\tGamespice map Blender model\thttps://x\tTMC\tCC0-1.0\tpistol\t0.22\t0.155\t0.03\tdotmap/dm_weaponpistol/dm_weaponpistol.glb\n")
             modelmap._FIXED.clear()
             try:
                 got = modelmap.fixed_pick("models/weapons/w_pist_deagle.mdl", root)

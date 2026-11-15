@@ -14,7 +14,7 @@ import sys
 import bpy
 import bmesh
 
-AUTHOR = "TMC (modelled for dot-map)"
+AUTHOR = "Gamespice (modelled for map)"
 URL = "https://github.com/gamespice-platform/map"
 
 
@@ -214,7 +214,7 @@ def main():
         bpy.ops.export_scene.gltf(filepath=os.path.join(root, rel), export_format="GLB", export_apply=True,
                                   export_yup=True, export_materials="EXPORT")
         with open(os.path.join(folder, "model.json"), "w") as f:
-            json.dump({"id": ident, "source": "Modelled for dot-map", "url": URL, "author": AUTHOR, "licence": "CC0-1.0",
+            json.dump({"id": ident, "source": "Modelled for Gamespice map", "url": URL, "author": AUTHOR, "licence": "CC0-1.0",
                        "tags": "fixture,%s" % ident[2:], "files": [rel]}, f)
         print("wrote", rel, dims)
 
