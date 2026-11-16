@@ -84,7 +84,7 @@ _NAMES = [(c, re.compile(r"(?<![a-z])(?:%s)" % p)) for c, p in NAMES]
 
 
 def library_root():
-    return os.environ.get("DOT_ART_LIBRARY") or os.path.expanduser("~/art-library/materials")
+    return os.environ.get("GS_ART_LIBRARY", os.environ.get("DOT_ART_LIBRARY")) or os.path.expanduser("~/art-library/materials")
 
 
 def _tokens(text):
@@ -271,7 +271,7 @@ def ship(generic, outdir, library=None):
     if lib is None:
         lib = _cache[library] = load_library(library)
     if sid not in lib and library is None and not os.path.isdir(library_root()):
-        raise ValueError("PBR library %s not found (set DOT_ART_LIBRARY)" % library_root())
+        raise ValueError("PBR library %s not found (set GS_ART_LIBRARY)" % library_root())
     e = lib.get(sid)
     if e is None:
         raise ValueError("PBR set %s is not in the library %s" % (sid, library or library_root()))
@@ -356,7 +356,7 @@ def library():
             lib = load_library(root)
         else:
             lib = {}
-            print("warning: PBR library not found at %s (set DOT_ART_LIBRARY); textures use the stock photo sets" % root, file=sys.stderr)
+            print("warning: PBR library not found at %s (set GS_ART_LIBRARY); textures use the stock photo sets" % root, file=sys.stderr)
         _cache[("auto", root)] = lib
     return lib or None
 

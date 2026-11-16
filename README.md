@@ -15,7 +15,7 @@ python3 -P bsp.py audit map.bsp --mesh world/map           # every solid brush a
 python3 -P bsp.py unmapped ~/mapsrc --top 40               # textures that hit no row of source_textures.tsv
 ```
 
-The converter finds the dot-map addon it writes into as the sibling checkout `../dot-map` (or `$DOT_MAP_DIR`). A game finds the converter as `../dot-map-convert` (dot-bootstrap makes it) or `$DOTBSP_PATH`. Python 3, standard library only, plus `unrar` or `7z` for `.rar`/`.7z` downloads and `fastgmad` for `.gma` workshop archives.
+The converter finds the dot-map addon it writes into as the sibling checkout `../dot-map` (or `$GS_MAP_DIR`). A game finds the converter as `../dot-map-convert` (dot-bootstrap makes it) or `$DOTBSP_PATH`. Python 3, standard library only, plus `unrar` or `7z` for `.rar`/`.7z` downloads and `fastgmad` for `.gma` workshop archives.
 
 ## Commands
 

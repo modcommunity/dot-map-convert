@@ -3,13 +3,13 @@
 # `licence.pbr_store` and `model_store` name) so a checkout draws the worlds with full art and no dot-cloud slices, and link
 # them into each game that draws those worlds (`<game>/.stores`, kept out of git through the game's .git/info/exclude).
 #   tools/stage_stores.sh <maps repo> [--from SRC] [--game <game project>]...
-# SRC (or $DOT_STORES_FROM) is an rsync source holding pbr-library/ and model-library/ (`host:path/.stores`), a local folder,
+# SRC (or GS_STORES_FROM) is an rsync source holding pbr-library/ and model-library/ (`host:path/.stores`), a local folder,
 # or an http(s) URL of a .tar of them. Re-running fetches only what changed. Without it a world draws its low-detail stand-ins.
 set -euo pipefail
 die() { echo "stage_stores: $*" >&2; exit 2; }
 [ $# -ge 1 ] || die "usage: tools/stage_stores.sh <maps repo> [--from SRC] [--game <game project>]..."
 MAPS="$(cd "$1" && pwd)"; shift
-FROM="${DOT_STORES_FROM:-}"
+FROM="${GS_STORES_FROM:-${DOT_STORES_FROM:-}}"
 GAMES=()
 while [ $# -gt 0 ]; do
     case $1 in

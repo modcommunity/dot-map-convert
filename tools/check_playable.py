@@ -18,7 +18,7 @@ checks the converted map, not the importer's own opinion of it. Per map it fails
     tools/check_playable.py -v               list every problem, not the first few per map
 
 This is the shared copy. A map repository runs it through its own tools/check_playable.py
-launcher, which finds dot-map-convert as `../dot-map-convert` or `$DOT_MAP_CONVERT_PATH` and calls
+launcher, which finds dot-map-convert as `../dot-map-convert` or `$GS_MAP_CONVERT_PATH` and calls
 main(root=<repo>), the same way tools/build_provides.py is launched. Run directly, the
 repository is the current directory.
 

@@ -1,7 +1,7 @@
 """Pick a free library model for every ranked prop model, at the original's real size.
 
 `bsp.py modelmap` reads `rules/models/ranking.tsv`, `model_dims.tsv` and `categories.tsv`, and the library
-manifest (`$DOT_MODEL_LIBRARY`, default `~/art-library/models`), and writes `rules/models/picks.tsv`:
+manifest (`$GS_MODEL_LIBRARY`, default `~/art-library/models`), and writes `rules/models/picks.tsv`:
 one row per model, the library id, the metres its longest side is drawn at, the quarter turns, the
 original's centre and base, and the credit. Where no library model has a shape within reach, a plain
 model of the original's exact dimensions is generated into the library's `own/` folder (a box or a
@@ -33,7 +33,7 @@ OWN_URL = "https://github.com/gamespice-platform/map"
 
 
 def library_root():
-    return os.environ.get("DOT_MODEL_LIBRARY") or os.path.expanduser("~/art-library/models")
+    return os.environ.get("GS_MODEL_LIBRARY", os.environ.get("DOT_MODEL_LIBRARY")) or os.path.expanduser("~/art-library/models")
 
 
 def manifest(root=None):

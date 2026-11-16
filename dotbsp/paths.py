@@ -6,10 +6,10 @@ REPO = os.path.dirname(HERE)
 
 
 def dot_map_dir():
-    """The dot-map checkout: $DOT_MAP_DIR, else the sibling directory, else (in a git
+    """The dot-map checkout: $GS_MAP_DIR, else the sibling directory, else (in a git
     worktree, whose siblings are other worktrees) the sibling of the main checkout."""
-    if os.environ.get("DOT_MAP_DIR"):
-        return os.environ["DOT_MAP_DIR"]
+    if os.environ.get("GS_MAP_DIR", os.environ.get("DOT_MAP_DIR")):
+        return (os.environ.get("GS_MAP_DIR") or os.environ["DOT_MAP_DIR"])
     sib = os.path.join(os.path.dirname(REPO), "dot-map")
     if not os.path.isdir(sib):
         main = _main_checkout()

@@ -73,7 +73,7 @@ def build(src, library):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("src", help="the Prototype Textures folder of the Kenney bundle (PNG/, License.txt)")
-    ap.add_argument("--library", help="the PBR library; default $DOT_ART_LIBRARY or ~/art-library/materials")
+    ap.add_argument("--library", help="the PBR library; default $GS_ART_LIBRARY or ~/art-library/materials")
     a = ap.parse_args(argv)
     lib = a.library or pbrmap.library_root()
     print("kenney_prototypes: %d sets in %s" % (build(a.src, lib), os.path.join(lib, SOURCE)))

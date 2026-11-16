@@ -28,7 +28,7 @@ ALLOW = {}
 
 
 def repos():
-    godot = os.environ.get("DOT_GODOT_DIR") or os.path.dirname(ROOT)
+    godot = os.environ.get("GS_GODOT_DIR", os.environ.get("DOT_GODOT_DIR")) or os.path.dirname(ROOT)
     found = sorted(glob.glob(os.path.join(godot, "*-maps")))
     found += [os.path.join(godot, n) for n in EXTRA_REPOS if os.path.isdir(os.path.join(godot, n))]
     return found
