@@ -49,13 +49,13 @@ def applied(rs):
 
 
 def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None, crop=None, orig_textures=False, orig_max_side=0,
-          overlays=False, detail=False, orig_models=False, orig_content=()):
+          overlays=False, detail=False, orig_models=False, orig_content=(), sky_detail=True):
     """Write the map at `out` (prefix); returns (manifest, coverage report, problems)."""
     with open(path, "rb") as f:
         bsp = reader.Bsp(path, data=f.read()).load()
     with applied(rs):
         m = mesh.build(bsp, tmap=rs.textures_view(), scale=scale, y0=y0, crop=crop, materials=rs.materials_view(),
-                       overlays=overlays, detail=detail)
+                       overlays=overlays, detail=detail, sky_detail=sky_detail)
         report = classes.report(bsp)
         links = movers.links(bsp)
         ents = movers.generic(bsp)
@@ -230,6 +230,7 @@ def cmd(args):
                                    orig_max_side=getattr(args, "orig_max_side", 0),
                                    overlays=getattr(args, "overlays", False) or getattr(args, "no_omit", False),
                                    detail=getattr(args, "detail", False) or getattr(args, "no_omit", False),
+                                   sky_detail=not getattr(args, "no_sky_detail", False),
                                    orig_models=getattr(args, "orig_models", False),
                                    orig_content=tuple(getattr(args, "orig_content", None) or ()))
     except (ValueError, OSError) as e:

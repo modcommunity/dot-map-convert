@@ -402,7 +402,7 @@ def crop_keep(crop):
 
 def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classify_material,
           drawn_classes=DRAWN_BRUSH_ENTITIES, solid_classes=SOLID_BRUSH_ENTITIES, chunk=CHUNK,
-          visibility=True, lighting=True, crop=None, materials=None, overlays=False, detail=False):
+          visibility=True, lighting=True, crop=None, materials=None, overlays=False, detail=False, sky_detail=True):
     """The drawn and solid world of a loaded `reader.Bsp` as a `Mesh`, in metres and Godot axes.
 
     `tmap` is a `texturemap.TextureMap` (the shared list by default). `y0` is subtracted from
@@ -416,7 +416,9 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     lightmap atlas, the occluders and the visibility sets alike, and so is the 3D sky. `materials` is a
     `materials.tsv` view (`get(name, generic)`); each surface's properties come from its packed
     material record (`materials.Resolver`). `overlays` draws the `info_overlay` decals and `detail`
-    the detail grass (`overlays.py`); both are off by default.
+    the detail grass (`overlays.py`); both are off by default. `sky_detail=False` leaves out the detail
+    sprites standing in the 3D skybox room (counted as skipped `detail:sky`): scaled up with the room
+    they are cards metres wide, and a runtime that draws them as cut-out cards shows their outlines.
     """
     tmap = tmap or texturemap.load()
     out = Mesh()
@@ -534,7 +536,7 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     if overlays:
         _add_overlays(bsp, out, surfaces, tmap, classify, (g, g_sky), gn, chunk, dropped, sky)
     if detail:
-        _add_detail(bsp, out, surfaces, tmap, classify, (g, g_sky), gn, chunk, keep, sky)
+        _add_detail(bsp, out, surfaces, tmap, classify, (g, g_sky), gn, chunk, keep, sky, sky_detail)
     out.surfaces = [s for s in surfaces.values() if s.index]
     out.surfaces.sort(key=lambda s: (s.model, s.chunk or [], s.sky3d, s.displacement, s.material))
     n_glass = sum(1 for s in out.surfaces if s.glass)
@@ -682,7 +684,7 @@ def _add_overlays(bsp, out, surfaces, tmap, classify, gs, gn, chunk, dropped, sk
         out.notes.append("%d info_overlay decals drawn" % drawn)
 
 
-def _add_detail(bsp, out, surfaces, tmap, classify, gs, gn, chunk, keep, sky):
+def _add_detail(bsp, out, surfaces, tmap, classify, gs, gn, chunk, keep, sky, sky_detail=True):
     """Every `dprp` detail sprite as two crossed cards in the worldspawn's `detailmaterial`; one in the 3D
     skybox room moves out and scales up with the room's faces."""
     sprites, props = bsp.detail_sprites()
@@ -700,6 +702,9 @@ def _add_detail(bsp, out, surfaces, tmap, classify, gs, gn, chunk, keep, sky):
             out.skipped["detail:not_sprite"] += 1
             continue
         in_sky = sky is not None and in_box(p["origin"], sky[2])
+        if in_sky and not sky_detail:
+            out.skipped["detail:sky"] += 1
+            continue
         g = gs[1] if in_sky else gs[0]
         if keep is not None and (in_sky or not keep(g(p["origin"], zero))):     # a crop drops the sky room
             out.skipped["detail:outside"] += 1

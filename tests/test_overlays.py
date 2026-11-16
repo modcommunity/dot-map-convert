@@ -120,6 +120,21 @@ class Build(unittest.TestCase):
         self.assertFalse(_of(m, "detail_sprite"))
         self.assertEqual(m.skipped["detail:outside"], 1)
 
+    def test_sky_room_detail_left_out_on_request(self):
+        # a sprite in the 3D skybox room is drawn moved out and scaled up, unless sky_detail=False
+        room = ((0.0, 0.0, 64.0), 16.0, ((-1000.0, -1000.0, -1000.0), (1000.0, 1000.0, 1000.0)))
+        real = mesh.skybox_of
+        mesh.skybox_of = lambda bsp: room
+        try:
+            drawn = mesh.build(load(detail=_dprp()), scale=1.0, detail=True)
+            left = mesh.build(load(detail=_dprp()), scale=1.0, detail=True, sky_detail=False)
+        finally:
+            mesh.skybox_of = real
+        (s,) = _of(drawn, "detail_sprite")
+        self.assertTrue(s.sky3d)
+        self.assertFalse(_of(left, "detail_sprite"))
+        self.assertEqual(left.skipped["detail:sky"], 1)
+
     def test_view_of_stands_over_the_ground(self):
         flat = lambda x, z: 0.0
         cam = overlays.view_of((0.0, 0.0, 0.0), flat)
@@ -139,6 +154,18 @@ class Build(unittest.TestCase):
         self.assertEqual((name, at), ("x_0", (32.0, 64.0, -32.0)))
         self.assertGreater(cam[1], at[1])
         self.assertEqual(overlays.overlay_views(bsp, "nothing", lambda p: p), [])
+
+    def test_overlay_views_follow_the_skybox_room_out(self):
+        # the decal's face lies in a 3D skybox room round (0, 0, 64) at scale 16: aimed where the pack
+        # draws it, (p - camera) * 16, and from 16 times as far
+        bsp = load(extra_lumps={45: _overlay()})
+        sky = ((0.0, 0.0, 64.0), 16.0, ((-1000.0, -1000.0, -1000.0), (1000.0, 1000.0, 1000.0)))
+        ((_name, cam, at),) = overlays.overlay_views(bsp, "darkedge", lambda p: (p[0], p[2], -p[1]), "x", sky=sky)
+        self.assertEqual(at, (512.0, 0.0, -512.0))
+        self.assertAlmostEqual(abs(complex(cam[0] - at[0], cam[2] - at[2])), 128.0)
+        move, inside = overlays.sky_move(None)
+        self.assertEqual(move((1.0, 2.0, 3.0)), (1.0, 2.0, 3.0))
+        self.assertFalse(inside([(0.0, 0.0, 0.0)]))
 
 
 if __name__ == "__main__":

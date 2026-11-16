@@ -236,6 +236,11 @@ CONFIGS = {
         "source": "gm_fork, https://steamcommunity.com/sharedfiles/filedetails/?id=326332456",
         "spawn_at": 0,
         "region": ((-55.0, 55.0), (-15.0, 45.0), (232.1, 342.1)),
+        # The hills and banks are displacement terrain: laid as tilted grass slabs on a 4 m grid (585 m across), so the
+        # ground a player walks is the ground the world pack draws.
+        "terrain": {"cell": 4.0, "material": "grass", "thick": 1.0},
+        # The sky room's 45585 detail sprites, scaled up 16 times with it, drew as leafy rectangles on the far hills.
+        "sky_detail": False,
         "declared": [{"min": [-31.1, 4.4, 247.9], "max": [-21.3, 7.0, 258.3], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-26.6, 7.0, 250.7], "max": [-21.3, 7.6, 254.8], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-29.6, 1.9, 254.4], "max": [-24.3, 2.5, 258.5], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-30.6, 1.5, 248.2], "max": [-29.3, 2.3, 250.0], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-61.1, 0.3, 272.4], "max": [-40.8, 0.9, 273.3], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-58.6, -0.3, 272.9], "max": [-24.3, 0.3, 279.3], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-61.1, 0.3, 278.9], "max": [-40.8, 0.9, 280.0], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}],
         "min_size": 0.5,
     },
@@ -886,6 +891,8 @@ def world_commands(bsp_path, cfg, spec, root, store_root=None, orig_max_side=0, 
             regen += ["--orig-content", here]
     if no_omit or cfg["id"].endswith(ORIG_MARK):
         regen.append("--no-omit")
+    if cfg.get("sky_detail") is False:
+        regen.append("--no-sky-detail")
     return store, regen
 
 

@@ -9,7 +9,8 @@ surface, from a point over the ground with a clear line down to it.
     tools/overlay_views.py <map.bsp> <texture part> [--doc <converted .json>] [--name PREFIX]
 
 `--doc` reads the world pack's `metres_per_unit` and `offset` (a PLAYLOT document's `world` block),
-so the views are in the game's metres; without it they are in map units, Godot axes. Prints one
+so the views are in the game's metres; without it they are in map units, Godot axes. A decal in the 3D
+skybox room is aimed at where the world pack draws it, moved out with the room. Prints one
 `--view NAME:FX,FY,FZ:AX,AY,AZ` per overlay, or a `#` line for one with no clear view.
 """
 import argparse
@@ -19,7 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from dotbsp import overlays, reader  # noqa: E402
+from dotbsp import mesh, overlays, reader  # noqa: E402
 
 
 def frame_of(doc_path):
@@ -48,7 +49,9 @@ def main(argv=None):
         return (p[0] * s + off[0], p[2] * s + off[1], -p[1] * s + off[2])
 
     prefix = a.name or "%s_%s" % (os.path.splitext(os.path.basename(a.bsp))[0].split("_", 1)[-1], a.texture)
-    views = overlays.overlay_views(bsp, a.texture, to, prefix)
+    # the 3D skybox room's decals are drawn moved out and scaled up, as the room's faces are
+    sky, k = mesh._sky_setup(bsp, mesh.DRAWN_BRUSH_ENTITIES)
+    views = overlays.overlay_views(bsp, a.texture, to, prefix, sky=(sky[0], k, sky[2]) if sky else None)
     if not views:
         raise SystemExit("no world overlay uses a material containing %r" % a.texture)
     for name, cam, at in views:

@@ -101,6 +101,9 @@ class PlaylotWorld(unittest.TestCase):
         self.assertNotIn("--no-omit", plain)
         _, kept = I.world_commands(self.bsp, I.config("t"), I.world_spec(I.config("t"), 0.0), self.tmp, no_omit=True)
         self.assertIn("--no-omit", kept)
+        self.assertNotIn("--no-sky-detail", kept)
+        _, bare = I.world_commands(self.bsp, dict(I.config("t"), sky_detail=False), I.world_spec(I.config("t"), 0.0), self.tmp, no_omit=True)
+        self.assertIn("--no-sky-detail", bare)          # fork: the sky room's detail cards left out
 
     def test_orig_refuses_course(self):
         self.assertEqual(I.main(["x", self.bsp, "t", "--out=" + self.out, "--orig", "--course", "--no-world"]), 2)

@@ -6,7 +6,7 @@ Every base-game texture and model the workshop map gm_fork (workshop 326332456; 
 
 - Textures: 170 of 170 mapped (88 library PBR sets from ambientCG and Poly Haven, the rest generic CC0 sets or generated functional textures). `info_overlay` decals are drawn with `--no-omit` (or `regen --overlays`), each in its texture row's look; `overlays/darkedge` is a generated dark see-through sheet.
 - Models: 241 of 241 mapped (library picks, free stand-ins, category rules, measured-piece blocks and own Blender models); 0 omitted and 0 unmapped when converted with `--no-omit`. Without the flag the converter still leaves out the 35 skybox and small detail models listed below, so other maps keep their output.
-- Licences of the mapped items: CC0-1.0 389, CC-BY-4.0 21. CC-BY-4.0 items (21 Sketchfab models) need the attribution in the JSON `attribution` field.
+- Licences of the mapped items: CC0-1.0 390, CC-BY-4.0 21. CC-BY-4.0 items (21 Sketchfab models) need the attribution in the JSON `attribution` field.
 
 ## Texture groups
 
@@ -63,6 +63,9 @@ The skybox and detail models the default rules leave out, and the three earlier 
 
 ## Open items
 
+- The station, bridge and canal-dock models (bridge piers, finials, awnings, iron arches, lamp, signal, hip roof, dock wrecks, steel trestle, scaffold bay, sign pole, cable mount) are own CC0 Blender models from `tools/models/fork_station.py` (2026-11-16); they replaced the column, cone, window and plain-box stand-ins, and the truck tyre is the Poly Haven old tyre.
+- `tree_pine04`, `tree_pine04_snow` and the fork pine clusters (408 in the map, 70 in the sky room) now use the modelled Sketchfab pine that `tree_pine05`/`06` use; the low-poly pine they had is flat alpha cards, and the runtime drew them as opaque green-blue slabs.
+- The sky room's 45585 detail sprites are left out (`sky_detail: False`, regen `--no-sky-detail`): scaled up 16 times they were cards metres wide, and the runtime's cut-out foliage card drew their outlines as leafy rectangles on the far hills. The map's own detail grass is still drawn.
 - Detail of the own Blender models is blockout level (no textures, flat material colours); a textured pass is still open.
 - `info_overlay` decals are drawn as mesh lifted off their faces, with hard edges: the runtime has no decal blending, so an overlay whose material fades out at its border (dirt tracks, gravel paths, cliff edges) shows its full quad.
 - gm_fork's 45585 detail sprites all stand in the 3D skybox room; `--no-omit` draws them there, moved out and scaled up with the room, as crossed cards in the `foliage_card` look rather than the map's own grass sheet.

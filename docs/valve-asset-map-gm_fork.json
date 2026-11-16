@@ -2258,22 +2258,25 @@
    "instances": 16,
    "state": "mapped",
    "how": "library pick",
-   "asset": "kenney_mini-arcade_wall-window",
-   "source": "Kenney Mini Arcade",
-   "url": "https://kenney.nl/assets/mini-arcade",
-   "author": "Kenney",
+   "asset": "dm_awningwide",
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
    "licence": "CC0-1.0",
-   "attribution": "Kenney, Kenney Mini Arcade, CC0-1.0"
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_c17/awning002a.mdl",
    "group": "other_props",
    "instances": 9,
    "state": "mapped",
-   "how": "category rule",
-   "asset": "library match for /window|shutter|rollershutter/",
+   "how": "library pick",
+   "asset": "dm_awningsmall",
    "licence": "CC0-1.0",
-   "source": "art library"
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_c17/cashregister01a.mdl",
@@ -2710,12 +2713,12 @@
    "instances": 11,
    "state": "mapped",
    "how": "library pick",
-   "asset": "kenney_car-kit_cone",
-   "source": "Kenney Car Kit",
-   "url": "https://kenney.nl/assets/car-kit",
-   "author": "Kenney",
+   "asset": "dm_signpole",
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
    "licence": "CC0-1.0",
-   "attribution": "Kenney, Kenney Car Kit, CC0-1.0"
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_c17/streetsign004f.mdl",
@@ -2824,12 +2827,12 @@
    "instances": 2,
    "state": "mapped",
    "how": "library pick",
-   "asset": "kenney_nature-kit_fence_gate",
-   "source": "Kenney Nature Kit",
-   "url": "https://kenney.nl/assets/nature-kit",
-   "author": "Kenney",
+   "asset": "dm_steeltrestle",
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
    "licence": "CC0-1.0",
-   "attribution": "Kenney, Kenney Nature Kit, CC0-1.0"
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_canal/canal_bridge03b.mdl",
@@ -2967,12 +2970,12 @@
    "instances": 2,
    "state": "mapped",
    "how": "library pick",
-   "asset": "own_box_400x50x800_6a5440",
-   "source": "Gamespice generated model",
-   "url": "https://github.com/gamespice-platform/map",
-   "author": "Gamespice (generated for map)",
+   "asset": "dm_dockwreck",
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
    "licence": "CC0-1.0",
-   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/canal_dock03a.mdl",
@@ -2980,12 +2983,12 @@
    "instances": 1,
    "state": "mapped",
    "how": "library pick",
-   "asset": "own_box_400x50x800_6a5440",
-   "source": "Gamespice generated model",
-   "url": "https://github.com/gamespice-platform/map",
-   "author": "Gamespice (generated for map)",
+   "asset": "dm_dockwrecklong",
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
    "licence": "CC0-1.0",
-   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/dock01_pole01a_128.mdl",
@@ -3057,10 +3060,13 @@
    "group": "buildings_structures",
    "instances": 4,
    "state": "mapped",
-   "how": "category rule",
-   "asset": "library match for /dm_dockbroken/",
+   "how": "library pick",
+   "asset": "dm_dockwrecksquare",
    "licence": "CC0-1.0",
-   "source": "art library"
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/dock_broken01a_256.mdl",
@@ -3951,10 +3957,13 @@
    "group": "buildings_structures",
    "instances": 1,
    "state": "mapped",
-   "how": "category rule",
-   "asset": "library match for /ceiling_lamp_14e5f1/",
+   "how": "library pick",
+   "asset": "dm_hiproof",
    "licence": "CC0-1.0",
-   "source": "art library"
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_rooftop/end_parliament_dome.mdl",
@@ -4001,12 +4010,12 @@
    "instances": 7,
    "state": "mapped",
    "how": "library pick",
-   "asset": "kenney_graveyard-kit_fence-gate",
-   "source": "Kenney Graveyard Kit",
-   "url": "https://kenney.nl/assets/graveyard-kit",
-   "author": "Kenney",
+   "asset": "dm_scaffoldbay",
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
    "licence": "CC0-1.0",
-   "attribution": "Kenney, Kenney Graveyard Kit, CC0-1.0"
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_trainstation/bench_indoor001a.mdl",
@@ -4039,30 +4048,39 @@
    "group": "other_props",
    "instances": 4,
    "state": "mapped",
-   "how": "category rule",
-   "asset": "library match for /arch|gate|doorway|window/",
+   "how": "library pick",
+   "asset": "dm_stationbracket",
    "licence": "CC0-1.0",
-   "source": "art library"
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_trainstation/column_arch001a.mdl",
    "group": "other_props",
    "instances": 3,
    "state": "mapped",
-   "how": "category rule",
-   "asset": "library match for /column|pillar|pole/",
+   "how": "library pick",
+   "asset": "dm_stationarch",
    "licence": "CC0-1.0",
-   "source": "art library"
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_trainstation/column_light001a.mdl",
    "group": "furniture",
    "instances": 3,
    "state": "mapped",
-   "how": "category rule",
-   "asset": "library match for /column|pillar|pole/",
+   "how": "library pick",
+   "asset": "dm_stationlamp",
    "licence": "CC0-1.0",
-   "source": "art library"
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_trainstation/column_light001b.mdl",
@@ -4096,12 +4114,12 @@
    "instances": 2,
    "state": "mapped",
    "how": "library pick",
-   "asset": "kenney_car-kit_cone",
-   "source": "Kenney Car Kit",
-   "url": "https://kenney.nl/assets/car-kit",
-   "author": "Kenney",
+   "asset": "dm_railsignal",
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
    "licence": "CC0-1.0",
-   "attribution": "Kenney, Kenney Car Kit, CC0-1.0"
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_trainstation/mount_connection001a.mdl",
@@ -4109,12 +4127,12 @@
    "instances": 2,
    "state": "mapped",
    "how": "library pick",
-   "asset": "own_box_50x60x50_505050",
-   "source": "Gamespice generated model",
-   "url": "https://github.com/gamespice-platform/map",
-   "author": "Gamespice (generated for map)",
+   "asset": "dm_cablemount",
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
    "licence": "CC0-1.0",
-   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_trainstation/payphone001a.mdl",
@@ -4213,12 +4231,12 @@
    "instances": 1,
    "state": "mapped",
    "how": "library pick",
-   "asset": "own_box_40x60x30_7a7060",
-   "source": "Gamespice generated model",
-   "url": "https://github.com/gamespice-platform/map",
-   "author": "Gamespice (generated for map)",
+   "asset": "dm_stationfinial",
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
    "licence": "CC0-1.0",
-   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_trainstation/trainstation_ornament002.mdl",
@@ -4226,12 +4244,12 @@
    "instances": 24,
    "state": "mapped",
    "how": "library pick",
-   "asset": "own_box_40x60x30_7a7060",
-   "source": "Gamespice generated model",
-   "url": "https://github.com/gamespice-platform/map",
-   "author": "Gamespice (generated for map)",
+   "asset": "dm_ironfinial",
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
    "licence": "CC0-1.0",
-   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_trainstation/trainstation_post001.mdl",
@@ -4369,12 +4387,12 @@
    "instances": 2,
    "state": "mapped",
    "how": "library pick",
-   "asset": "kenney_car-kit_garbage-truck",
-   "source": "Kenney Car Kit",
-   "url": "https://kenney.nl/assets/car-kit",
-   "author": "Kenney",
+   "asset": "ph_old_tyre",
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/old_tyre",
+   "author": "MP",
    "licence": "CC0-1.0",
-   "attribution": "Kenney, Kenney Car Kit, CC0-1.0"
+   "attribution": "MP, Poly Haven, CC0-1.0"
   },
   {
    "valve": "models/props_vehicles/trailer001a.mdl",
@@ -4966,10 +4984,13 @@
    "group": "buildings_structures",
    "instances": 74,
    "state": "mapped",
-   "how": "category rule",
-   "asset": "library match for /column|pillar|pole/",
+   "how": "library pick",
+   "asset": "dm_concretepier",
    "licence": "CC0-1.0",
-   "source": "art library"
+   "source": "Gamespice map Blender model",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/fork_station.py",
+   "author": "Gamespice (modelled for map)",
+   "attribution": "Gamespice (modelled for map), Gamespice map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_wasteland/pipecluster001c.mdl",

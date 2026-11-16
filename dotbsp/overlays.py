@@ -134,17 +134,36 @@ def world_faces(bsp):
     return set(range(m[10], m[10] + m[11]))
 
 
-def ground(bsp, faces, to, cell=2.0):
+def sky_move(sky):
+    """A function moving a map point inside the 3D skybox room out to where the world pack draws it
+    (`mesh.build`'s g_sky: (p - camera) * scale, the engine drawing the sky camera at the world origin), and leaving every other point; `sky` is
+    (camera, drawn scale, (lo, hi) room box) or None. With it, `inside(points)` says whether all are
+    in the room."""
+    if sky is None:
+        return (lambda p: p), (lambda pts: False)
+    cam, k, (lo, hi) = sky
+
+    def inside(pts):
+        return bool(pts) and all(all(lo[a] <= p[a] <= hi[a] for a in range(3)) for p in pts)
+
+    return (lambda p: tuple((p[i] - cam[i]) * k for i in range(3))), inside
+
+
+def ground(bsp, faces, to, cell=2.0, sky=None):
     """height(x, z): the highest displacement point `to` (map units -> (x, y, z) with y up) puts in the
     `cell`-wide square holding x, z, or None where no displacement lies. Brushes are left out: a
-    camera is only ever lost under terrain, whose surface stands off its base plane."""
+    camera is only ever lost under terrain, whose surface stands off its base plane. A displacement in
+    the 3D skybox room (`sky`, see `sky_move`) counts where the world pack draws it, moved out."""
+    move, inside = sky_move(sky)
     top = {}
     for fi in faces:
         f = bsp.faces[fi]
         if f[6] < 0:
             continue
-        for t in bsp.displacement_tris(f):
-            pts = [to(p) for p in t]
+        tris = bsp.displacement_tris(f)
+        moved = inside([p for t in tris for p in t])
+        for t in tris:
+            pts = [to(move(p) if moved else p) for p in t]
             y = max(p[1] for p in pts)
             for i in range(math.floor(min(p[0] for p in pts) / cell), math.floor(max(p[0] for p in pts) / cell) + 1):
                 for k in range(math.floor(min(p[2] for p in pts) / cell), math.floor(max(p[2] for p in pts) / cell) + 1):
@@ -181,19 +200,28 @@ def view_of(at, height, reach=(8.0, 12.0), clear=2.5, above=4.0, rise=30.0, step
     return best
 
 
-def overlay_views(bsp, match, to, name="overlay"):
+def overlay_views(bsp, match, to, name="overlay", sky=None):
     """[(view name, camera, target)] for every world overlay whose texture contains `match`
-    (case-insensitive): the target is the middle of the drawn decal, on the displaced surface."""
+    (case-insensitive): the target is the middle of the drawn decal, on the displaced surface. One in
+    the 3D skybox room (`sky`: camera, drawn scale, room box, as `mesh.build` moves it) is aimed at
+    where the pack draws it, moved out and that many times larger, from that much farther off."""
     faces = world_faces(bsp)
-    height = ground(bsp, faces, to)
+    height = ground(bsp, faces, to, sky=sky)
+    move, inside = sky_move(sky)
     out = []
     for o in bsp.overlays():
         texdata = int(bsp.texinfo[o["texinfo"]][17])
         if match.lower() not in bsp.texnames[bsp.texdata[texdata][3]].lower():
             continue
-        pts = [to(p) for _, _, ring in overlay_polys(bsp, o, faces) for p, _base, _uv in ring]
-        if not pts:
+        polys = overlay_polys(bsp, o, faces)
+        if not polys:
             continue
+        f = bsp.faces[polys[0][0]]
+        in_sky = inside(bsp.face_points(f) if f[6] < 0 else [p for t in bsp.displacement_tris(f) for p in t])
+        k = sky[1] if in_sky else 1.0
+        pts = [to(move(p) if in_sky else p) for _, _, ring in polys for p, _base, _uv in ring]
         at = tuple(sum(p[i] for p in pts) / len(pts) for i in range(3))
-        out.append(("%s_%d" % (name, o["id"]), view_of(at, height), at))
+        view = view_of(at, height, reach=(8.0 * k, 12.0 * k), clear=2.5, above=4.0 * k, rise=30.0 * k,
+                       step=2.0 * k) if in_sky else view_of(at, height)
+        out.append(("%s_%d" % (name, o["id"]), view, at))
     return out

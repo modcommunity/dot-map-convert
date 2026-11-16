@@ -494,6 +494,7 @@ def main(argv):
     rg.add_argument("--no-omit", action="store_true", help="no-omission mode: place every model, none left out as detail or sky dressing, the 3D sky room's models moved out and scaled up with its faces (dotbsp/standins.py NO_OMIT), and draw the overlays and detail grass (--overlays --detail); off by default")
     rg.add_argument("--overlays", action="store_true", help="draw the info_overlay decals (the overlays lump), cut to their faces, in their texture rows' looks; on with --no-omit, off by default")
     rg.add_argument("--detail", action="store_true", help="draw the detail grass (the dprp game lump's sprites) as crossed cards in the worldspawn's detailmaterial; on with --no-omit, off by default")
+    rg.add_argument("--no-sky-detail", action="store_true", help="with --detail or --no-omit, leave out the detail sprites in the 3D skybox room (scaled up with it they are cards metres wide); counted as skipped detail:sky")
     rg.add_argument("--no-models", action="store_true", help="draw props with the name and shape tables only, not the library picks (rules/models/picks.tsv)")
     rg.add_argument("--model-store", help="where the picked library models are copied once, by id (default: model-library beside the pack folder)")
     rg.add_argument("--pbr-store", help="where the shared PBR sets are written once, by id and tier (default: pbr-library beside the pack folder)")
