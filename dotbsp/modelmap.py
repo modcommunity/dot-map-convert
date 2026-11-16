@@ -263,13 +263,18 @@ def cmd(args):
                 c = line.split("\t")
                 rank.append((c[1], int(c[2])))
     report = []
-    rows, stat = [], {"library": 0, "own": 0, "skipped": 0, "none": 0}
+    rows, stat = [], {"library": 0, "own": 0, "skipped": 0, "parts": 0, "none": 0}
     instances = {k: 0 for k in stat}
     for model, n in rank:
         key = model[len("models/"):] if model.startswith("models/") else model
         if standins.is_skybox(model) or standins.is_detail(model):
             stat["skipped"] += 1
             instances["skipped"] += n
+            continue
+        if standins.has_parts(model):
+            # measured piece by piece (model_parts.tsv), which standins places before any pick
+            stat["parts"] += 1
+            instances["parts"] += n
             continue
         cat = category_of(key, cats)
         d = None if cat and cat.get("fixed") else dims.get(model)
@@ -323,10 +328,11 @@ def cmd(args):
     total = sum(n for _m, n in rank)
     if kept:
         print("kept %d rows for models the ranking does not list (set by hand)" % len(kept))
-    print("picked %d models: %d library, %d generated; %d skipped (skybox, left out on purpose), %d with no category" % (
-        len(rows), stat["library"], stat["own"], stat["skipped"], stat["none"]))
+    print("picked %d models: %d library, %d generated; %d skipped (skybox, left out on purpose), %d measured parts, %d with no category" % (
+        len(rows), stat["library"], stat["own"], stat["skipped"], stat["parts"], stat["none"]))
     print("by instance of %d: library %.1f%%, generated %.1f%% (plain fixtures %.1f%%, no library fit %.1f%%, no category %.1f%%), skipped %.1f%%, unmapped %.1f%%" % (
         total, *(100.0 * instances.get(k, 0) / total for k in ("library", "own", "plain", "nofit", "generic", "skipped", "none"))))
+    print("measured parts: %.1f%% of instances" % (100.0 * instances["parts"] / total))
     return 0
 
 

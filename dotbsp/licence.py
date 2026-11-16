@@ -158,7 +158,7 @@ def annotate(doc, outdir=None, table=None, prop_table=None, models=(), free_mode
             hit = None
         if hit and hit["row"]:
             row = dict(hit["row"], stand_in=hit["stand_in"])
-        mods.append({"model": m, "count": n, "stand_in": mine or (row["stand_in"] if row else "skybox" if standins.is_skybox(m) else "detail" if standins.is_detail(m) and not (hit and hit.get("box")) else "measured_box" if hit and hit.get("box") else "placeholder_box")})
+        mods.append({"model": m, "count": n, "stand_in": mine or (row["stand_in"] if row else "skybox" if standins.is_skybox(m) else "detail" if standins.is_detail(m) and not (hit and hit.get("box")) else "measured_box" if hit and (hit.get("box") or hit.get("parts")) else "placeholder_box")})
         if row:
             used_models.setdefault(row["stand_in"], dict(row, files=[], count=0))
             used_models[row["stand_in"]]["count"] += n

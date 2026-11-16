@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import bundle, licence, pbrmap, modeldims, modelmap, standinreport, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality, unconverted  # noqa: E402
+from dotbsp import bundle, licence, pbrmap, modeldims, modelmap, modelparts, standinreport, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality, unconverted  # noqa: E402
 
 
 def _credit(args):
@@ -498,7 +498,20 @@ def main(argv):
     md = sub.add_parser("modeldims", help="count every placed model over the store and write its size (rules/models/model_dims.tsv, ranking.tsv)")
     md.add_argument("--root", help="the store; default $DOTBSP_STORE or ~/mapsrc/store")
     md.add_argument("--game-vpk", help="a game directory's <name>_dir.vpk: the size of a stock model no map packs is read from its header")
+    md.add_argument("--maps", action="append", help="count only these store keys (or key prefixes such as playlot/); repeatable")
+    md.add_argument("--add", action="store_true", help="keep every row the tables in --out have and append the models they lack")
+    md.add_argument("--models", help="with --add: a file of the models to add (one per line, as a coverage report lists them); default every model the tables lack")
+    md.add_argument("--content", action="append", help="a folder of loose addon content (models/, materials/) a map ships beside its bsp; repeatable")
     md.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "rules", "models"))
+    mp = sub.add_parser("modelparts", help="one own block per connected piece of a combined model (rules/models/model_parts.tsv)")
+    mp.add_argument("--models", required=True, help="a file of the models to split (one per line, as a coverage report lists them)")
+    mp.add_argument("--root", help="the store; default $DOTBSP_STORE or ~/mapsrc/store")
+    mp.add_argument("--maps", action="append", help="read only these store keys (or key prefixes such as playlot/); repeatable")
+    mp.add_argument("--content", action="append", help="a folder of loose addon content (models/, materials/) a map ships beside its bsp; repeatable")
+    mp.add_argument("--weld", type=float, default=0.1, help="source units within which vertices count as one (0: exact)")
+    mp.add_argument("--min-side", type=float, default=0.05, help="metres: a piece with two sides under this is a line and left out (0: keep all)")
+    mp.add_argument("--max-parts", type=int, default=0, help="fail when a model splits into more pieces than this (0: unlimited)")
+    mp.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "rules", "models"))
     mm = sub.add_parser("modelmap", help="pick a free library model (or generate a plain one) for every ranked prop model (rules/models/picks.tsv)")
     mm.add_argument("--out", help="directory for picks.tsv; default rules/models")
     mm.add_argument("--report", help="write the models that got a generated stand-in (reason, instances, model, size) to this file")
@@ -538,7 +551,7 @@ def main(argv):
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "unconverted": cmd_unconverted, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelmap": modelmap.cmd, "standins": standinreport.cmd, "storepack": storepack.run_cmd, "bundle": bundle.cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd}[args.cmd](args)
+                "classes": cmd_classes, "unconverted": cmd_unconverted, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelparts": modelparts.cmd, "modelmap": modelmap.cmd, "standins": standinreport.cmd, "storepack": storepack.run_cmd, "bundle": bundle.cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2

@@ -1,4 +1,20 @@
 # name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour; an optional 8th column "fixed" ignores the measured size (a weapon header box is an idle-pose hull, not its shape) and uses the default w h d
+# PLAYLOT (2026-11-15): PLAYLOT map models no row named. Single cypresses and the pickup go to CC0 library models; the stock models whose size is not in the store (no game files here) get an own block of the size below. Combined models (autocombines, propper buildings, curbs, wallworm groups) are measured piece by piece into model_parts.tsv instead (bsp.py modelparts)
+italiancypress_a_0\d$	kenney_nature-kit_tree_tall(_dark)?$|kenney_nature-kit_tree_cone(_dark)?$	2.8	11.0	2.8	cyl	2f4a24
+^civ_pickup$	kenney_car-kit_truck|kenney_car-kit_suv	4.3	1.8	1.6	box	6a6a60
+^canal_dock0[23]a$	NONE	4.0	0.5	8.0	box	6a5440
+^cleaver$	NONE	0.1	0.05	0.35	box	909090
+^crematorcase$	NONE	1.5	1.2	1.0	box	606868
+^crystalbulk$	NONE	0.8	1.0	0.8	cyl	9ab0c0
+^labpart$	NONE	0.6	0.6	0.6	box	707878
+^ladel$	NONE	0.3	0.6	0.3	cyl	808080
+^miniteleport$	NONE	1.0	1.2	1.0	cyl	607070
+^teleportbulkeli$	NONE	1.2	2.0	1.2	cyl	606868
+^end_parliament_dome$	NONE	6.0	4.0	6.0	cyl	8a8a80
+^mount_connection001a$	NONE	0.5	0.6	0.5	box	505050
+^trainstation_ornament00[12]$	NONE	0.4	0.6	0.3	box	7a7060
+^inner_pod_rotator$	NONE	2.0	2.0	2.0	cyl	606870
+^flare$	NONE	0.05	0.2	0.05	cyl	c03020
 # dm worlds batch 2 (2026-11-11): dm-hot-cn-v1, dm-scarletdevilmansion, gg-woods props; no library match reads as the same thing except the bushes and candelabra, the rest are plain generated stand-ins of a guessed size
 # zombie-zone-maps (2026-11-11 pass 3): own CC0 household and warehouse clutter (tools/models/household.py).
 # zombie-zone-maps (2026-11-12 pass 5): own CC0 scenery (tools/models/scenery.py); train cars, guard, water towers, speakers, dish, drain and dock were detail, kept now.

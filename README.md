@@ -28,7 +28,7 @@ The converter finds the dot-map addon it writes into as the sibling checkout `..
 | `store` | Copy maps into `$DOTBSP_STORE` (default `~/mapsrc/store`, outside every repository) with their credit |
 | `regen` | Rebuild a map's manifest, textures and `CREDITS.md` from the store and the rules; `--ratchet` fails if coverage drops |
 | `audit` | Check the output keeps every player-solid brush and walkable top |
-| `unmapped`, `classes`, `modeldims`, `modelmap`, `pbrmap`, `standins` | Coverage reports and the mapping steps for textures, entity classes and models |
+| `unmapped`, `classes`, `modeldims`, `modelparts`, `modelmap`, `pbrmap`, `standins` | Coverage reports and the mapping steps for textures, entity classes and models |
 | `storepack`, `bundle` | Ship the texture and model stores as dot-cloud slices, or make a world self-contained for a map pack |
 
 ## How an import works

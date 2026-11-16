@@ -82,6 +82,9 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     props = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0, shaped=shaped)
     if keep is not None:
         props = [p for p in props if keep(p["at"])]
+    sky = mesh.skybox_of(bsp)
+    if sky is not None:
+        props = standins.sky_room(bsp, sky[2], props, rs.used["models"], scale, y0)
     stairs(props, m)
     doc = mesh.write(m, out, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(out))

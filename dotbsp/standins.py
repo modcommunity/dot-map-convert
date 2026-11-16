@@ -22,10 +22,11 @@ COLUMNS = ("stand_in", "source", "url", "author", "licence")
 
 # A model of the 3D skybox (a distant city, forest or refinery) is drawn by the sky, never placed.
 # Only a `skybox` or `sky` directory segment (or a skybox-named file): props/sky_scraper and de_sky_sign are props.
-SKYBOX = re.compile(r"skybox(?![a-z])|(^|/)sky/")
+SKYBOX = re.compile(r"skybox(?![a-z])|(^|/)sky/|(^|/)3dsky|cloudperimeter")
 
 # Not a prop at all, or a trim too small or flat to be worth a stand-in: light volumes, characters and corpses, cables,
-# vents, wall buttons, pictures, hanging growth, distant buildings. Left out on purpose, so it is not counted as unplaced.
+# vents, wall buttons, pictures, hanging growth, distant buildings, the sheets of a fractured water surface, flat ground decals
+# drawn as a model, laser beams and path markers. Left out on purpose, so it is not counted as unplaced.
 DETAIL = re.compile(
     r"(^|/)(effects|extras|humans|characters|zombie|combine_turrets|cranes)/|vol_light|headcrab|ichthyosaur|(^|/)(stalker|gman|buggy)(\.mdl)?$"
     r"|props_buildings/|destroyed_cityblock|project_building|trainstation/(train00|traintrack|trackmarkers)"
@@ -35,6 +36,7 @@ DETAIL = re.compile(
     r"|(^|/)(player|knight\d|stegosaurus|deinonychus|parrot|tyrant|combine_soldier|rodwy|madebycn/(stryge|artemis)|esther/)|jellyfish|rytirnormal|securityguard|kuctuk"
     r"|wolfhead|(wind|sun)crest|armour|(^|/)(gold|wood(en)?)?shield|herb(\.mdl)?$|(^|/)(modisc|crank|herbicide|g_10|bone_\d+)|g-logo|zombie|statue"
     r"|teleportplatform|satellite|canalmap|lowpoly_|windmill_blade|(^|/)fan\d*(off)?(\.mdl)?$|dock_bumper|pi_arch|pi_orrery|ventilation|cluser|cluster\d|overhaing|stripebox|utilityconn|skylight|shadertest|safetyarm|citadel|combine_(lock|wall|inner)|wallcrushed|combineinner"
+    r"|(^|/)deadbodies/|dead_body|dead_(fe)?male_|bodybag|_gore(\.mdl)?$|underwater/c_expos_water_fracture|ground_details\d|train_cursor|lasermachine_laser|banklasers"
     r"|picture_frame|ceiling_fan|(^|/)fan(off)?(\\.mdl)?$|teleplatform|info_speech|snowman_arm|(^|/)donut(\.mdl)?$|extras/")
 
 
@@ -178,6 +180,7 @@ def shape_matches(bsp, game_table=None, table=None, packed=None, catalogue=None,
     out = {}
     library = (picks() if PICKS_ON else {}) if library is None else library
     from . import modelmap as _mm
+    combined = parts()
     for m in _m.placed(bsp):
         rec = packed.get(m)
         if PICKS_ON and m not in library and not is_skybox(m) and (game_table is None or game_table.get(m) is None):
@@ -186,6 +189,9 @@ def shape_matches(bsp, game_table=None, table=None, packed=None, catalogue=None,
             if fixed:
                 out[m] = fixed
                 continue
+        if m in combined and not is_skybox(m) and not is_detail(m) and (game_table is None or game_table.get(m) is None):
+            out[m] = {"stand_in": "parts", "parts": combined[m], "row": None}
+            continue
         if m in library and not is_skybox(m) and not is_detail(m) and (game_table is None or game_table.get(m) is None):
             out[m] = library[m]
             continue
@@ -201,6 +207,23 @@ def shape_matches(bsp, game_table=None, table=None, packed=None, catalogue=None,
             out[m] = {"stand_in": hit[0], "turns": hit[1], "size": round(max(rec["size"]), 3),
                       "centre": rec["centre"], "base": rec["min"][1], "row": catalogue.rows.get(hit[0])}
     return out
+
+
+_PARTS = []
+
+
+def parts():
+    """{model: [(centre, size)]}: the combined models `bsp.py modelparts` split into one own block per piece."""
+    if not _PARTS:
+        from . import modelparts
+        _PARTS.append(modelparts.load())
+    return _PARTS[0]
+
+
+def has_parts(model):
+    """True when `model` ("models/x.mdl", or "x.mdl" as the rule tables name it) is measured piece by piece."""
+    m = _props.norm_model(model)
+    return (m if m.startswith("models/") else "models/" + m) in parts()
 
 
 FALLBACK_MIN_SIDE, FALLBACK_MAX_SIDE, FALLBACK_MAX_HEIGHT = 0.1, 4.0, 2.2   # metres
@@ -267,7 +290,7 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
         out.append(rec)
     shaped = shape_matches(bsp, game_table, table, packed=packed) if shaped is None else shaped
     spots = _spots(doc)
-    libm = {m for m, s in shaped.items() if s["stand_in"].startswith("lib/")}
+    libm = {m for m, s in shaped.items() if s["stand_in"].startswith("lib/") or s.get("parts")}
     out = [r for r in out if _props.norm_model(r["model"]) not in libm]
     boxes = _support_boxes(spots, packed, game_table, scale, y0, libm)
     if boxes:
@@ -373,6 +396,24 @@ def _support_boxes(spots, packed, game_table, scale, y0, skip=frozenset()):
     return out
 
 
+def sky_room(bsp, room, props, used, scale, y0):
+    """`props` without the ones inside the 3D skybox room `room` ((lo, hi) in map units, `mesh.skybox_of`): a model built
+    there at a sixteenth of the size is backdrop the sky draws, and placed in the world it would hang where it was compiled.
+    A model the map places only in that room is marked "skybox" in `used` (a coverage table) unless a row maps it."""
+    inside, outside = set(), set()
+    for model, o, *_rest in _spots({"entities": [{"classname": e.get("classname", ""), "keys": e} for e in bsp.entities],
+                                    "static_props": bsp.static_props()}):
+        if model:
+            m = _props.norm_model(model).replace("models/", "", 1)
+            (inside if all(room[0][a] <= o[a] <= room[1][a] for a in range(3)) else outside).add(m)
+    for m in inside - outside:
+        if used.get(m) is None:
+            used[m] = "skybox"
+    lo = (room[0][0] * scale, room[0][2] * scale - y0, -room[1][1] * scale)
+    hi = (room[1][0] * scale, room[1][2] * scale - y0, -room[0][1] * scale)
+    return [p for p in props if not all(lo[a] <= p["at"][a] <= hi[a] for a in range(3))]
+
+
 def _shaped_placements(spots, shaped, scale, y0, boxed=frozenset(), packed=None):
     """Placements of the models `shape_matches` stood in: put on the packed model's middle, turned to its long side,
     drawn at its measured longest side (`size`, before the placement's own scale). A spot in `boxed` has a block instead."""
@@ -385,6 +426,9 @@ def _shaped_placements(spots, shaped, scale, y0, boxed=frozenset(), packed=None)
         a = math.radians(ang[1])
         if s.get("box"):
             out.append(_box_record(model, o, ang, k, s, scale, y0, sol))
+            continue
+        if s.get("parts"):
+            out += [_box_record(model, o, ang, k, {"centre": c, "dims": d}, scale, y0, sol) for c, d in s["parts"]]
             continue
         cx, cz = s["centre"][0] * k, -s["centre"][2] * k
         gx = o[0] * scale + cx * math.cos(a) - cz * math.sin(a)

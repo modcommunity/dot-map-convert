@@ -242,7 +242,8 @@ class RuleSet:
                 self.used[kind][name] = t.name
                 return row
         self.used[kind].setdefault(name, "skybox" if kind == "models" and standins.is_skybox(name) else "detail" if kind == "models" and standins.is_detail(name)
-                                   else "category" if kind == "models" and _named_category(name) else None)
+                                   else "category" if kind == "models" and _named_category(name)
+                                   else "parts" if kind == "models" and standins.has_parts(name) else None)
         return None
 
     def klass(self, name):
