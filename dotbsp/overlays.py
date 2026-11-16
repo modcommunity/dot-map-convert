@@ -132,3 +132,68 @@ def world_faces(bsp):
         return set()
     m = bsp.models[0]
     return set(range(m[10], m[10] + m[11]))
+
+
+def ground(bsp, faces, to, cell=2.0):
+    """height(x, z): the highest displacement point `to` (map units -> (x, y, z) with y up) puts in the
+    `cell`-wide square holding x, z, or None where no displacement lies. Brushes are left out: a
+    camera is only ever lost under terrain, whose surface stands off its base plane."""
+    top = {}
+    for fi in faces:
+        f = bsp.faces[fi]
+        if f[6] < 0:
+            continue
+        for t in bsp.displacement_tris(f):
+            pts = [to(p) for p in t]
+            y = max(p[1] for p in pts)
+            for i in range(math.floor(min(p[0] for p in pts) / cell), math.floor(max(p[0] for p in pts) / cell) + 1):
+                for k in range(math.floor(min(p[2] for p in pts) / cell), math.floor(max(p[2] for p in pts) / cell) + 1):
+                    if top.get((i, k), -math.inf) < y:
+                        top[(i, k)] = y
+    return lambda x, z: top.get((math.floor(x / cell), math.floor(z / cell)))
+
+
+def view_of(at, height, reach=(8.0, 12.0), clear=2.5, above=4.0, rise=30.0, step=2.0):
+    """A camera point looking at `at` (y up) from `reach` away, `clear` over the ground `height` gives
+    under it and `above` over `at`, whose sight line keeps over the ground; the lowest such, or None.
+
+    An info_overlay's origin lies on its face's base plane, which under a displacement can be tens of
+    metres below the drawn ground: a view picked round the origin shoots from inside the hill."""
+    def over(x, y, z, margin):
+        g = height(x, z)
+        return g is None or y > g + margin
+
+    best = None
+    for dist in reach:
+        for deg in range(0, 360, 30):
+            x, z = at[0] + dist * math.cos(math.radians(deg)), at[2] + dist * math.sin(math.radians(deg))
+            g = height(x, z)
+            y = max(at[1] + above, (g if g is not None else -math.inf) + clear)
+            top = y + rise
+            while y <= top:
+                # the first quarter of the line is the decal's own slope, and its end the decal itself
+                if all(over(at[0] + (x - at[0]) * t, at[1] + (y - at[1]) * t, at[2] + (z - at[2]) * t, -0.3)
+                       for t in [i / 20.0 for i in range(5, 20)]):
+                    if best is None or y - at[1] < best[1] - at[1]:
+                        best = (x, y, z)
+                    break
+                y += step
+    return best
+
+
+def overlay_views(bsp, match, to, name="overlay"):
+    """[(view name, camera, target)] for every world overlay whose texture contains `match`
+    (case-insensitive): the target is the middle of the drawn decal, on the displaced surface."""
+    faces = world_faces(bsp)
+    height = ground(bsp, faces, to)
+    out = []
+    for o in bsp.overlays():
+        texdata = int(bsp.texinfo[o["texinfo"]][17])
+        if match.lower() not in bsp.texnames[bsp.texdata[texdata][3]].lower():
+            continue
+        pts = [to(p) for _, _, ring in overlay_polys(bsp, o, faces) for p, _base, _uv in ring]
+        if not pts:
+            continue
+        at = tuple(sum(p[i] for p in pts) / len(pts) for i in range(3))
+        out.append(("%s_%d" % (name, o["id"]), view_of(at, height), at))
+    return out

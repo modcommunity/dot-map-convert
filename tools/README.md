@@ -13,6 +13,7 @@ Everything that converts a map, a model, a texture or a sound lives in this repo
 | `tools/build_provides.py` | the one writer of a maps repository's `provides.json`; each repository's `tools/build_provides.py` is a config |
 | `tools/check_playable.py` | every spawn and teleport destination of a maps repository lands where a player can stand (not in a solid, out of bounds, over nothing or in a pit), read from the converted `<id>.json` and `<id>.bin` only; failures not yet fixed are held by exact count in the repository's `tools/playable_known.json`; the repository's `tools/check_playable.py` launches it like `build_provides.py` |
 | `tools/regen_worlds.sh`, `stage_stores.sh` | regenerate a maps repository's worlds from the store; stage the raw stores |
+| `tools/overlay_views.py` | `--view` lines for `tools/screenshot.sh` that see each overlay of a texture where it is drawn: on a displacement the decal sits on the hill, not at its origin on the base plane, so a camera picked round the origin can be inside the terrain (`dotbsp.overlays.overlay_views`) |
 | `adapters/<repo>/` | the per-game importers (a game's own map document from an intermediate or a `.bsp`) and their checks |
 | `adapters/adapter_launch.py` | runs an adapter in its map repository's namespace |
 

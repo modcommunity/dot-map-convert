@@ -120,6 +120,26 @@ class Build(unittest.TestCase):
         self.assertFalse(_of(m, "detail_sprite"))
         self.assertEqual(m.skipped["detail:outside"], 1)
 
+    def test_view_of_stands_over_the_ground(self):
+        flat = lambda x, z: 0.0
+        cam = overlays.view_of((0.0, 0.0, 0.0), flat)
+        self.assertEqual(round(cam[1], 6), 4.0)                                   # `above` over the decal
+        self.assertAlmostEqual(abs(complex(cam[0], cam[2])), 8.0)
+
+    def test_view_of_rises_over_a_hill(self):
+        # a hollow 5 m across in a 20 m hill: from 22.5 m up, 8 m out, the rim hides the decal
+        hill = lambda x, z: 0.0 if x * x + z * z < 25.0 else 20.0
+        cam = overlays.view_of((0.0, 0.0, 0.0), hill)
+        self.assertTrue(30.0 <= cam[1] <= 34.0, cam)
+        self.assertIsNone(overlays.view_of((0.0, 0.0, 0.0), hill, rise=0.0))
+
+    def test_overlay_views_aim_at_the_drawn_decal(self):
+        bsp = load(extra_lumps={45: _overlay()})
+        ((name, cam, at),) = overlays.overlay_views(bsp, "darkedge", lambda p: (p[0], p[2], -p[1]), "x")
+        self.assertEqual((name, at), ("x_0", (32.0, 64.0, -32.0)))
+        self.assertGreater(cam[1], at[1])
+        self.assertEqual(overlays.overlay_views(bsp, "nothing", lambda p: p), [])
+
 
 if __name__ == "__main__":
     unittest.main()
