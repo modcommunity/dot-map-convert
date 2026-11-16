@@ -91,6 +91,12 @@ class PlaylotWorld(unittest.TestCase):
         self.assertEqual(regen[regen.index("--orig-max-side") + 1], "1024")
         _, plain = I.world_commands(self.bsp, I.config("t"), I.world_spec(I.config("t"), 0.0), self.tmp)
         self.assertNotIn("--orig-textures", plain)
+        self.assertIn("--orig-models", regen)          # its own models, not stand-ins
+        self.assertNotIn("--orig-models", plain)
+        self.assertNotIn("--orig-content", regen)      # no models/ or materials/ beside this .bsp
+        os.makedirs(os.path.join(os.path.dirname(os.path.abspath(self.bsp)), "models"), exist_ok=True)
+        _, loose = I.world_commands(self.bsp, cfg, spec, self.tmp)
+        self.assertEqual(loose[loose.index("--orig-content") + 1], os.path.dirname(os.path.abspath(self.bsp)))
         self.assertIn("--no-omit", regen)              # the unedited map leaves nothing out
         self.assertNotIn("--no-omit", plain)
         _, kept = I.world_commands(self.bsp, I.config("t"), I.world_spec(I.config("t"), 0.0), self.tmp, no_omit=True)

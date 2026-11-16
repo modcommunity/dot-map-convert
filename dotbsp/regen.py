@@ -48,7 +48,8 @@ def applied(rs):
         classes.treatment = orig
 
 
-def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None, crop=None, orig_textures=False, orig_max_side=0, overlays=False, detail=False):
+def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None, crop=None, orig_textures=False, orig_max_side=0,
+          overlays=False, detail=False, orig_models=False, orig_content=()):
     """Write the map at `out` (prefix); returns (manifest, coverage report, problems)."""
     with open(path, "rb") as f:
         bsp = reader.Bsp(path, data=f.read()).load()
@@ -83,13 +84,24 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     props = standins.placements(bsp, None, table=rs.models_view(), scale=scale, y0=y0, shaped=shaped)
     if keep is not None:
         props = [p for p in props if keep(p["at"])]
+    outdir = os.path.dirname(os.path.abspath(out))
+    orig = None
+    if orig_models:
+        # the map's own models in place of the stand-ins (internal `_orig` packs only); placed at their origins
+        # until loose.mark has matched them, then `settle`d
+        from . import origmodels, vpk
+        src = origmodels.Sources(bsp.read_pak([], only=(".mdl", ".vvd", ".vtx", ".vmt", ".vtf")), orig_content, vpk.BaseGame())
+        records, rows, info = origmodels.place(bsp, src, outdir, scale, y0)
+        if keep is not None:
+            records = [r for r in records if keep(r["at"])]
+        props = origmodels.merge(props, records)
+        orig = (rows, info)
     sky = mesh.skybox_of(bsp)
     if sky is not None:
         props = standins.sky_room(bsp, sky[2], props, rs.used["models"], scale, y0,
                                   moved=(m.sky["camera"], m.sky["scale"]) if m.sky and m.sky.get("scale") else None)
     stairs(props, m)
     doc = mesh.write(m, out, credit=credit, name=name, extra=extra)
-    outdir = os.path.dirname(os.path.abspath(out))
     from . import importer
     licence.annotate(doc, outdir, table=rs.free_table(), models=importer.placed_models(bsp),
                      free_models=rs.models_view(), free_sounds=rs.sounds_view(), shaped=shaped,
@@ -101,6 +113,12 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
     doc["props"] = props
     loose.mark(doc["props"], bsp.entities, scale, y0)
     loose.hold(doc["breakables"], doc["props"], lambda mi: _model_box(bsp, mi), scale, y0)
+    if orig is not None:
+        from . import origmodels
+        doc["original_models"] = orig[1]
+        old = doc.get("licence", {}).get("model_store")
+        origmodels.ship_licence(doc, orig[0], outdir, os.path.join(outdir, old) if old else None)
+        origmodels.settle(doc["props"])
     problems = licence.check(doc)
     # The starter per-map config: every map gets one, from the commands its entities send, commented out.
     mapcfg.write_suggestion(os.path.join(outdir, "dot_map", "map"), name.lower(), store.commands(bsp.entities))
@@ -189,8 +207,12 @@ def cmd(args):
         print("regen: %s has no author and page in its credit.json; a map ships with both" % args.entry, file=sys.stderr)
         return 2
     out = args.out
-    if getattr(args, "orig_textures", False) and not origtex.is_orig_name(args.name or name):
-        print("regen: --orig-textures is for an internal `%s` pack only (name it <map>%s)" % (origtex.MARK, origtex.MARK), file=sys.stderr)
+    for flag in ("orig_textures", "orig_models"):
+        if getattr(args, flag, False) and not origtex.is_orig_name(args.name or name):
+            print("regen: --%s is for an internal `%s` pack only (name it <map>%s)" % (flag.replace("_", "-"), origtex.MARK, origtex.MARK), file=sys.stderr)
+            return 2
+    if getattr(args, "orig_content", None) and not getattr(args, "orig_models", False):
+        print("regen: --orig-content needs --orig-models", file=sys.stderr)
         return 2
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     cpath = args.baseline or out + ".coverage.json"
@@ -207,7 +229,9 @@ def cmd(args):
                                    orig_textures=getattr(args, "orig_textures", False),
                                    orig_max_side=getattr(args, "orig_max_side", 0),
                                    overlays=getattr(args, "overlays", False) or getattr(args, "no_omit", False),
-                                   detail=getattr(args, "detail", False) or getattr(args, "no_omit", False))
+                                   detail=getattr(args, "detail", False) or getattr(args, "no_omit", False),
+                                   orig_models=getattr(args, "orig_models", False),
+                                   orig_content=tuple(getattr(args, "orig_content", None) or ()))
     except (ValueError, OSError) as e:
         print("regen: %s" % e, file=sys.stderr)
         return 1

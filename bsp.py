@@ -484,6 +484,8 @@ def main(argv):
     rg.add_argument("--catalogue", help="the class catalogue; default rules/entity_defs.json")
     rg.add_argument("--orig-textures", action="store_true", help="also write the map's own textures (pakfile, then installed base games) under textures/orig and name them per surface; only for a <map>_orig pack (the unedited original variant; the owner decides where it is published, never a public repo)")
     rg.add_argument("--orig-max-side", type=int, default=0, metavar="PX", help="with --orig-textures: the largest texture side to ship (the largest mip that fits); 0, the default, ships each texture at full size")
+    rg.add_argument("--orig-models", action="store_true", help="internal `_orig` packs only: the map's own models (pakfile, --orig-content, installed base games) converted and placed in place of the stand-ins (dotbsp.origmodels)")
+    rg.add_argument("--orig-content", action="append", metavar="DIR", help="with --orig-models: a folder holding the map's loose models/ and materials/ (a workshop addon unpacked); repeatable")
     rg.add_argument("--name")
     rg.add_argument("--scale", default="visual")
     rg.add_argument("--y0", type=float, default=0.0)

@@ -255,6 +255,8 @@ def check(doc):
             bad.append("%s: no URL or author recorded" % t["key"])
     for kind in ("model_stand_ins", "sounds"):
         for t in block.get(kind, []):
+            if t.get("internal_only") and doc.get("original_models", {}).get("internal_only"):
+                continue        # an `_orig` pack's own models (dotbsp.origmodels): that pack is never published
             if t.get("licence") not in ALLOWED or not t.get("url") or not t.get("author"):
                 bad.append("%s %s: licence, URL or author is missing or not free" % (kind, t.get("stand_in")))
     for i, s in enumerate(doc["surfaces"]):
@@ -265,8 +267,10 @@ def check(doc):
 
 def credits_markdown(doc):
     """CREDITS.md text for the replacements a map uses, one line per distinct source."""
-    seen, lines = set(), ["# Texture credits", "",
-                          "Every texture of this map is a free replacement; the original map's textures and models are not used.", ""]
+    lead = ("Every texture of this map is a free replacement; the original map's textures and models are not used."
+            if not doc.get("original_models", {}).get("internal_only") else
+            "INTERNAL ONLY: this pack draws the map's own models (Valve's and the map author's) and is never published.")
+    seen, lines = set(), ["# Texture credits", "", lead, ""]
     for t in doc["licence"]["textures"]:
         k = (t["kind"], t["url"]) if t["kind"] != "generated" else ("generated", t["generic"])
         if k in seen:

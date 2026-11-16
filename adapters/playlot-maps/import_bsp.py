@@ -6,9 +6,10 @@
 The import is the WHOLE map by default: every brush, displacement, prop and the 3D skybox, nothing cut away. --course
 keeps the older course cut (the config's `region` crop and its `exclude`/`remove` trims). --orig builds the ORIGINAL
 variant: id <id>_orig, pack pg_world_<name>_orig, with the map's own textures (its pakfile, then the installed base
-games, full size unless --orig-max-side) baked into the pack beside the free ones (dotbsp.origtex). --no-omit passes
-regen --no-omit: the 3D skybox props, detail and trim models, the info_overlay decals and the detail grass are drawn too
-(the skybox ones moved out as the sky is); --orig always does, being the unedited map.
+games, full size unless --orig-max-side) baked into the pack beside the free ones (dotbsp.origtex), and its own
+models in place of the stand-ins (dotbsp.origmodels; a models/ or materials/ folder beside the .bsp is searched too).
+--no-omit passes regen --no-omit: the 3D skybox props, detail and trim models, the info_overlay decals and the detail
+grass are drawn too (the skybox ones moved out as the sky is); --orig always does, being the unedited map.
 
 Two outputs. The document (maps/<id>.json) is boxes: what collides, what the survey reads, and the look of a game
 without the pack. The WORLD PACK (maps/world/pg_world_<name>/<id>.{json,bin}, plus textures/, credits.json, CREDITS.md and
@@ -878,7 +879,11 @@ def world_commands(bsp_path, cfg, spec, root, store_root=None, orig_max_side=0, 
         regen.append("--crop=" + ",".join(repr(float(v)) for v in spec["crop"]))
     if cfg["id"].endswith(ORIG_MARK):
         name = os.path.splitext(os.path.basename(bsp_path))[0].lower() + ORIG_MARK
-        regen += ["--orig-textures", "--orig-max-side", str(orig_max_side), "--name", name]
+        regen += ["--orig-textures", "--orig-max-side", str(orig_max_side), "--orig-models", "--name", name]
+        # a workshop map's own models and materials, unpacked beside its .bsp (not inside its pakfile)
+        here = os.path.dirname(os.path.abspath(bsp_path))
+        if any(os.path.isdir(os.path.join(here, d)) for d in ("models", "materials")):
+            regen += ["--orig-content", here]
     if no_omit or cfg["id"].endswith(ORIG_MARK):
         regen.append("--no-omit")
     return store, regen
@@ -900,7 +905,7 @@ def build_world(bsp_path, doc, cfg, root, store_root=None, orig_max_side=0, no_o
 def credit_world(doc, cfg):
     """With the pack drawn the map wears free textures and stand-ins, not the box grid: say so."""
     if cfg["id"].endswith(ORIG_MARK):
-        doc["attribution"] = ("Converted unedited from %s by %s, wearing the map's own textures (the author's and the base "
+        doc["attribution"] = ("Converted unedited from %s by %s, wearing the map's own textures and models (the author's and the base "
                               "game's, Valve's) as they shipped. The author can have this conversion removed: contact %s."
                               % (cfg["source"], cfg["author"], REMOVAL_CONTACT))
         return
