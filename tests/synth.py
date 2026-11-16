@@ -21,13 +21,15 @@ def _ents(entities):
 def build(boxes=((0, 0, 0, 64, 64, 64),), version=20, swapped=False, entities=None,
           materials=("TOOLS/TOOLSNODRAW", "dev/dev_measuregeneric01"), contents=1, bevel=True,
           entity_box=None, entity_origin=(0, 0, 0), game_lump=None, static_props=None, faces=False,
-          entity_class="func_door", entity_keys=None, box_material=None, texinfo_flags=None, entity_contents=None):
+          entity_class="func_door", entity_keys=None, box_material=None, texinfo_flags=None, entity_contents=None,
+          extra_lumps=None, detail=None):
     """The bytes of a map whose world is `boxes` (x0, y0, z0, x1, y1, z1 in map units).
 
     `entity_box` adds a brush entity (model *1, a func_door) with that box relative to
     `entity_origin`, which is how the format stores one. `faces` also writes every box's six
     sides as drawn faces (vertexes, edges, surfedges, faces, and texinfo whose s and t axes are
-    map x and -y), wound as the compiler winds them: clockwise seen from outside.
+    map x and -y), wound as the compiler winds them: clockwise seen from outside. `extra_lumps` sets
+    lumps by number; `detail` is the body of a `dprp` game lump.
     """
     if entities is None:
         entities = [{"classname": "worldspawn", "skyname": "sky_test"},
@@ -124,19 +126,28 @@ def build(boxes=((0, 0, 0, 64, 64, 64),), version=20, swapped=False, entities=No
         43: strings,
         44: b"".join(struct.pack("<i", o) for o in table),
     }
+    lumps.update(extra_lumps or {})
     header = 8 + LUMPS * 16 + 4
+    games = []
     if static_props is not None:
-        # a `sprp` game lump (v4, 60-byte records) whose directory points at its own data,
-        # which sits right after the 20-byte directory inside lump 35
+        # a `sprp` game lump (v4, 60-byte records)
         names = sorted({p[0] for p in static_props})
         data = struct.pack("<i", len(names)) + b"".join(n.encode().ljust(128, b"\0") for n in names)
         data += struct.pack("<i", 0) + struct.pack("<i", len(static_props))
         for model, org, ang in static_props:
             data += struct.pack("<3f3fHHHBBi", *org, *ang, names.index(model), 0, 0, 6, 0, 0).ljust(60, b"\0")
+        games.append((b"prps", 4, data))
+    if detail is not None:
+        games.append((b"prpd", 4, detail))
+    if games:
+        # each directory entry points at its own data, which follows the directory inside lump 35
         before = sum(len(v) + (-len(v) % 4) for k, v in sorted(lumps.items()) if k < 35 and v)
-        ofs = header + before + 20
-        game_lump = struct.pack("<i", 1) + struct.pack("<4sHHii", b"prps", 0, 4, ofs, len(data)) + data
-        lumps[35] = game_lump
+        ofs = header + before + 4 + 16 * len(games)
+        dirs, body_ = b"", b""
+        for gid, ver, data in games:
+            dirs += struct.pack("<4sHHii", gid, 0, ver, ofs + len(body_), len(data))
+            body_ += data
+        lumps[35] = struct.pack("<i", len(games)) + dirs + body_
     body, recs = b"", []
     for i in range(LUMPS):
         data = lumps.get(i, b"")

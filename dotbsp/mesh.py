@@ -57,7 +57,7 @@ import re
 import struct
 
 from . import docboxes, lightmap as _lightmap, materials as _materials, reader, texturemap
-from . import vis as _vis
+from . import overlays as _overlays, vis as _vis
 from . import units as _units
 
 FORMAT = "dot-bsp-mesh"
@@ -396,7 +396,7 @@ def crop_keep(crop):
 
 def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classify_material,
           drawn_classes=DRAWN_BRUSH_ENTITIES, solid_classes=SOLID_BRUSH_ENTITIES, chunk=CHUNK,
-          visibility=True, lighting=True, crop=None, materials=None):
+          visibility=True, lighting=True, crop=None, materials=None, overlays=False, detail=False):
     """The drawn and solid world of a loaded `reader.Bsp` as a `Mesh`, in metres and Godot axes.
 
     `tmap` is a `texturemap.TextureMap` (the shared list by default). `y0` is subtracted from
@@ -409,7 +409,8 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     output's metres: a face, hull or brush model whose centre is outside is left out of the mesh, the
     lightmap atlas, the occluders and the visibility sets alike, and so is the 3D sky. `materials` is a
     `materials.tsv` view (`get(name, generic)`); each surface's properties come from its packed
-    material record (`materials.Resolver`).
+    material record (`materials.Resolver`). `overlays` draws the `info_overlay` decals and `detail`
+    the detail grass (`overlays.py`); both are off by default.
     """
     tmap = tmap or texturemap.load()
     out = Mesh()
@@ -524,6 +525,10 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                 planes.append((nx, nz, -ny, d * scale - nz * y0))
             out.hulls.append({"brush": bi, "model": mi, "entity": ei, "classname": cls, "kind": kind,
                               "contents": contents, "points": [g(p, off) for p in pts], "planes": planes})
+    if overlays:
+        _add_overlays(bsp, out, surfaces, tmap, classify, (g, g_sky), gn, chunk, dropped, sky)
+    if detail:
+        _add_detail(bsp, out, surfaces, tmap, classify, (g, g_sky), gn, chunk, keep, sky)
     out.surfaces = [s for s in surfaces.values() if s.index]
     out.surfaces.sort(key=lambda s: (s.model, s.chunk or [], s.sky3d, s.displacement, s.material))
     n_glass = sum(1 for s in out.surfaces if s.glass)
@@ -593,6 +598,112 @@ def _surface_props(s, res, name, flags):
             s.tint = _materials.tint(props) or s.tint
         s.props = dict(props, why=why)
     s.two_sided = props["two_sided"] and not s.glass
+
+
+def _cell(g, p, chunk):
+    if chunk <= 0:
+        return None
+    c = g(p, (0.0, 0.0, 0.0))
+    cell = [int(math.floor(c[0] / chunk)), int(math.floor(c[2] / chunk))]
+    if CHUNK_Y > 0:
+        cell.append(int(math.floor(c[1] / CHUNK_Y)))
+    return cell
+
+
+def _extra_surface(surfaces, key, name, cls, tmap, classify, chunk, sky3d=False):
+    """The overlay or detail surface of `key`. It takes its texture row's look only: an overlay's packed
+    material is nearly always translucent, and read as glass or a leaf card a dirt track would be a sheet
+    of glass, so a row that wants a see-through look names a glass kind (`OVERLAYS/DARKEDGE`)."""
+    s = surfaces.get(key)
+    if s is None:
+        s = Surface(0, None, cls, "", reader.clean_material(name))
+        hit = tmap.lookup(classify(name))
+        if hit is not None:
+            s.generic, s.tint = hit[0], (list(hit[1]) if hit[1] else None)
+        s.glass = glass_kind(s.generic, cls)
+        s.chunk, s.sky3d = chunk, sky3d
+        surfaces[key] = s
+    return s
+
+
+def _add_overlays(bsp, out, surfaces, tmap, classify, gs, gn, chunk, dropped, sky):
+    """Every `info_overlay` on a drawn world face, cut to its faces and lifted off them by render order; one
+    in the 3D skybox room moves out with the room's faces (`gs` is the world and the sky transform)."""
+    zero = (0.0, 0.0, 0.0)
+    faces = {fi for fi in _overlays.world_faces(bsp) if id(bsp.faces[fi]) not in dropped}
+    drawn = 0
+    for o in bsp.overlays():
+        ti = bsp.texinfo[o["texinfo"]] if 0 <= o["texinfo"] < len(bsp.texinfo) else None
+        td = int(ti[17]) if ti is not None else -1
+        if not 0 <= td < len(bsp.texdata):
+            out.skipped["overlay:no_texture"] += 1
+            continue
+        name = bsp.texnames[bsp.texdata[td][3]]
+        hit = tmap.lookup(classify(name))
+        if hit is not None and hit[0] == "invisible":
+            out.skipped["overlay:invisible"] += 1
+            continue
+        polys = _overlays.overlay_polys(bsp, o, faces)
+        if not polys:
+            out.skipped["overlay:no_face"] += 1
+            continue
+        in_sky = _sky_face(bsp, bsp.faces[polys[0][0]], zero, sky)
+        g = gs[1] if in_sky else gs[0]
+        pts = [v[0] for q in polys for v in q[2]]
+        cell = None if in_sky else _cell(g, [sum(p[i] for p in pts) / len(pts) for i in range(3)], chunk)
+        lift = _overlays.LIFT * (1 + o["order"])
+        drawn += 1
+        for fi, n, ring in polys:
+            f = bsp.faces[fi]
+            page = (out.atlas.place[id(f)][0] if id(f) in out.atlas.place else 0) if out.atlas is not None else None
+            s = _extra_surface(surfaces, ("overlay", name, tuple(cell) if cell else None, page, in_sky), name,
+                               "info_overlay", tmap, classify, cell, in_sky)
+            s.page = page
+            if s.colour is None:
+                s.colour, s.texels = srgb(bsp.texdata[td][0:3]), [max(1, bsp.texdata[td][4]), max(1, bsp.texdata[td][5])]
+            fti = bsp.texinfo[f[5]]
+            ids = [s.vertex(g([p[i] + n[i] * lift for i in range(3)], zero), gn(n), uv,
+                            _lightmap.uv2(out.atlas, f, fti, base)[1] if out.atlas is not None else None)
+                   for p, base, uv in ring]
+            for k in range(1, len(ids) - 1):
+                if len({ids[0], ids[k], ids[k + 1]}) == 3:
+                    s.index.extend((ids[0], ids[k], ids[k + 1]))
+    if drawn:
+        out.notes.append("%d info_overlay decals drawn" % drawn)
+
+
+def _add_detail(bsp, out, surfaces, tmap, classify, gs, gn, chunk, keep, sky):
+    """Every `dprp` detail sprite as two crossed cards in the worldspawn's `detailmaterial`; one in the 3D
+    skybox room moves out and scales up with the room's faces."""
+    sprites, props = bsp.detail_sprites()
+    if not props:
+        return
+    name = (bsp.entities[0] if bsp.entities else {}).get("detailmaterial", "detail/detailsprites")
+    hit = tmap.lookup(classify(name))
+    if hit is not None and hit[0] == "invisible":
+        out.skipped["detail:invisible"] += len(props)
+        return
+    zero, up = (0.0, 0.0, 0.0), gn((0.0, 0.0, 1.0))
+    drawn = 0
+    for p in props:
+        if p["type"] != 1 or p["index"] >= len(sprites):
+            out.skipped["detail:not_sprite"] += 1
+            continue
+        in_sky = sky is not None and in_box(p["origin"], sky[2])
+        g = gs[1] if in_sky else gs[0]
+        if keep is not None and (in_sky or not keep(g(p["origin"], zero))):     # a crop drops the sky room
+            out.skipped["detail:outside"] += 1
+            continue
+        cell = None if in_sky else _cell(g, p["origin"], chunk)
+        s = _extra_surface(surfaces, ("detail", name, tuple(cell) if cell else None, in_sky), name, "detail_sprite",
+                           tmap, classify, cell, in_sky)
+        s.two_sided = not s.glass
+        for card in _overlays.sprite_cards(sprites[p["index"]], p):
+            ids = [s.vertex(g(q, zero), up, uv) for q, uv in card]
+            s.index.extend((ids[0], ids[1], ids[2], ids[0], ids[2], ids[3]))
+        drawn += 1
+    if drawn:
+        out.notes.append("%d detail sprites drawn as crossed cards (%s)" % (drawn, name))
 
 
 def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classify, g, gn, sky3d=False,

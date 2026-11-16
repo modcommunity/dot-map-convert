@@ -48,12 +48,13 @@ def applied(rs):
         classes.treatment = orig
 
 
-def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None, crop=None, orig_textures=False, orig_max_side=0):
+def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None, crop=None, orig_textures=False, orig_max_side=0, overlays=False, detail=False):
     """Write the map at `out` (prefix); returns (manifest, coverage report, problems)."""
     with open(path, "rb") as f:
         bsp = reader.Bsp(path, data=f.read()).load()
     with applied(rs):
-        m = mesh.build(bsp, tmap=rs.textures_view(), scale=scale, y0=y0, crop=crop, materials=rs.materials_view())
+        m = mesh.build(bsp, tmap=rs.textures_view(), scale=scale, y0=y0, crop=crop, materials=rs.materials_view(),
+                       overlays=overlays, detail=detail)
         report = classes.report(bsp)
         links = movers.links(bsp)
         ents = movers.generic(bsp)
@@ -204,7 +205,9 @@ def cmd(args):
                                    y0=args.y0, cat=coverage.catalogue(args.catalogue), crop=_crop(args.crop),
                                    pbr_store=getattr(args, "pbr_store", None), model_store=getattr(args, "model_store", None),
                                    orig_textures=getattr(args, "orig_textures", False),
-                                   orig_max_side=getattr(args, "orig_max_side", 0))
+                                   orig_max_side=getattr(args, "orig_max_side", 0),
+                                   overlays=getattr(args, "overlays", False) or getattr(args, "no_omit", False),
+                                   detail=getattr(args, "detail", False) or getattr(args, "no_omit", False))
     except (ValueError, OSError) as e:
         print("regen: %s" % e, file=sys.stderr)
         return 1

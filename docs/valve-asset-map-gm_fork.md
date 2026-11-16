@@ -4,7 +4,7 @@ Every base-game texture and model the workshop map gm_fork (workshop 326332456; 
 
 ## Coverage
 
-- Textures: 169 of 170 mapped (88 library PBR sets from ambientCG and Poly Haven, the rest generic CC0 sets or generated functional textures); 1 unmapped (`overlays/darkedge`): the converter does not draw `info_overlay` decals yet, so no overlay texture reaches the map.
+- Textures: 170 of 170 mapped (88 library PBR sets from ambientCG and Poly Haven, the rest generic CC0 sets or generated functional textures). `info_overlay` decals are drawn with `--no-omit` (or `regen --overlays`), each in its texture row's look; `overlays/darkedge` is a generated dark see-through sheet.
 - Models: 241 of 241 mapped (library picks, free stand-ins, category rules, measured-piece blocks and generated own blocks); 0 omitted and 0 unmapped when converted with `--no-omit`. Without the flag the converter still leaves out the 35 skybox and small detail models listed below, so other maps keep their output.
 - Licences of the mapped items: CC0-1.0 389, CC-BY-4.0 21. CC-BY-4.0 items (21 Sketchfab models) need the attribution in the JSON `attribution` field.
 
@@ -64,4 +64,5 @@ The skybox and detail models the default rules leave out, and the three earlier 
 ## Open items
 
 - The generated blocks (crane frame, dock bumpers and poles, dome, sprinkler, chimney, lever, crank and others) are placeholders until own Blender models replace them.
-- `info_overlay` decals (`overlays/darkedge` and the other overlay textures) are not drawn.
+- `info_overlay` decals are drawn as mesh lifted off their faces, with hard edges: the runtime has no decal blending, so an overlay whose material fades out at its border (dirt tracks, gravel paths, cliff edges) shows its full quad.
+- gm_fork's 45585 detail sprites all stand in the 3D skybox room; `--no-omit` draws them there, moved out and scaled up with the room, as crossed cards in the `foliage_card` look rather than the map's own grass sheet.

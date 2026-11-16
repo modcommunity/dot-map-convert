@@ -7,8 +7,8 @@ The import is the WHOLE map by default: every brush, displacement, prop and the 
 keeps the older course cut (the config's `region` crop and its `exclude`/`remove` trims). --orig builds the ORIGINAL
 variant: id <id>_orig, pack pg_world_<name>_orig, with the map's own textures (its pakfile, then the installed base
 games, full size unless --orig-max-side) baked into the pack beside the free ones (dotbsp.origtex). --no-omit passes
-regen --no-omit: the 3D skybox props, detail and trim models are drawn too (the skybox ones moved out as the sky is);
---orig always does, being the unedited map.
+regen --no-omit: the 3D skybox props, detail and trim models, the info_overlay decals and the detail grass are drawn too
+(the skybox ones moved out as the sky is); --orig always does, being the unedited map.
 
 Two outputs. The document (maps/<id>.json) is boxes: what collides, what the survey reads, and the look of a game
 without the pack. The WORLD PACK (maps/world/pg_world_<name>/<id>.{json,bin}, plus textures/, credits.json, CREDITS.md and

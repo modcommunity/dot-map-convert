@@ -508,6 +508,16 @@ EFFECTS/*BEAM*	shield
 *COMBINE_BINOCOVERLAY*	shield
 *TPRINGS_GLOBE*	shield
 
+# --- overlays drawn only with `regen --overlays` (an overlay takes its row's look, never its translucent material's)
+OVERLAYS/DARKEDGE	glass_frosted	0.25,0.25,0.25
+# alpha decals, mostly see-through (lines, graffiti, a sign, a fade card, a cliff-edge blend): drawn opaque each is a slab
+FORK/CLIFF04A_OVERLAY	invisible
+FORK/PARKINGLINES01A	invisible
+FORK/SKYBOXFADE	invisible
+OVERLAYS/EP2_GRAFFITI01	invisible
+OVERLAYS/SIGN_SILO03	invisible
+*DETAILSPRITES*	foliage_card
+
 # --- overlays and cards that are nothing as a surface
 *DECAL*	invisible
 OVERLAYS/APERTURE_*	invisible

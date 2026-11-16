@@ -1385,7 +1385,14 @@
   {
    "valve": "overlays/darkedge",
    "group": "other",
-   "state": "unmapped"
+   "state": "mapped",
+   "kind": "generated",
+   "asset": "glass_frosted",
+   "source": "Gamespice glass_material",
+   "url": "drawn in code by addons/dot_map/bsp/mesh_parts/mesh_glass.gd (glass_material, glass_frosted tinted 0.25: a dark see-through sheet)",
+   "author": "Gamespice (generated)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated), Gamespice glass_material, CC0-1.0"
   },
   {
    "valve": "overlays/dirttrack01a",

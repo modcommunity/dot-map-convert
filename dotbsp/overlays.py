@@ -1,0 +1,134 @@
+"""The decals and detail grass a map's compiler moved out of its entities, as mesh geometry.
+
+`info_overlay` decals (`reader.Bsp.overlays`) are cut to the faces they were laid on; `dprp` detail
+sprites (`reader.Bsp.detail_sprites`) become two crossed upright cards each. `mesh.build` draws
+them only when asked (`regen --overlays`, `--detail`, or `--no-omit`), so a map converted without
+them is byte-for-byte what it was.
+"""
+
+import math
+
+# map units an overlay sits off its face per render order step: far enough that it never
+# fights the face for depth at range, near enough that no gap shows at its edge
+LIFT = 0.25
+
+
+def _dot(a, b):
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+def _lerp(a, b, t):
+    return tuple(a[i] + (b[i] - a[i]) * t for i in range(len(a)))
+
+
+def clip(poly, quad):
+    """Sutherland-Hodgman: `poly` (tuples whose first two values are overlay-plane u, v) cut to the
+    convex `quad`; the other values of a point are interpolated along the cut edges."""
+    area = sum(quad[i - 1][0] * quad[i][1] - quad[i][0] * quad[i - 1][1] for i in range(4))
+    sign = 1.0 if area >= 0 else -1.0
+    for i in range(4):
+        a, b = quad[i - 1], quad[i]
+
+        def inside(p):
+            return sign * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]))
+
+        out = []
+        for k in range(len(poly)):
+            p, q = poly[k - 1], poly[k]
+            sp, sq = inside(p), inside(q)
+            if sq >= 0:
+                if sp < 0:
+                    out.append(_lerp(p, q, sp / (sp - sq)))
+                out.append(q)
+            elif sp >= 0:
+                out.append(_lerp(p, q, sp / (sp - sq)))
+        poly = out
+        if len(poly) < 3:
+            return []
+    return poly
+
+
+def quad_params(quad, x, y):
+    """(a, b) where the bilinear `quad` at a along corner 0->3 and b along 0->1 is the point x, y."""
+    q0, q1, q2, q3 = quad
+    e = (q3[0] - q0[0], q3[1] - q0[1])
+    f = (q1[0] - q0[0], q1[1] - q0[1])
+    h = (q0[0] - q1[0] + q2[0] - q3[0], q0[1] - q1[1] + q2[1] - q3[1])
+    a = b = 0.5
+    for _ in range(12):
+        rx = q0[0] + a * e[0] + b * f[0] + a * b * h[0] - x
+        ry = q0[1] + a * e[1] + b * f[1] + a * b * h[1] - y
+        j00, j01, j10, j11 = e[0] + b * h[0], f[0] + a * h[0], e[1] + b * h[1], f[1] + a * h[1]
+        det = j00 * j11 - j01 * j10
+        if abs(det) < 1e-12:
+            break
+        a -= (rx * j11 - ry * j01) / det
+        b -= (ry * j00 - rx * j10) / det
+    return a, b
+
+
+def _normal(bsp, f, tri):
+    if f[6] < 0:
+        return tuple(bsp.planes[f[0]][:3])
+    a, b, c = tri[0][0], tri[1][0], tri[2][0]
+    u = [b[i] - a[i] for i in range(3)]
+    v = [c[i] - a[i] for i in range(3)]
+    # the stored displacement order's right-hand cross points into the surface (mesh._add_face)
+    n = (-(u[1] * v[2] - u[2] * v[1]), -(u[2] * v[0] - u[0] * v[2]), -(u[0] * v[1] - u[1] * v[0]))
+    ln = math.sqrt(_dot(n, n)) or 1.0
+    return (n[0] / ln, n[1] / ln, n[2] / ln)
+
+
+def overlay_polys(bsp, o, faces):
+    """[(face index, normal, [(point, base point, (u, v)), ...])]: overlay `o` cut to each listed face
+    that is in `faces`. A displacement is cut on its flat base, where its texture lies, and the polygon
+    follows the displaced surface; corner 0 takes texture (u0, v0), 1 (u0, v1), 2 (u1, v1), 3 (u1, v0)."""
+    org, bu, bv, quad = o["origin"], o["basis_u"], o["basis_v"], o["corners"]
+    (u0, u1), (v0, v1) = o["u"], o["v"]
+    out = []
+    for fi in o["faces"]:
+        if fi not in faces:
+            continue
+        f = bsp.faces[fi]
+        if f[6] >= 0:
+            tris = [[(p, base) for p, base in t] for t in bsp.displacement_tris(f, with_base=True)]
+        else:
+            pts = bsp.face_points(f)
+            tris = [[(p, p) for p in pts]] if len(pts) >= 3 else []
+        for t in tris:
+            poly = []
+            for p, base in t:
+                d = (base[0] - org[0], base[1] - org[1], base[2] - org[2])
+                poly.append((_dot(d, bu), _dot(d, bv)) + tuple(p) + tuple(base))
+            cut = clip(poly, quad)
+            if len(cut) < 3:
+                continue
+            ring = []
+            for v in cut:
+                a, b = quad_params(quad, v[0], v[1])
+                ring.append((v[2:5], v[5:8], (u0 + (u1 - u0) * a, v0 + (v1 - v0) * b)))
+            out.append((fi, _normal(bsp, f, t), ring))
+    return out
+
+
+def sprite_cards(sprite, prop):
+    """The two crossed upright quads of one detail sprite, each four (point, (u, v)) in map units."""
+    (x0, top), (x1, bottom) = sprite["ul"], sprite["lr"]
+    (s0, t0), (s1, t1) = sprite["tex_ul"], sprite["tex_lr"]
+    k = prop["scale"]
+    ox, oy, oz = prop["origin"]
+    cards = []
+    for yaw in (prop["angles"][1], prop["angles"][1] + 90.0):
+        r = math.radians(yaw)
+        rx, ry = -math.sin(r), math.cos(r)
+        cards.append([((ox + rx * x * k, oy + ry * x * k, oz + z * k), uv) for x, z, uv in
+                      ((x0, bottom, (s0, t1)), (x1, bottom, (s1, t1)), (x1, top, (s1, t0)), (x0, top, (s0, t0)))])
+    return cards
+
+
+def world_faces(bsp):
+    """The world model's face indices: an overlay laid on a moving brush is not drawn."""
+    if not bsp.models:
+        return set()
+    m = bsp.models[0]
+    return set(range(m[10], m[10] + m[11]))

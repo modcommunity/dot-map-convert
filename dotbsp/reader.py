@@ -32,7 +32,7 @@ LUMP_NODES, LUMP_TEXINFO, LUMP_FACES, LUMP_LIGHTING = 5, 6, 7, 8
 LUMP_LEAFS, LUMP_EDGES, LUMP_SURFEDGES, LUMP_MODELS = 10, 12, 13, 14
 LUMP_LEAFBRUSHES, LUMP_BRUSHES, LUMP_BRUSHSIDES = 17, 18, 19
 LUMP_DISPINFO, LUMP_DISP_VERTS, LUMP_GAME, LUMP_PAKFILE = 26, 33, 35, 40
-LUMP_TEXDATA_STRING_DATA, LUMP_TEXDATA_STRING_TABLE = 43, 44
+LUMP_TEXDATA_STRING_DATA, LUMP_TEXDATA_STRING_TABLE, LUMP_OVERLAYS = 43, 44, 45
 
 HEADER_BYTES = 8 + 64 * 16 + 4      # ident, version, 64 lump records, map revision
 METRES_PER_UNIT = 0.01905
@@ -481,6 +481,68 @@ class Bsp:
                 "scale": scale,
             })
         return props
+
+    def overlays(self):
+        """Every `info_overlay` decal: {id, texinfo, faces, order, u, v, corners, origin, normal, basis_u,
+        basis_v}. Like static props they are compiled out of the entity lump, into lump 45 (`doverlay_t`,
+        352 bytes). `corners` are the quad's four (u, v) offsets along `basis_u` and `basis_v` from
+        `origin`; corner 0 takes texture (u0, v0), 1 (u0, v1), 2 (u1, v1), 3 (u1, v0).
+        """
+        d = self._lump(LUMP_OVERLAYS)
+        out = []
+        for i in range(len(d) // 352):
+            q = i * 352
+            oid, ti, fco = struct.unpack_from("<ihH", d, q)
+            n = fco & 0x3FFF
+            faces = struct.unpack_from("<%di" % min(n, 64), d, q + 8)
+            u0, u1, v0, v1 = struct.unpack_from("<4f", d, q + 264)
+            pts = [struct.unpack_from("<3f", d, q + 280 + 12 * k) for k in range(4)]
+            origin = struct.unpack_from("<3f", d, q + 328)
+            normal = struct.unpack_from("<3f", d, q + 340)
+            # the engine packs basis u into the corners' unused z and flags a mirrored v in corner 3's
+            bu = (pts[0][2], pts[1][2], pts[2][2])
+            bv = (normal[1] * bu[2] - normal[2] * bu[1], normal[2] * bu[0] - normal[0] * bu[2],
+                  normal[0] * bu[1] - normal[1] * bu[0])
+            if pts[3][2] == 1.0:
+                bv = (-bv[0], -bv[1], -bv[2])
+            out.append({"id": oid, "texinfo": ti, "faces": list(faces), "order": fco >> 14,
+                        "u": (u0, u1), "v": (v0, v1), "corners": [(p[0], p[1]) for p in pts],
+                        "origin": origin, "normal": normal, "basis_u": bu, "basis_v": bv})
+        return out
+
+    def detail_sprites(self):
+        """(sprites, props) from the `dprp` game lump: the detail grass a compiler scattered over the
+        map's `$detail` materials. A sprite is {ul, lr, tex_ul, tex_lr} (map units, texture fraction);
+        a prop is {origin, angles, index, orientation, type, scale}, `type` 1 a sprite, 0 a model.
+        """
+        lump = self.game_lumps().get("dprp")
+        if lump is None or len(lump[1]) < 12:
+            return [], []
+        d = lump[1]
+        n = struct.unpack_from("<i", d, 0)[0]
+        o = 4 + 128 * n
+        ns = struct.unpack_from("<i", d, o)[0]
+        o += 4
+        sprites = []
+        for i in range(ns):
+            v = struct.unpack_from("<8f", d, o + 32 * i)
+            sprites.append({"ul": v[0:2], "lr": v[2:4], "tex_ul": v[4:6], "tex_lr": v[6:8]})
+        o += 32 * ns
+        count = struct.unpack_from("<i", d, o)[0]
+        o += 4
+        if count <= 0 or (len(d) - o) // count < 52:
+            return sprites, []
+        stride = (len(d) - o) // count
+        props = []
+        for i in range(count):
+            q = o + i * stride
+            origin, angles = struct.unpack_from("<3f", d, q), struct.unpack_from("<3f", d, q + 12)
+            index = struct.unpack_from("<H", d, q + 24)[0]
+            orientation, kind = d[q + 40], d[q + 44]
+            scale = struct.unpack_from("<f", d, q + 48)[0] or 1.0
+            props.append({"origin": origin, "angles": angles, "index": index, "orientation": orientation,
+                          "type": kind, "scale": scale})
+        return sprites, props
 
     def pak_names(self):
         """The names of the files in the embedded zip, lowercased; [] when there is none."""
