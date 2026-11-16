@@ -530,7 +530,7 @@ def main(argv):
     sk = sub.add_parser("storecheck", help="every art slice a world names is published and holds what the manifest draws (dotbsp/storecheck.py)")
     sk.add_argument("manifests", nargs="+", help="a world pack's manifest json")
     sk.add_argument("--dist", help="a storepack --dist folder to read the signed slice manifests from")
-    sk.add_argument("--origin", help="a published origin (https://dotgames.org) to read them from")
+    sk.add_argument("--origin", help="a published origin (https://content.gamespice.net) to read them from")
     sa = sub.add_parser("smallalbedo", help="add a small albedo per PBR set to converted packs, drawn when the store slices are missing (dotbsp/licence.py)")
     sa.add_argument("manifests", nargs="+", help="a pack's manifest json")
     sa.add_argument("--pbr-store", help="the PBR store; default the manifest's licence.pbr_store")
