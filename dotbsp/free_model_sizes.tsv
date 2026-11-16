@@ -64,3 +64,17 @@ wolfking_throne	1.2
 firehosebox	0.5
 meathook	0.8
 canal_bridge|combine_bridge|bridge_low_res	8.0
+barstuff/(glass|pint_glass|shot_glass|pitcher|plonk)	0.18
+napkindisp|toothbrushset	0.15
+(^|/)nicewater	0.5
+junk_spanner	0.3
+junk_wd43	0.2
+stereosystem	0.6
+(^|/)vortex(\.mdl)?$	0.5
+(^|/)amp/amp(\.mdl)?$	0.7
+(^|/)cd/cd(\.mdl)?$	0.12
+^healthvial	0.2
+hover_rings	1.0
+(^|/)mountain/mountain\d*	30.0
+frictionizer	0.8
+props/scaffold\.mdl	3.0

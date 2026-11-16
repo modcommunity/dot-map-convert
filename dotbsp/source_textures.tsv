@@ -823,3 +823,26 @@ UNIONCITY2/SKYBOX_TEXTURES/*	invisible
 *BIGRUG7*	carpet_pattern
 *WALL7FLOR*	wood_floor
 *FORREST_FOG*	invisible
+# --- gm_mountainresort: a white PVC panel (most of the lodge's faces), backdrop mountain cards, a foam card, poster and table plaques (posters stay a flat average colour, never the artwork)
+CE/PVC/*	plaster_painted	0.92,0.92,0.9
+MOUNTAINS/MTN_*	rock
+REALWORLDTEXTURES/NEW/WALL_B03	plaster_worn
+HOTTUB/HOT_TUB_FOAM	water
+CE/GEM/*	flat	0.35,0.55,0.6
+CE/POSTER/*	flat	0.85,0.8,0.7
+CE/TABLES/*	flat	0.85,0.8,0.7
+CE/SIGNS/HIGHVOLTAGE	flat	0.9,0.75,0.1
+NATURE/INFSKYBOX*	flat	0.8,0.85,0.95
+# --- ttt_rooftops_2016_v1: manlift and teleport trigger markings are tool-style cards, left out like nodraw; portraits, billboards and signs are a flat average colour
+MAP/MANLIFTER/*	invisible
+MAP/TELEPORT/*	invisible
+PROPS/PLASTICEXITSIGN002A	metal
+MAP/PORTRAIT_*	flat	0.85,0.8,0.7
+MAP/GREETINGS*	flat	0.85,0.8,0.7
+MAP/BILLBOARD*	flat	0.6,0.6,0.62
+MAP/HELIPAD	concrete
+MAP/MOTHERSHIP_*	flat	0.12,0.14,0.2
+MAP/RADIO/*	flat	0.2,0.2,0.22
+TTT/CREDITS/*	flat	0.85,0.8,0.7
+TTT/TRAITOR/AXE_SIGN	flat	0.7,0.15,0.12
+DE_CHATEAU/SPEAKERSLG	flat	0.15,0.15,0.16

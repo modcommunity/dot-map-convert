@@ -131,3 +131,19 @@ wolfking_throne	armchair	Kenney Furniture Kit	https://kenney.nl/assets/furniture
 firehosebox	cabinet	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
 meathook	fence_post	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
 canal_bridge|combine_bridge|bridge_low_res	fence	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
+# gm_mountainresort: bar glassware, bathroom and workshop props, a stereo, a water jug and the vortex effect model
+barstuff/(glass|pint_glass|shot_glass|pitcher|plonk)	pirate/bottle	Kenney Pirate Kit	https://kenney.nl/assets/pirate-kit	Kenney	CC0-1.0
+napkindisp|toothbrushset	cardboard_box	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+(^|/)nicewater	bucket	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+junk_spanner	log	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
+junk_wd43	bucket	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+stereosystem	cabinet	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+(^|/)vortex(\.mdl)?$	rock	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
+# ttt_rooftops_2016_v1: a speaker amp, a disc, a health vial, a hover ring, the backdrop mountain, a friction pad and scaffolding
+(^|/)amp/amp(\.mdl)?$	cabinet	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+(^|/)cd/cd(\.mdl)?$	cardboard_box	Kenney Furniture Kit	https://kenney.nl/assets/furniture-kit	Kenney	CC0-1.0
+^healthvial	bucket	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+hover_rings	barrel	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+(^|/)mountain/mountain\d*	rock	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
+frictionizer	crate	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+props/scaffold\.mdl	fence	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0

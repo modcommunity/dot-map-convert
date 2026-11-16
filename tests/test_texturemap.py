@@ -115,6 +115,38 @@ class TextureMapTests(unittest.TestCase):
             self.assertEqual(free[material]["licence"], "CC0-1.0", name)
         self.assertEqual(len({free[m]["kind"] for m in want.values()} - {"snow"}), 4)
 
+    def test_mountainresort_and_rooftops_textures_are_all_mapped(self):
+        # the two maps' unmapped lists (bsp.py unmapped, 2026-11-15); tool-style cards are left out like nodraw
+        t = texturemap.load()
+        want = {
+            "CE/PVC/PVC_01": "plaster_painted", "MOUNTAINS/MTN_LEFT": "rock", "HOTTUB/HOT_TUB_FOAM": "water",
+            "CE/POSTER/01POST": "flat", "NATURE/INFSKYBOX02": "flat",
+            "MAP/MANLIFTER/MANLIFTER_FORWARD": "invisible", "MAP/TELEPORT/3": "invisible",
+            "MAP/PORTRAIT_02_UNLIT": "flat", "MAP/RADIO/MAGNUM PI": "flat", "MAP/HELIPAD": "concrete",
+            "PROPS/PLASTICEXITSIGN002A": "metal",
+        }
+        for name, material in want.items():
+            hit = t.lookup(name)
+            self.assertIsNotNone(hit, name)
+            self.assertEqual(hit[0], material, name)
+
+    def test_mountainresort_models_get_a_free_stand_in_and_a_size(self):
+        from dotbsp import standins
+        rows, sizes = standins.models(), standins.Sizes()
+        for name, stand_in in {
+            "mark2580/gtav/barstuff/glass_02.mdl": "pirate/bottle", "mark2580/gtav/barstuff/shot_glass.mdl": "pirate/bottle",
+            "props/cs_militia/toothbrushset01.mdl": "cardboard_box", "props/nicewater01.mdl": "bucket",
+            "props/vortex.mdl": "rock", "props_junk/junk_spanner.mdl": "log", "props_junk/junk_wd43.mdl": "bucket",
+            "props_office/stereosystem.mdl": "cabinet",
+            "amp/amp.mdl": "cabinet", "cd/cd.mdl": "cardboard_box", "healthvial.mdl": "bucket", "maxofs2d/hover_rings.mdl": "barrel",
+            "mountain/mountain2.mdl": "rock", "props/frictionizer.mdl": "crate", "props/scaffold.mdl": "fence",
+        }.items():
+            row = rows.get(name)
+            self.assertIsNotNone(row, name)
+            self.assertEqual(row["stand_in"], stand_in, name)
+            self.assertIn(row["licence"], ("CC0-1.0", "MIT", "Public Domain"), name)
+            self.assertIsNotNone(sizes.get(name), name)
+
     def test_cli_unmapped_reads_a_map(self):
         import synth
         with tempfile.TemporaryDirectory() as d:
