@@ -1,6 +1,6 @@
 {
  "map": "gm_fork",
- "map_note": "the map the brief calls gm_york is taken to be gm_fork (workshop 326332456); no gm_york file exists locally",
+ "map_note": "gm_york is a different map (the gm_york video); its BSP is not stored here yet",
  "textures": [
   {
    "valve": "brick/brickwall031d",
@@ -2041,106 +2041,196 @@
    "valve": "models/cranes/crane_docks.mdl",
    "group": "buildings_structures",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "ph_overhead_crane",
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/overhead_crane",
+   "author": "Timothy3D",
+   "licence": "CC0-1.0",
+   "attribution": "Timothy3D, Poly Haven, CC0-1.0"
   },
   {
    "valve": "models/cranes/crane_frame.mdl",
    "group": "buildings_structures",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_box_540x957x540_7a6a30",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/cranes/crane_frame_interior.mdl",
    "group": "buildings_structures",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_box_476x784x476_7a6a30",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/project_building01_skybox.mdl",
    "group": "barrels_crates",
    "instances": 8,
-   "state": "omitted",
-   "how": "skybox model, left out on purpose"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-commercial_building-f",
+   "source": "Kenney City Kit - Commercial",
+   "url": "https://kenney.nl/assets/city-kit-commercial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Commercial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/project_building02_skybox.mdl",
    "group": "barrels_crates",
    "instances": 4,
-   "state": "omitted",
-   "how": "skybox model, left out on purpose"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-industrial_building-s",
+   "source": "Kenney City Kit - Industrial",
+   "url": "https://kenney.nl/assets/city-kit-industrial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Industrial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/project_building03_skybox.mdl",
    "group": "barrels_crates",
    "instances": 3,
-   "state": "omitted",
-   "how": "skybox model, left out on purpose"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-commercial_building-i",
+   "source": "Kenney City Kit - Commercial",
+   "url": "https://kenney.nl/assets/city-kit-commercial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Commercial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/row_corner_1.mdl",
    "group": "buildings_structures",
    "instances": 3,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-industrial_building-c",
+   "source": "Kenney City Kit - Industrial",
+   "url": "https://kenney.nl/assets/city-kit-industrial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Industrial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/row_corner_2.mdl",
    "group": "buildings_structures",
    "instances": 8,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-industrial_building-c",
+   "source": "Kenney City Kit - Industrial",
+   "url": "https://kenney.nl/assets/city-kit-industrial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Industrial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/row_hill_cluster.mdl",
    "group": "buildings_structures",
    "instances": 3,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-commercial_building-j",
+   "source": "Kenney City Kit - Commercial",
+   "url": "https://kenney.nl/assets/city-kit-commercial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Commercial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/row_industrial_cluster.mdl",
    "group": "buildings_structures",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-commercial_building-e",
+   "source": "Kenney City Kit - Commercial",
+   "url": "https://kenney.nl/assets/city-kit-commercial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Commercial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/row_res_1.mdl",
    "group": "buildings_structures",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-industrial_building-s",
+   "source": "Kenney City Kit - Industrial",
+   "url": "https://kenney.nl/assets/city-kit-industrial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Industrial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/row_res_1_ascend.mdl",
    "group": "buildings_structures",
    "instances": 2,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-industrial_building-s",
+   "source": "Kenney City Kit - Industrial",
+   "url": "https://kenney.nl/assets/city-kit-industrial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Industrial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/row_res_2.mdl",
    "group": "buildings_structures",
    "instances": 4,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-industrial_building-s",
+   "source": "Kenney City Kit - Industrial",
+   "url": "https://kenney.nl/assets/city-kit-industrial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Industrial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/row_res_2_ascend.mdl",
    "group": "buildings_structures",
    "instances": 5,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-commercial_building-k",
+   "source": "Kenney City Kit - Commercial",
+   "url": "https://kenney.nl/assets/city-kit-commercial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Commercial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/row_upscale.mdl",
    "group": "buildings_structures",
    "instances": 7,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "kenney_city-kit-industrial_building-s",
+   "source": "Kenney City Kit - Industrial",
+   "url": "https://kenney.nl/assets/city-kit-industrial",
+   "author": "Kenney",
+   "licence": "CC0-1.0",
+   "attribution": "Kenney, Kenney City Kit - Industrial, CC0-1.0"
   },
   {
    "valve": "models/props_buildings/watertower_001c.mdl",
@@ -2660,8 +2750,14 @@
    "valve": "models/props_c17/utilityconnecter002.mdl",
    "group": "other_props",
    "instances": 2,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_box_7x23x111_606060",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_c17/utilitypole02b.mdl",
@@ -2797,8 +2893,14 @@
    "valve": "models/props_canal/refinery_03_skybox.mdl",
    "group": "barrels_crates",
    "instances": 2,
-   "state": "omitted",
-   "how": "skybox model, left out on purpose"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "sf_rusted_tank_storage_57be2e",
+   "source": "Sketchfab",
+   "url": "https://sketchfab.com/3d-models/none-57be2eaf4d6b4d2980bcee4ccb35f780",
+   "author": "Mkc",
+   "licence": "CC-BY-4.0",
+   "attribution": "Mkc, Sketchfab, CC-BY-4.0"
   },
   {
    "valve": "models/props_debris/concrete_debris256barricade001a.mdl",
@@ -2882,36 +2984,66 @@
    "valve": "models/props_docks/dock01_pole01a_128.mdl",
    "group": "buildings_structures",
    "instances": 8,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_cyl_32x246x32_5a4630",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/dock01_pole01a_256.mdl",
    "group": "buildings_structures",
    "instances": 13,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_cyl_33x490x33_5a4630",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/dock01_polecluster01b.mdl",
    "group": "buildings_structures",
    "instances": 7,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_cyl_72x976x320_5a4630",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/dock01_polecluster01b_256.mdl",
    "group": "buildings_structures",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_cyl_56x488x319_5a4630",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/dock02_pole02a.mdl",
    "group": "buildings_structures",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_cyl_32x793x32_5a4630",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/dock_broken01a.mdl",
@@ -2940,29 +3072,53 @@
    "valve": "models/props_docks/dock_bumper01a.mdl",
    "group": "buildings_structures",
    "instances": 3,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_box_54x961x973_3a3a3a",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/dock_bumper01b_256.mdl",
    "group": "buildings_structures",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_box_55x482x973_3a3a3a",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/dock_bumper02a.mdl",
    "group": "buildings_structures",
    "instances": 3,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_box_76x978x1948_3a3a3a",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_docks/dock_bumper03a.mdl",
    "group": "buildings_structures",
    "instances": 2,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_box_73x982x1948_3a3a3a",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_foliage/bramble001a.mdl",
@@ -3748,8 +3904,14 @@
    "valve": "models/props_rooftop/chimneysmokestack_cluster01a.mdl",
    "group": "buildings_structures",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_cyl_143x146x776_6a5a50",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_rooftop/chimneytoppipe_cluster01c.mdl",
@@ -3769,13 +3931,13 @@
    "group": "buildings_structures",
    "instances": 1,
    "state": "mapped",
-   "how": "library pick",
-   "asset": "sf_ceiling_lamp_14e5f1",
-   "source": "Sketchfab",
-   "url": "https://sketchfab.com/3d-models/none-14e5f136ee154fe783f78f8e38d185c3",
-   "author": "neverfollow81",
-   "licence": "CC-BY-4.0",
-   "attribution": "neverfollow81, Sketchfab, CC-BY-4.0"
+   "how": "generated own model (--no-omit)",
+   "asset": "own_cyl_397x248x397_8a8a80",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_rooftop/dome005.mdl",
@@ -3804,15 +3966,27 @@
    "valve": "models/props_rooftop/rooftopcluser09a.mdl",
    "group": "buildings_structures",
    "instances": 6,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "ph_exterior_aircon_unit",
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/exterior_aircon_unit",
+   "author": "Monsta3D",
+   "licence": "CC0-1.0",
+   "attribution": "Monsta3D, Poly Haven, CC0-1.0"
   },
   {
    "valve": "models/props_rooftop/satellitedish02.mdl",
    "group": "buildings_structures",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "dm_roofdish",
+   "source": "dot-map Blender model",
+   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/scenery.py",
+   "author": "TMC (modelled for dot-map)",
+   "licence": "CC0-1.0",
+   "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_rooftop/scaffolding01a.mdl",
@@ -3991,8 +4165,14 @@
    "valve": "models/props_trainstation/trackmarkers01.mdl",
    "group": "other_props",
    "instances": 12,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_box_567x26x30_606060",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_trainstation/tracksign07.mdl",
@@ -4168,13 +4348,13 @@
    "group": "vehicles",
    "instances": 2,
    "state": "mapped",
-   "how": "library pick",
-   "asset": "sf_1938_vairogs_v8_flatbed_truck_ford_based_198623",
-   "source": "Sketchfab",
-   "url": "https://sketchfab.com/3d-models/none-1986239266ee44c788fd6effe4055704",
-   "author": "Libau Media",
-   "licence": "CC-BY-4.0",
-   "attribution": "Libau Media, Sketchfab, CC-BY-4.0"
+   "how": "library pick (--no-omit)",
+   "asset": "ph_old_tyre",
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/old_tyre",
+   "author": "MP",
+   "licence": "CC0-1.0",
+   "attribution": "MP, Poly Haven, CC0-1.0"
   },
   {
    "valve": "models/props_vehicles/tire001b_truck.mdl",
@@ -4284,15 +4464,27 @@
    "valve": "models/props_vents/vent_large_corner001.mdl",
    "group": "metal_pipes_vents",
    "instances": 1,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "ph_modular_airduct_rectangular_01",
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/modular_airduct_rectangular_01",
+   "author": "James Ray Cock",
+   "licence": "CC0-1.0",
+   "attribution": "James Ray Cock, Poly Haven, CC0-1.0"
   },
   {
    "valve": "models/props_vents/vent_large_corner002.mdl",
    "group": "metal_pipes_vents",
    "instances": 4,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "dm_ductrun",
+   "source": "dot-map Blender model",
+   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/clutter.py",
+   "author": "TMC (modelled for dot-map)",
+   "licence": "CC0-1.0",
+   "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_vents/vent_large_grill001.mdl",
@@ -4311,15 +4503,27 @@
    "valve": "models/props_vents/vent_large_straight001.mdl",
    "group": "metal_pipes_vents",
    "instances": 5,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "dm_ductrun",
+   "source": "dot-map Blender model",
+   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/clutter.py",
+   "author": "TMC (modelled for dot-map)",
+   "licence": "CC0-1.0",
+   "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_vents/vent_large_straight002.mdl",
    "group": "metal_pipes_vents",
    "instances": 2,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "library pick (--no-omit)",
+   "asset": "dm_ductrun",
+   "source": "dot-map Blender model",
+   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/clutter.py",
+   "author": "TMC (modelled for dot-map)",
+   "licence": "CC0-1.0",
+   "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
   },
   {
    "valve": "models/props_vents/vent_medium_straight001.mdl",
@@ -4430,13 +4634,13 @@
    "group": "metal_pipes_vents",
    "instances": 4,
    "state": "mapped",
-   "how": "library pick",
-   "asset": "sf_post_apocalyptic_fire_extinguisher_b163e8",
+   "how": "library pick (--no-omit)",
+   "asset": "sf_rusted_tank_storage_57be2e",
    "source": "Sketchfab",
-   "url": "https://sketchfab.com/3d-models/none-b163e81ebaa74397b6ccc4ec7e50722b",
-   "author": "Sousinho",
+   "url": "https://sketchfab.com/3d-models/none-57be2eaf4d6b4d2980bcee4ccb35f780",
+   "author": "Mkc",
    "licence": "CC-BY-4.0",
-   "attribution": "Sousinho, Sketchfab, CC-BY-4.0"
+   "attribution": "Mkc, Sketchfab, CC-BY-4.0"
   },
   {
    "valve": "models/props_wasteland/dockplank01a.mdl",
@@ -4855,8 +5059,14 @@
    "valve": "models/props_wasteland/prison_sprinkler001b.mdl",
    "group": "metal_pipes_vents",
    "instances": 6,
-   "state": "omitted",
-   "how": "small detail model, left out on purpose (standins DETAIL)"
+   "state": "mapped",
+   "how": "generated own model (--no-omit)",
+   "asset": "own_cyl_12x41x977_707070",
+   "source": "Gamespice generated model",
+   "url": "https://github.com/gamespice-platform/map",
+   "author": "Gamespice (generated for map)",
+   "licence": "CC0-1.0",
+   "attribution": "Gamespice (generated for map), Gamespice generated model, CC0-1.0"
   },
   {
    "valve": "models/props_wasteland/speakercluster01a.mdl",
