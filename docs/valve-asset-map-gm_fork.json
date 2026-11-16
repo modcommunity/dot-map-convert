@@ -2065,7 +2065,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_latticetower",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -2078,7 +2078,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_latticetower",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -2764,7 +2764,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_linecrossarm",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -2998,7 +2998,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_dockpileshort",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3011,7 +3011,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_dockpile",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3024,7 +3024,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_dockpilecluster",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3037,7 +3037,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_dockpileclustershort",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3050,7 +3050,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_dockpiletall",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3089,7 +3089,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_dockfendersquare",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3102,7 +3102,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_dockfenderhalf",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3115,7 +3115,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_dockfenderlong",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3128,7 +3128,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_dockfenderlong",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3921,7 +3921,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_roofstackrow",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3947,7 +3947,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_roofdome",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3986,7 +3986,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_rooftophvac",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -3999,7 +3999,7 @@
    "how": "library pick (--no-omit)",
    "asset": "dm_roofdish",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/scenery.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/scenery.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -4194,7 +4194,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_trackmarker",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -4506,7 +4506,7 @@
    "how": "library pick (--no-omit)",
    "asset": "dm_ductrun",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/clutter.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/clutter.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -4532,7 +4532,7 @@
    "how": "library pick (--no-omit)",
    "asset": "dm_ductrun",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/clutter.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/clutter.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -4545,7 +4545,7 @@
    "how": "library pick (--no-omit)",
    "asset": "dm_ductrun",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/clutter.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/clutter.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
@@ -5091,7 +5091,7 @@
    "how": "own Blender model (--no-omit)",
    "asset": "dm_sprinklerpipe",
    "source": "dot-map Blender model",
-   "url": "https://github.com/modcommunity/dot-map-convert/blob/main/tools/models/harbour_rooftop.py",
+   "url": "https://github.com/gamespice-platform/map-convert/blob/main/tools/models/harbour_rooftop.py",
    "author": "TMC (modelled for dot-map)",
    "licence": "CC0-1.0",
    "attribution": "TMC (modelled for dot-map), dot-map Blender model, CC0-1.0"
