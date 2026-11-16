@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community sandbox .bsp (VBSP 19/20) into a game-playlot map document.
 
-    tools/import_bsp.py <map.bsp> <config-name> [--out=maps/<id>.json] [--no-world] [--store=<lossless store>]
+    tools/import_bsp.py <map.bsp> <config-name> [--out=maps/<id>.json] [--no-world] [--store=<lossless store>] [--course] [--orig [--orig-max-side=PX]] [--no-omit]
+
+The import is the WHOLE map by default: every brush, displacement, prop and the 3D skybox, nothing cut away. --course
+keeps the older course cut (the config's `region` crop and its `exclude`/`remove` trims). --orig builds the ORIGINAL
+variant: id <id>_orig, pack pg_world_<name>_orig, with the map's own textures (its pakfile, then the installed base
+games, full size unless --orig-max-side) baked into the pack beside the free ones (dotbsp.origtex). --no-omit passes
+regen --no-omit: the 3D skybox props, detail and trim models are drawn too (the skybox ones moved out as the sky is);
+--orig always does, being the unedited map.
 
 Two outputs. The document (maps/<id>.json) is boxes: what collides, what the survey reads, and the look of a game
 without the pack. The WORLD PACK (maps/world/pg_world_<name>/<id>.{json,bin}, plus textures/, credits.json, CREDITS.md and
@@ -54,6 +61,7 @@ from dotbsp import boxes as boxes_lib, docboxes, texturemap  # noqa: E402  (the 
 from dotbsp import gaps  # noqa: E402  (closes the cracks the survey reads as slots)
 from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the ground shift, for the audit)
 from dotbsp import terrain  # noqa: E402  (displacement ground as tilted slabs)
+from dotbsp import mesh as dotmesh  # noqa: E402  (skybox_of: the 3D skybox room, which is not play space)
 
 S = 0.01905
 SLAB = 28.0     # source units: ~0.53 m, a slope's riser
@@ -658,11 +666,27 @@ def weld_hairlines(boxes, eps=0.03):
                     b["size"][k] = round(hi_b[k] - lo_b[k], 4)
 
 
+def sky_room(bsp, y_off):
+    """The 3D skybox room in the document frame (metres, lo and hi), or None. The room is a miniature
+    the engine draws behind the map, not ground: with no region to leave it out, nothing in it collides."""
+    sky = dotmesh.skybox_of(bsp)
+    if sky is None:
+        return None
+    (x0, y0, z0), (x1, y1, z1) = sky[2]
+    return ((x0 * S, z0 * S - y_off, -y1 * S), (x1 * S, z1 * S - y_off, -y0 * S))
+
+
+def _in_room(p, room):
+    return room is not None and all(room[0][k] <= p[k] <= room[1][k] for k in range(3))
+
+
 def terrain_boxes(bsp, cfg, y_off):
     """The map's displacements inside the region as tilted slabs (see the module doc)."""
     t = cfg["terrain"]
     region = cfg.get("region")
     tris = terrain.game_tris(terrain.terrain_tris(bsp), S, y_off)
+    room = sky_room(bsp, y_off)
+    tris = [tr for tr in tris if not all(_in_room(p, room) for p in tr)]
     if region:
         tris = [tr for tr in tris if any(region[0][0] <= p[0] <= region[0][1] and region[2][0] <= p[2] <= region[2][1]
                                          and region[1][0] <= p[1] <= region[1][1] for p in tr)]
@@ -685,8 +709,26 @@ def terrain_boxes(bsp, cfg, y_off):
     return out
 
 
-def build(bsp_path, name):
+def config(name, whole=True, orig=False):
+    """CONFIGS[name]. When [param whole], without what trims the map to a course (`region`, `exclude`, `remove`): the
+    whole map. When [param orig], the original variant's id and name (`<id>_orig`, see origtex.MARK)."""
     cfg = dict(CONFIGS[name])
+    if whole:
+        for k in ("region", "exclude", "remove"):
+            cfg.pop(k, None)
+        if "cut from" in cfg["blurb"] and ":" in cfg["blurb"]:   # the blurb said which corner of the map was cut
+            cfg["blurb"] = cfg["blurb"].rsplit(":", 1)[0] + ": the author's whole map."
+    if orig:
+        cfg["id"] = cfg["id"] + ORIG_MARK
+        cfg["name"] = cfg["name"] + " (original)"
+    return cfg
+
+
+ORIG_MARK = "_orig"   # dotbsp.origtex.MARK: the original variant's id, pack and regen name end in it
+
+
+def build(bsp_path, name, whole=True, orig=False):
+    cfg = config(name, whole, orig)
     # The flights live beside this adapter (stairs/<config>.json), wherever the launcher runs from.
     stairs_file = os.path.join(os.path.dirname(os.path.abspath(sys.modules["adapter_launch"].__file__)),
                                "playlot-maps", "stairs", name + ".json") if "adapter_launch" in sys.modules else ""
@@ -702,6 +744,7 @@ def build(bsp_path, name):
     sp_yaw = float(starts[cfg["spawn_at"]].get("angles", "0 0 0").split()[1])
     y_off = (sp[2] - 1.0) * S
     boxes, slabbed, dropped = [], 0, 0
+    room = sky_room(bsp, y_off)
     for i in sorted(bsp.model_brushes(0)):
         contents = bsp.brushes[i][2]
         names = docboxes.brush_material_names(bsp, i)
@@ -715,7 +758,7 @@ def build(bsp_path, name):
         if cut == 2:
             b = ramp_document_box(parts[0], mat, colour, y_off)
             region = cfg.get("region", ((-1e9, 1e9),) * 3)
-            if all(region[k][0] <= b["at"][k] <= region[k][1] for k in range(3)) and mat != "water":
+            if all(region[k][0] <= b["at"][k] <= region[k][1] for k in range(3)) and mat != "water" and not _in_room(b["at"], room):
                 boxes.append(b)
             continue
         for (u0, u1), (v0, v1), (z0, z1), phi in parts:
@@ -729,8 +772,8 @@ def build(bsp_path, name):
                 continue
             at = [round(x * S, 3), round(((z0 + z1) / 2) * S - y_off, 3), round(-y * S, 3)]
             region = cfg.get("region", ((-1e9, 1e9),) * 3)
-            if any(not (region[k][0] <= at[k] <= region[k][1]) for k in range(3)):
-                continue                                      # outside the playable region
+            if any(not (region[k][0] <= at[k] <= region[k][1]) for k in range(3)) or _in_room(at, room):
+                continue                                      # outside the playable region, or the 3D skybox's miniature
             b = {"at": at,
                  "size": [round(v, 3) for v in size], "material": mat}
             if colour:
@@ -778,6 +821,10 @@ def build(bsp_path, name):
         "boxes": boxes, "declared": cfg.get("declared", []),
         "world": world_spec(cfg, y_off),
     }
+    if whole:
+        # The author's whole map, nothing trimmed to a course: the game reads this to skip the walkability survey,
+        # which neither holds nor finishes on a map built for Garry's Mod rather than for this game's player.
+        doc["unedited"] = True
     sourceframe.record(doc, bsp_path, S, (0.0, y_off, 0.0))
     print("%s: %d boxes (%d brushes cut into slabs, %d tool brushes dropped)" % (cfg["id"], len(boxes), slabbed, dropped))
     return doc
@@ -813,7 +860,7 @@ def credit_of(cfg):
     return cfg["author"], page
 
 
-def world_commands(bsp_path, cfg, spec, root, store_root=None):
+def world_commands(bsp_path, cfg, spec, root, store_root=None, orig_max_side=0, no_omit=False):
     """The two bsp.py runs that write the world pack: store the source (the regen reads only the lossless store), then
     regen it through the mesh route at this adapter's scale and the region's crop into <doc dir>/world/<pack>/<id>."""
     bsp_py = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(docboxes.__file__))), "bsp.py")
@@ -829,13 +876,18 @@ def world_commands(bsp_path, cfg, spec, root, store_root=None):
              "--pbr-store", os.path.join(stores, "pbr-library"), "--model-store", os.path.join(stores, "model-library")] + rootargs
     if spec.get("crop"):
         regen.append("--crop=" + ",".join(repr(float(v)) for v in spec["crop"]))
+    if cfg["id"].endswith(ORIG_MARK):
+        name = os.path.splitext(os.path.basename(bsp_path))[0].lower() + ORIG_MARK
+        regen += ["--orig-textures", "--orig-max-side", str(orig_max_side), "--name", name]
+    if no_omit or cfg["id"].endswith(ORIG_MARK):
+        regen.append("--no-omit")
     return store, regen
 
 
-def build_world(bsp_path, doc, cfg, root, store_root=None):
+def build_world(bsp_path, doc, cfg, root, store_root=None, orig_max_side=0, no_omit=False):
     """Runs the mesh route for one map; returns the regen's exit code (0 shippable, 4 a licence problem, else failed)."""
     import subprocess
-    store, regen = world_commands(bsp_path, cfg, doc["world"], root, store_root)
+    store, regen = world_commands(bsp_path, cfg, doc["world"], root, store_root, orig_max_side, no_omit)
     r = subprocess.run(store, stdout=subprocess.DEVNULL)
     if r.returncode != 0:
         print("world: storing %s failed (exit %d)" % (bsp_path, r.returncode), file=sys.stderr)
@@ -847,6 +899,11 @@ def build_world(bsp_path, doc, cfg, root, store_root=None):
 
 def credit_world(doc, cfg):
     """With the pack drawn the map wears free textures and stand-ins, not the box grid: say so."""
+    if cfg["id"].endswith(ORIG_MARK):
+        doc["attribution"] = ("Converted unedited from %s by %s, wearing the map's own textures (the author's and the base "
+                              "game's, Valve's) as they shipped. The author can have this conversion removed: contact %s."
+                              % (cfg["source"], cfg["author"], REMOVAL_CONTACT))
+        return
     doc["attribution"] = ("Converted from %s by %s. Drawn from the map's own geometry with free (CC0) textures and "
                           "stand-in models, listed in its world pack's credits; the author's textures and models are not carried. "
                           "The author can have this conversion removed: contact %s." % (cfg["source"], cfg["author"], REMOVAL_CONTACT))
@@ -857,16 +914,22 @@ def main(argv):
     if len(args) != 2:
         print(__doc__)
         return 2
-    doc = build(args[0], args[1])
+    whole, orig = "--course" not in argv, "--orig" in argv
+    if orig and not whole:
+        print("--orig is the unedited map: it does not take --course", file=sys.stderr)
+        return 2
+    max_side = int(next((a[16:] for a in argv if a.startswith("--orig-max-side=")), "0"))
+    doc = build(args[0], args[1], whole, orig)
     out = next((a[6:] for a in argv if a.startswith("--out=")), os.path.join(HERE, "..", "maps", doc["id"] + ".json"))
     # The game reads the pack from beside the document (its map scan does not recurse into world/).
     root = os.path.dirname(os.path.abspath(out))
     rc = 0
     if "--no-world" not in argv:
-        rc = build_world(args[0], doc, CONFIGS[args[1]], root, next((a[8:] for a in argv if a.startswith("--store=")), None))
+        rc = build_world(args[0], doc, config(args[1], whole, orig), root,
+                         next((a[8:] for a in argv if a.startswith("--store=")), None), max_side, "--no-omit" in argv)
     # The attribution follows the pack that is there, so a --no-world re-import of a map with a pack keeps it.
     if os.path.isfile(os.path.join(root, "world", doc["world"]["pack"], doc["id"] + ".json")):
-        credit_world(doc, CONFIGS[args[1]])
+        credit_world(doc, config(args[1], whole, orig))
     with open(out, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")
     print("wrote", out)

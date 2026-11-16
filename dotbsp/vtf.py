@@ -86,7 +86,7 @@ def decode(fmt, w, h, d):
 
 
 def read(data, max_side=512):
-    """(width, height, [(r, g, b, a)]) of the largest mip that fits `max_side`."""
+    """(width, height, [(r, g, b, a)]) of the largest mip that fits `max_side` (0 or None: the full-size mip)."""
     if len(data) < 64 or data[:4] != b"VTF\0":
         raise TextureError("not a vtf")
     major, minor, hsize, w, h, flags, frames = struct.unpack_from("<IIIHHIH", data, 4)
@@ -110,7 +110,7 @@ def read(data, max_side=512):
     for m in range(mips - 1, -1, -1):
         pos[m] = off
         off += sizes[m][2]
-    pick = next((m for m in range(mips) if max(sizes[m][0], sizes[m][1]) <= max_side), mips - 1)
+    pick = 0 if not max_side else next((m for m in range(mips) if max(sizes[m][0], sizes[m][1]) <= max_side), mips - 1)
     mw, mh, _ = sizes[pick]
     return mw, mh, decode(fmt, mw, mh, data[pos[pick]:pos[pick] + _size(fmt, mw, mh)])
 

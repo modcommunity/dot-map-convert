@@ -71,8 +71,36 @@ class PlaylotWorld(unittest.TestCase):
         self.assertNotIn("crop", I.world_spec(cfg, 0.3))
         self.assertIsNone(I.world_crop(cfg, 0.3))
 
+    def test_whole_is_default(self):
+        self.assertNotIn("region", I.config("t"))
+        self.assertEqual(I.config("t", whole=False)["region"], REGION)
+        doc = I.build(self.bsp, "t")
+        self.assertNotIn("crop", doc["world"])
+        self.assertEqual(len(doc["boxes"]), 2)   # the far box too: nothing is cut away
+        self.assertTrue(doc["unedited"])
+        self.assertNotIn("unedited", I.build(self.bsp, "t", whole=False))
+
+    def test_orig_variant_names_and_regen(self):
+        cfg = I.config("t", orig=True)
+        self.assertEqual(cfg["id"], "pgc_t_orig")
+        spec = I.world_spec(cfg, 0.0)
+        self.assertEqual(spec["pack"], "pg_world_t_orig")
+        _, regen = I.world_commands(self.bsp, cfg, spec, self.tmp, orig_max_side=1024)
+        self.assertIn("--orig-textures", regen)
+        self.assertEqual(regen[regen.index("--name") + 1], "t_orig")
+        self.assertEqual(regen[regen.index("--orig-max-side") + 1], "1024")
+        _, plain = I.world_commands(self.bsp, I.config("t"), I.world_spec(I.config("t"), 0.0), self.tmp)
+        self.assertNotIn("--orig-textures", plain)
+        self.assertIn("--no-omit", regen)              # the unedited map leaves nothing out
+        self.assertNotIn("--no-omit", plain)
+        _, kept = I.world_commands(self.bsp, I.config("t"), I.world_spec(I.config("t"), 0.0), self.tmp, no_omit=True)
+        self.assertIn("--no-omit", kept)
+
+    def test_orig_refuses_course(self):
+        self.assertEqual(I.main(["x", self.bsp, "t", "--out=" + self.out, "--orig", "--course", "--no-world"]), 2)
+
     def test_main_builds_cropped_pack(self):
-        rc = I.main(["x", self.bsp, "t", "--out=" + self.out, "--store=" + os.path.join(self.tmp, "store")])
+        rc = I.main(["x", self.bsp, "t", "--course", "--out=" + self.out, "--store=" + os.path.join(self.tmp, "store")])
         self.assertIn(rc, (0, 4), "regen exit code")
         doc = load(self.out)
         world = doc["world"]

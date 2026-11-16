@@ -45,14 +45,31 @@ DETAIL = re.compile(
 DETAIL_KEEP = re.compile(r"(^|/)(train00\d|(de_train_)?securityguard|watertower_\w+|speakercluster\w+|roof_dish\w+|gutter_drain\w+|dock_broken\w+|spoolwire|freightelevatorbutton\d*|rockcliff_cluster\w*|(furniture)?pipecluster\w*|combine_wire\d+|wall_wires\d|antenna\w*|du_antenna\w*|m33_antenna\w*|truss02[d-g]|de_train_truss02d|vent_(large|medium)_grill\w*|vent_medium_straight\w*|vent_cluster\d+|roof_vent\d+|wall_vent|vent001|lights_industrialcluster\w*|trashcluster\d+\w*|ceilingtruss_\w+|truss02h)(\.mdl)?$")
 
 
+# No-omission mode (`bsp.py regen --no-omit`, off by default): every placed model is mapped and placed, none is left out
+# as detail or sky dressing, and a model of the 3D sky room is moved out and scaled up with the room's faces instead of
+# dropped. For a map whose every asset must be accounted for (owner 2026-11-16: gm_fork's free variant maps all 241 models).
+NO_OMIT = False
+
+
+def set_no_omit(on=True):
+    global NO_OMIT
+    NO_OMIT = bool(on)
+
+
 def is_detail(model):
-    """True for a model left out on purpose (see DETAIL, bar DETAIL_KEEP); `is_skybox` models are a separate, silent case."""
+    """True for a model left out on purpose (see DETAIL, bar DETAIL_KEEP); `is_skybox` models are a separate, silent case.
+    Never true in no-omission mode."""
+    if NO_OMIT:
+        return False
     m = str(model or "").lower().replace("\\", "/")
     return not is_skybox(m) and bool(DETAIL.search(m)) and not DETAIL_KEEP.search(m)
 
 
 def is_skybox(model):
-    """True for a model that only dresses the sky; it is skipped silently, not reported unmapped."""
+    """True for a model that only dresses the sky; it is skipped silently, not reported unmapped. Never true in
+    no-omission mode."""
+    if NO_OMIT:
+        return False
     return bool(SKYBOX.search(str(model or "").lower().replace("\\", "/")))
 
 
@@ -232,6 +249,8 @@ FALLBACK_MIN_SIDE, FALLBACK_MAX_SIDE, FALLBACK_MAX_HEIGHT = 0.1, 4.0, 2.2   # me
 def _box_ok(model, size):
     """True when a packed model no stand-in fits is still a thing worth a size-correct neutral block: a prop-sized
     solid, not a decal, a hung light, a lattice or trim (`DETAIL`, `BOX_NOT`)."""
+    if NO_OMIT:
+        return max(size) > 0.0
     if is_detail(model) or BOX_NOT.search(_props.norm_model(model)):
         return False
     lo = min(size)
@@ -280,7 +299,7 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
         if p.get("solid"):
             rec["solid"] = p["solid"]
             _collide(rec, packed.get(p["model"]), p["origin"], p["yaw"], p.get("scale"), scale, y0)
-        if p["id"] == "rock" and packed.get(p["model"]) is None and UNMEASURED_DEBRIS.search(p["model"].lower()):
+        if not NO_OMIT and p["id"] == "rock" and packed.get(p["model"]) is None and UNMEASURED_DEBRIS.search(p["model"].lower()):
             continue
         size = sizes.get(p["model"])
         if size:
@@ -396,10 +415,14 @@ def _support_boxes(spots, packed, game_table, scale, y0, skip=frozenset()):
     return out
 
 
-def sky_room(bsp, room, props, used, scale, y0):
+def sky_room(bsp, room, props, used, scale, y0, moved=None):
     """`props` without the ones inside the 3D skybox room `room` ((lo, hi) in map units, `mesh.skybox_of`): a model built
     there at a sixteenth of the size is backdrop the sky draws, and placed in the world it would hang where it was compiled.
-    A model the map places only in that room is marked "skybox" in `used` (a coverage table) unless a row maps it."""
+    A model the map places only in that room is marked "skybox" in `used` (a coverage table) unless a row maps it.
+    In no-omission mode, with `moved` = (sky camera origin in map units, draw scale) as `mesh` moves the room's faces
+    (`Mesh.sky`), those props are kept, moved and scaled up the same way, and nothing is marked."""
+    if NO_OMIT and moved is not None:
+        return _sky_moved(props, room, moved, scale, y0)
     inside, outside = set(), set()
     for model, o, *_rest in _spots({"entities": [{"classname": e.get("classname", ""), "keys": e} for e in bsp.entities],
                                     "static_props": bsp.static_props()}):
@@ -412,6 +435,30 @@ def sky_room(bsp, room, props, used, scale, y0):
     lo = (room[0][0] * scale, room[0][2] * scale - y0, -room[1][1] * scale)
     hi = (room[1][0] * scale, room[1][2] * scale - y0, -room[0][1] * scale)
     return [p for p in props if not all(lo[a] <= p["at"][a] <= hi[a] for a in range(3))]
+
+
+def _sky_moved(props, room, moved, scale, y0):
+    """`props` with each one inside the sky room moved out as the room's faces are (`mesh.build`'s `g_sky`: the world
+    draws sky point q at (q - camera) * k), drawn k times larger and never solid."""
+    (cam, k) = moved
+    lo = (room[0][0] * scale, room[0][2] * scale - y0, -room[1][1] * scale)
+    hi = (room[1][0] * scale, room[1][2] * scale - y0, -room[0][1] * scale)
+    c = (cam[0] * scale, cam[2] * scale - y0, -cam[1] * scale)
+    out = []
+    for p in props:
+        if not all(lo[a] <= p["at"][a] <= hi[a] for a in range(3)):
+            out.append(p)
+            continue
+        q = dict(p)
+        q["at"] = [round((p["at"][a] - c[a]) * k - (y0 if a == 1 else 0.0), 4) for a in range(3)]
+        q["scale"] = round(float(p.get("scale") or 1.0) * k, 3)      # the runtime fits `size` first, then scales
+        if "box" in q:
+            q["box"] = [round(v * k, 3) for v in q["box"]]
+        q.pop("solid", None)
+        q.pop("collide", None)
+        q["sky3d"] = True
+        out.append(q)
+    return out
 
 
 def _shaped_placements(spots, shaped, scale, y0, boxed=frozenset(), packed=None):

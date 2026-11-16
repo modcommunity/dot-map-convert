@@ -1,5 +1,22 @@
 # name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour; an optional 8th column "fixed" ignores the measured size (a weapon header box is an idle-pose hull, not its shape) and uses the default w h d
 # PLAYLOT (2026-11-15): PLAYLOT map models no row named. Single cypresses and the pickup go to CC0 library models; the stock models whose size is not in the store (no game files here) get an own block of the size below. Combined models (autocombines, propper buildings, curbs, wallworm groups) are measured piece by piece into model_parts.tsv instead (bsp.py modelparts)
+# gm_fork no-omission (2026-11-16): the skybox, dock and rooftop models the default leaves out, and three wrong fits (a cooling tank was an extinguisher, a dome a ceiling lamp, a tractor tyre a flatbed truck). Picked with modelmap --only --no-omit, so no other map's pick moves.
+^crane_docks$	kenney_factory_kit_crane|ph_overhead_crane	4.4	25.3	19.6	box	8a6a20
+^crane_frame(_interior)?$	NONE	5.4	9.6	5.4	box	7a6a30
+^project_building0\d_skybox$	kenney_city_kit_commercial_building_\w|kenney_city_kit_industrial_building_\w	3.0	4.0	3.0	box	8a8070
+^row_	kenney_city_kit_commercial_building_\w|kenney_city_kit_suburban_building_\w|kenney_city_kit_industrial_building_\w	5.0	5.0	5.0	box	8a7060
+^refinery_03_skybox$|^coolingtank02$	dm_cooling_tank|sf_rusted_tank_storage_57be2e|sf_chemical_tank_63c001	2.2	7.8	2.0	cyl	9a9a90
+^dock0[12]_pole	NONE	0.32	4.0	0.32	cyl	5a4630
+^dock_bumper	NONE	0.6	9.0	15.0	box	3a3a3a
+^vent_large_	ph_modular_airduct_rectangular_01|dm_ductrun	1.5	1.5	2.5	box	8a8a8a
+^satellitedish02$	dm_roofdish	1.5	1.5	1.5	box	a0a0a0
+^prison_sprinkler001b$	dm_pipestraight	0.12	0.41	9.8	cyl	707070
+^chimneysmokestack_cluster01a$	kenney_city_kit_industrial_chimney_large|kenney_city_kit_industrial_chimney_medium	3.0	12.0	3.0	cyl	6a5a50
+^rooftopcluser09a$	dm_roofvent|ph_exterior_aircon_unit	2.0	1.5	2.0	box	8a8a8a
+^trackmarkers01$|^utilityconnecter002$	NONE	0.5	0.5	0.5	box	606060
+^dome004$	NONE	4.0	2.5	4.0	cyl	8a8a80
+^tire001a_tractor$	kenney_car_kit_wheel_tractor_back|ph_old_tyre	0.33	1.31	1.31	cyl	2a2a2a
+^control_lever01$|^crank$	NONE	0.3	1.0	0.3	box	5a5a5a
 italiancypress_a_0\d$	kenney_nature-kit_tree_tall(_dark)?$|kenney_nature-kit_tree_cone(_dark)?$	2.8	11.0	2.8	cyl	2f4a24
 ^civ_pickup$	kenney_car-kit_truck|kenney_car-kit_suv	4.3	1.8	1.6	box	6a6a60
 ^canal_dock0[23]a$	NONE	4.0	0.5	8.0	box	6a5440

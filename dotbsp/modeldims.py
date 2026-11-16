@@ -163,13 +163,16 @@ def cmd(args):
         new = [m for m in order if m not in old_rank and (wanted is None or m in wanted)]
         last = max((r[2] for r in old_rank.values()), default=0)
         with open(os.path.join(args.out, DIMS), "a", encoding="utf-8") as f:
-            for m in sorted(m for m in new if m in dims and m not in old_dims):
+            # a listed model the ranking already has but no size for (no header was read when it was ranked) is measured too
+            fill = [m for m in order if m in old_rank and wanted is not None and m in wanted]
+            for m in sorted(m for m in new + fill if m in dims and m not in old_dims):
                 lo, hi, src = dims[m]
                 f.write("%s\t%s\t%s\t%s\n" % (m, "\t".join("%.4f" % v for v in lo), "\t".join("%.4f" % v for v in hi), src))
         with open(os.path.join(args.out, RANKING), "a", encoding="utf-8") as f:
             for i, m in enumerate(new, last + 1):
                 f.write("%d\t%s\t%d\t%d\t%s\n" % (i, m, inst[m], len(maps[m]), (dims.get(m) or old_dims.get(m) or (0, 0, "none"))[2]))
-        print("modeldims: %d models added, %d with a size" % (len(new), sum(1 for m in new if m in dims or m in old_dims)))
+        print("modeldims: %d models added, %d with a size; %d ranked models given a size" % (
+            len(new), sum(1 for m in new if m in dims or m in old_dims), sum(1 for m in fill if m in dims and m not in old_dims)))
         return 0
     with open(os.path.join(args.out, DIMS), "w", encoding="utf-8") as f:
         f.write("# model<TAB>min x y z<TAB>max x y z (metres, Godot axes, from the model's origin)<TAB>source: packed (exact), header (idle-pose box) or addon (exact, loose addon content). bsp.py modeldims\n")

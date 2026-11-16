@@ -27,7 +27,7 @@ def safe(material):
     return re.sub(r"[^a-z0-9_.-]+", "_", reader.clean_material(material).lower())[:80] or "unnamed"
 
 
-def pak_material(pak, material):
+def pak_material(pak, material, max_side=0):
     """PNG-ready (w, h, px) of a material the map's own pakfile packs, or None. `pak` is {lowercase name: bytes}."""
     path = reader.clean_material(material).lower().replace("\\", "/")
     raw = pak.get("materials/%s.vmt" % path)
@@ -42,15 +42,16 @@ def pak_material(pak, material):
     if tex is None:
         return None
     try:
-        return vtf.read(tex, 512)
+        return vtf.read(tex, max_side)
     except Exception:
         return None
 
 
-def ship(doc, bsp, outdir, cache=None):
-    """Write the original textures of every surface of `doc` under `outdir`; sets `surface["orig"]`. Returns the record."""
+def ship(doc, bsp, outdir, cache=None, max_side=0):
+    """Write the original textures of every surface of `doc` under `outdir`; sets `surface["orig"]`. Returns the record.
+    `max_side` caps each texture's larger side (the largest mip that fits); 0 ships the full-size mip."""
     pak = bsp.read_pak([], only=(".vmt", ".vtf"))
-    cache = cache if cache is not None else vpk.TextureCache()
+    cache = cache if cache is not None else vpk.TextureCache(max_side=max_side)
     root = os.path.join(outdir, DIR)
     found, missing, written = {}, set(), {}
     for s in doc["surfaces"]:
@@ -58,7 +59,7 @@ def ship(doc, bsp, outdir, cache=None):
         if m not in found and m not in missing:
             name = safe(m)
             png = None
-            hit = pak_material(pak, m)
+            hit = pak_material(pak, m, max_side)
             src = "pak"
             if hit:
                 png = vtf.png(*hit)
@@ -77,7 +78,7 @@ def ship(doc, bsp, outdir, cache=None):
                 found[m] = rel
         if m in found:
             s["orig"] = found[m]
-    rec = {"internal_only": True, "textures": len(written), "from_pak": sum(1 for v in written.values() if v == "pak"),
+    rec = {"internal_only": True, "max_side": max_side, "textures": len(written), "from_pak": sum(1 for v in written.values() if v == "pak"),
            "from_base": sum(1 for v in written.values() if v == "base"), "missing": sorted(missing),
            "note": "The map's own textures (Valve and the map author's): for the internal original pack only; never publish or commit this directory."}
     doc["original_textures"] = rec

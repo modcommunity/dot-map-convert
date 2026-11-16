@@ -6,7 +6,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import origtex  # noqa: E402
+from dotbsp import origtex, vtf  # noqa: E402
 from test_vpk import vtf_rgba  # noqa: E402
 
 
@@ -44,6 +44,17 @@ class OrigTex(unittest.TestCase):
             self.assertNotIn("orig", doc["surfaces"][2])
             with open(os.path.join(d, doc["surfaces"][1]["orig"]), "rb") as f:
                 self.assertEqual(f.read(), b"PNGBASE")
+
+    def test_full_size_unless_capped(self):
+        # Two mips, smallest stored first: 4x4 then 8x8.
+        head = bytearray(vtf_rgba(8, 8)[:80])
+        head[56] = 2
+        data = bytes(head) + bytes((1, 2, 3, 255)) * 16 + bytes((200, 40, 40, 255)) * 64
+        self.assertEqual(vtf.read(data, 0)[:2], (8, 8))
+        self.assertEqual(vtf.read(data, 4)[:2], (4, 4))
+        pak = {"materials/w.vtf": data}
+        self.assertEqual(origtex.pak_material(pak, "w")[:2], (8, 8))
+        self.assertEqual(origtex.pak_material(pak, "w", 4)[:2], (4, 4))
 
     def test_only_orig_names(self):
         self.assertTrue(origtex.is_orig_name("bhop_amor_orig"))

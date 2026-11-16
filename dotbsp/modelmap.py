@@ -262,12 +262,19 @@ def cmd(args):
             if line and not line.startswith("#"):
                 c = line.split("\t")
                 rank.append((c[1], int(c[2])))
+    if getattr(args, "only", None):
+        # pick these models only and keep every other picks.tsv row as it is: a map's leftovers are mapped without
+        # moving any other map's pick. A listed model the ranking lacks counts once.
+        wanted = modeldims._listed(args.only)
+        have = dict(rank)
+        rank = [(m, have.get(m, 1)) for m in sorted(wanted)]
+    no_omit = bool(getattr(args, "no_omit", False))
     report = []
     rows, stat = [], {"library": 0, "own": 0, "skipped": 0, "parts": 0, "none": 0}
     instances = {k: 0 for k in stat}
     for model, n in rank:
         key = model[len("models/"):] if model.startswith("models/") else model
-        if standins.is_skybox(model) or standins.is_detail(model):
+        if not no_omit and (standins.is_skybox(model) or standins.is_detail(model)):
             stat["skipped"] += 1
             instances["skipped"] += n
             continue

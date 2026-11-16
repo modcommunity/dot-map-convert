@@ -48,7 +48,7 @@ def applied(rs):
         classes.treatment = orig
 
 
-def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None, crop=None, orig_textures=False):
+def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None, pbr_store=None, model_store=None, crop=None, orig_textures=False, orig_max_side=0):
     """Write the map at `out` (prefix); returns (manifest, coverage report, problems)."""
     with open(path, "rb") as f:
         bsp = reader.Bsp(path, data=f.read()).load()
@@ -84,7 +84,8 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
         props = [p for p in props if keep(p["at"])]
     sky = mesh.skybox_of(bsp)
     if sky is not None:
-        props = standins.sky_room(bsp, sky[2], props, rs.used["models"], scale, y0)
+        props = standins.sky_room(bsp, sky[2], props, rs.used["models"], scale, y0,
+                                  moved=(m.sky["camera"], m.sky["scale"]) if m.sky and m.sky.get("scale") else None)
     stairs(props, m)
     doc = mesh.write(m, out, credit=credit, name=name, extra=extra)
     outdir = os.path.dirname(os.path.abspath(out))
@@ -95,7 +96,7 @@ def build(path, name, sha, credit, out, rs, scale=units.VISUAL, y0=0.0, cat=None
                      model_store=os.path.abspath(model_store or os.path.join(outdir, os.pardir, "model-library")))
     if orig_textures:
         from . import origtex
-        origtex.ship(doc, bsp, outdir)
+        origtex.ship(doc, bsp, outdir, max_side=orig_max_side)
     doc["props"] = props
     loose.mark(doc["props"], bsp.entities, scale, y0)
     loose.hold(doc["breakables"], doc["props"], lambda mi: _model_box(bsp, mi), scale, y0)
@@ -173,6 +174,7 @@ def cmd(args):
     root = args.root or store.default_root()
     pbrmap.ENABLED = not getattr(args, "no_pbr", False)
     standins.PICKS_ON = not getattr(args, "no_models", False) and os.path.isfile(standins.PICKS)
+    standins.set_no_omit(getattr(args, "no_omit", False))
     try:
         rs = rules.RuleSet.build(addon=addon_dirs(args), game=args.game_rules, map_rules=args.map_rules)
         path, credit, name, sha = resolve(args.entry, root)
@@ -201,7 +203,8 @@ def cmd(args):
         doc, rep, problems = build(path, args.name or name, sha, credit, out, rs, scale=units.parse_scale(args.scale),
                                    y0=args.y0, cat=coverage.catalogue(args.catalogue), crop=_crop(args.crop),
                                    pbr_store=getattr(args, "pbr_store", None), model_store=getattr(args, "model_store", None),
-                                   orig_textures=getattr(args, "orig_textures", False))
+                                   orig_textures=getattr(args, "orig_textures", False),
+                                   orig_max_side=getattr(args, "orig_max_side", 0))
     except (ValueError, OSError) as e:
         print("regen: %s" % e, file=sys.stderr)
         return 1
