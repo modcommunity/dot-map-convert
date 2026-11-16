@@ -343,9 +343,22 @@ def _tri_area(a, b, c):
 _LIQUID = re.compile(r"WATER|SLIME|SLUDGE|(?<![A-Z])LAVA(?!TOR)")
 
 
-def _is_water(name, generic):
-    """A liquid surface (water, slime or lava): the runtime draws it with its liquid shader by name."""
-    return generic == "water" or bool(_LIQUID.search(name.upper()))
+def _is_water(name, generic, disp=False):
+    """A liquid surface (water, slime or lava): the runtime draws it with its liquid shader by name.
+
+    Source cannot make a displacement liquid, so a displacement named for water
+    (gm_bigisland's island/blend_sandwatersand) is a terrain blend: beach, not sea.
+    """
+    return not disp and (generic == "water" or bool(_LIQUID.search(name.upper())))
+
+
+def _water_underside(bsp, f, name, hit):
+    """A liquid face that faces down: vbsp's `$bottommaterial` copy of the water top, coplanar with it.
+
+    The runtime liquid shader draws without culling, so keeping both draws two overlapping
+    translucent sheets; the top alone already shows from below.
+    """
+    return _is_water(name, hit[0] if hit is not None else "", f[6] >= 0) and bsp.planes[f[0]][2] < -0.5
 
 
 SURF_TRANS = 0x10
@@ -466,6 +479,9 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
                 hit = tmap.lookup(classify(name))
                 if hit is not None and hit[0] == "invisible":
                     out.skipped["face:invisible"] += 1         # a decal or fog card drawn opaque is a slab
+                    continue
+                if _water_underside(bsp, f, name, hit):
+                    out.skipped["face:water_beneath"] += 1     # the liquid shader draws both sides of the top sheet
                     continue
                 in_sky = _sky_face(bsp, f, off, sky)
                 if in_sky:
@@ -594,7 +610,7 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
         hit = tmap.lookup(classify(name))
         if hit is not None:
             s.generic, s.tint = hit[0], (list(hit[1]) if hit[1] else None)
-        s.water = _is_water(name, s.generic)
+        s.water = _is_water(name, s.generic, disp)
         s.glass = None if s.water else glass_kind(s.generic, cls)
         if res is not None and not s.water and not sky3d and not (hit is not None and hit[0] in ("flat", "invisible")):
             _surface_props(s, res, name, flags)

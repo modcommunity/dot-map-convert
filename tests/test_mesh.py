@@ -40,6 +40,21 @@ class Liquids(unittest.TestCase):
             self.assertFalse(mesh._is_water(name, ""), name)
         self.assertTrue(mesh._is_water("dev/anything", "water"))
 
+    def test_water_underside_is_dropped(self):
+        # vbsp copies a water top as a coplanar face pointing down ($bottommaterial); the liquid
+        # shader draws both sides, so the copy would be a second translucent sheet over the first.
+        m = mesh.build(load(materials=("nature/water_canals01",)))
+        self.assertEqual(m.skipped["face:water_beneath"], 1)
+        nor = [v[1] for s in m.surfaces for v in s.verts]
+        self.assertEqual(len(nor), 20)
+        self.assertTrue(all(n[1] > -0.5 for n in nor))
+        self.assertEqual(mesh.build(load()).skipped["face:water_beneath"], 0)   # a solid floor keeps its underside
+
+    def test_a_water_blend_displacement_is_terrain(self):
+        # Source cannot make a displacement liquid; island/blend_sandwatersand is beach.
+        self.assertTrue(mesh._is_water("island/blend_sandwatersand", ""))
+        self.assertFalse(mesh._is_water("island/blend_sandwatersand", "", disp=True))
+
 
 class Build(unittest.TestCase):
     def test_box_is_twelve_triangles_wound_as_stored(self):
