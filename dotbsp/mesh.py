@@ -232,14 +232,14 @@ def _sky_face(bsp, f, off, sky):
 class Surface:
     __slots__ = ("model", "entity", "classname", "targetname", "material", "generic", "tint",
                  "colour", "texels", "water", "glass", "displacement", "collide", "sky3d", "chunk", "verts",
-                 "index", "_dedupe", "clusters", "page", "emissive", "uv2", "alpha", "props", "two_sided")
+                 "index", "_dedupe", "clusters", "page", "emissive", "uv2", "alpha", "props", "two_sided", "decal")
 
     def __init__(self, model, entity, classname, targetname, material):
         self.model, self.entity, self.classname, self.targetname = model, entity, classname, targetname
         self.material = material
         self.generic, self.tint, self.colour, self.texels = None, None, None, None
         self.water = self.displacement = self.collide = self.sky3d = False
-        self.glass = None
+        self.glass = self.decal = None
         self.chunk = self.clusters = None
         self.page, self.emissive = None, False
         self.props, self.two_sided = None, False
@@ -374,6 +374,12 @@ def glass_kind(generic, classname):
     if generic and (generic.startswith("glass") or generic in SEE_THROUGH):
         return generic
     return "glass" if classname in GLASS_CLASSES else None
+
+
+def decal_kind(generic):
+    """The decal kind (a generic id starting `decal_`, from `source_textures.tsv`) or None: a surface the
+    runtime draws alpha-blended over the face under it (parking lines, a painted sign, a fade to black)."""
+    return generic if generic and generic.startswith("decal_") else None
 
 
 import os as _os
@@ -534,6 +540,9 @@ def build(bsp, tmap=None, scale=_units.VISUAL, y0=0.0, classify=docboxes.classif
     n_glass = sum(1 for s in out.surfaces if s.glass)
     if n_glass:
         out.notes.append("%d glass surfaces (kinds %s)" % (n_glass, ", ".join(sorted({s.glass for s in out.surfaces if s.glass}))))
+    n_decal = sum(1 for s in out.surfaces if s.decal)
+    if n_decal:
+        out.notes.append("%d decal surfaces (kinds %s)" % (n_decal, ", ".join(sorted({s.decal for s in out.surfaces if s.decal}))))
     if out.translucent_unmapped:
         out.notes.append("translucent faces whose texture maps to no glass kind or water, drawn opaque (add a row to "
                          "source_textures.tsv): " + ", ".join("%s %d" % kv for kv in out.translucent_unmapped.most_common(12)))
@@ -620,7 +629,8 @@ def _extra_surface(surfaces, key, name, cls, tmap, classify, chunk, sky3d=False)
         hit = tmap.lookup(classify(name))
         if hit is not None:
             s.generic, s.tint = hit[0], (list(hit[1]) if hit[1] else None)
-        s.glass = glass_kind(s.generic, cls)
+        s.decal = decal_kind(s.generic)
+        s.glass = None if s.decal else glass_kind(s.generic, cls)
         s.chunk, s.sky3d = chunk, sky3d
         surfaces[key] = s
     return s
@@ -722,8 +732,9 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
         if hit is not None:
             s.generic, s.tint = hit[0], (list(hit[1]) if hit[1] else None)
         s.water = _is_water(name, s.generic, disp)
-        s.glass = None if s.water else glass_kind(s.generic, cls)
-        if res is not None and not s.water and not sky3d and not (hit is not None and hit[0] in ("flat", "invisible")):
+        s.decal = None if s.water else decal_kind(s.generic)
+        s.glass = None if s.water or s.decal else glass_kind(s.generic, cls)
+        if res is not None and not s.water and not s.decal and not sky3d and not (hit is not None and hit[0] in ("flat", "invisible")):
             _surface_props(s, res, name, flags)
         s.displacement = disp
         s.collide = disp and not sky3d
@@ -731,7 +742,7 @@ def _add_face(bsp, f, name, mi, ei, cls, targetname, off, surfaces, tmap, classi
         s.chunk = chunk
         s.page, s.emissive = page, emissive
         surfaces[key] = s
-    if trans is not None and not s.water and not s.glass:
+    if trans is not None and not s.water and not s.glass and not s.decal:
         trans[classify(name)] += 1
     td = int(ti[17])
     tw = th = 1
@@ -845,6 +856,8 @@ def write(mesh, prefix, credit=None, name=None, extra=None):
                 rec[k] = True
         if s.glass:
             rec["glass"] = s.glass
+        if s.decal:
+            rec["decal"] = s.decal
         if s.two_sided:
             rec["two_sided"] = True
         if s.props:
@@ -911,7 +924,7 @@ def read(prefix):
     for rec in doc["surfaces"]:
         s = Surface(rec["model"], rec["entity"], rec["classname"], rec.get("targetname", ""), rec["material"])
         s.generic, s.water, s.displacement = rec.get("generic"), rec.get("water", False), rec.get("displacement", False)
-        s.glass = rec.get("glass")
+        s.glass, s.decal = rec.get("glass"), rec.get("decal")
         s.collide, s.sky3d, s.tint, s.colour = rec.get("collide", False), rec.get("sky3d", False), rec.get("tint"), rec.get("colour")
         s.texels, s.chunk = rec.get("texels"), rec.get("chunk")
         n = rec["vertex_count"]

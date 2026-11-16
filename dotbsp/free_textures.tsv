@@ -28,6 +28,12 @@ water	generated	Gamespice cutout_texture	drawn in code by addons/dot_map/bsp/dot
 snow	snow	ambientCG	https://ambientcg.com/view?id=Snow004	Lennart Demes and contributors	CC0-1.0
 flat	generated	Gamespice cutout_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (cutout_texture)	Gamespice (generated)	CC0-1.0
 foliage_card	generated	Gamespice cutout_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (cutout_texture)	Gamespice (generated)	CC0-1.0
+decal_lines	generated	Gamespice decal_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (decal_texture)	Gamespice (generated)	CC0-1.0
+decal_graffiti	generated	Gamespice decal_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (decal_texture)	Gamespice (generated)	CC0-1.0
+decal_sign	generated	Gamespice decal_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (decal_texture)	Gamespice (generated)	CC0-1.0
+decal_fade	generated	Gamespice decal_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (decal_texture)	Gamespice (generated)	CC0-1.0
+decal_radial	generated	Gamespice decal_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (decal_texture)	Gamespice (generated)	CC0-1.0
+decal_patch	generated	Gamespice decal_texture	drawn in code by addons/dot_map/bsp/dot_map_bsp_mesh.gd (decal_texture)	Gamespice (generated)	CC0-1.0
 rust	rust	ambientCG	https://ambientcg.com/view?id=Rust009	Lennart Demes and contributors	CC0-1.0
 asphalt	asphalt	ambientCG	https://ambientcg.com/view?id=Asphalt012	Lennart Demes and contributors	CC0-1.0
 tile_checker	tile_checker	ambientCG	https://ambientcg.com/view?id=Tiles074	Lennart Demes and contributors	CC0-1.0

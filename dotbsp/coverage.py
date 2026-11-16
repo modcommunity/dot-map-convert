@@ -116,7 +116,7 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
         # a translucent, cut-out or additive material drawn as a solid slab: add a materials.tsv row or fix the derivation
         "surfaces_opaque": sorted({s["material"] for s in doc.get("surfaces", [])
                                    if {"translucent", "alpha_test", "additive"} & set(s.get("material_flags", ()))
-                                   and not s.get("glass") and not s.get("water")}),
+                                   and not s.get("glass") and not s.get("water") and not s.get("decal")}),
     }
     if in_source:    # only when present, so a map without any keeps its report byte for byte
         lists["links_dangling"] = in_source

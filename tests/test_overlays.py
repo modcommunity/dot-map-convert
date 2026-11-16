@@ -36,9 +36,9 @@ def _dprp(origin=(32.0, 32.0, 64.0), yaw=0.0, kind=1):
     return data + struct.pack("<i", 1) + prop
 
 
-def load(**kw):
+def load(mats=MATS, **kw):
     ents = [{"classname": "worldspawn", "detailmaterial": "detail/detailsprites"}]
-    return reader.Bsp("synth.bsp", data=synth.build(faces=True, materials=MATS, box_material=[0], entities=ents,
+    return reader.Bsp("synth.bsp", data=synth.build(faces=True, materials=mats, box_material=[0], entities=ents,
                                                     **kw)).load()
 
 
@@ -95,6 +95,12 @@ class Build(unittest.TestCase):
             uvs = [v[2] for v in s.verts]
             self.assertEqual((min(u for u, _ in uvs), max(u for u, _ in uvs)), (0.0, 1.0))
             self.assertEqual(len(s.index), 6)
+
+    def test_decal_row_draws_a_decal_not_glass(self):
+        m = mesh.build(load(mats=(MATS[0], "FORK/PARKINGLINES01A"), extra_lumps={45: _overlay()}), scale=1.0, overlays=True)
+        (s,) = _of(m, "info_overlay")
+        self.assertEqual((s.decal, s.glass), ("decal_lines", None))
+        self.assertIn("1 decal surfaces (kinds decal_lines)", m.notes)
 
     def test_overlay_cut_to_its_face(self):
         m = mesh.build(load(extra_lumps={45: _overlay(origin=(64.0, 32.0, 64.0))}), scale=1.0, overlays=True)

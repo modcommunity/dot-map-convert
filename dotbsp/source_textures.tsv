@@ -9,6 +9,8 @@
 # `invisible` faces are left out of the mesh (decal overlays, fog cards, screens: drawn opaque they are slabs).
 # `foliage_card`, `fence`, `grate`, `bars`, `ladder` are alpha-cutout cards and `shield` an additive energy sheet: the original's alpha is not
 # shipped, so each is drawn as a generated cutout pattern in the see-through kinds (DotMapBspMesh.GLASS_LOOKS), never as an opaque slab.
+# `decal_*` (lines, graffiti, sign, fade, radial, patch) are decals: drawn alpha-blended over the face under them, a little
+# toward the camera, from a pattern drawn in code (DotMapBspMesh.DECAL_LOOKS) or the map's own texture in an internal pack.
 TOOLS/*	flat
 DEV/*	flat	0.8,0.8,0.82
 EFFECTS/*	flat
@@ -511,11 +513,11 @@ EFFECTS/*BEAM*	shield
 # --- overlays drawn only with `regen --overlays` (an overlay takes its row's look, never its translucent material's)
 OVERLAYS/DARKEDGE	glass_frosted	0.25,0.25,0.25
 # alpha decals, mostly see-through (lines, graffiti, a sign, a fade card, a cliff-edge blend): drawn opaque each is a slab
-FORK/CLIFF04A_OVERLAY	invisible
-FORK/PARKINGLINES01A	invisible
-FORK/SKYBOXFADE	invisible
-OVERLAYS/EP2_GRAFFITI01	invisible
-OVERLAYS/SIGN_SILO03	invisible
+FORK/CLIFF04A_OVERLAY	decal_patch
+FORK/PARKINGLINES01A	decal_lines
+FORK/SKYBOXFADE	decal_radial
+OVERLAYS/EP2_GRAFFITI01	decal_graffiti
+OVERLAYS/SIGN_SILO03	decal_sign
 *DETAILSPRITES*	foliage_card
 
 # --- overlays and cards that are nothing as a surface
@@ -558,7 +560,7 @@ SPONGEBOB/BOX*	wood_planks
 */CLIFF04C*	rock
 NATURE/CANAL_REEDS*	foliage_card
 PROPS/PAPERMAP*	flat	0.85,0.8,0.7
-FORK/BLACKFADE	flat	0.05,0.05,0.05
+FORK/BLACKFADE	decal_fade
 # --- gm_balkans (Lg), gm_vyten (Jake, Sir Zacko): terrain blends, fog sprite, stairs, small props
 */BLEND_TERRE0*	mud
 */BLEND_HERBE0*	grass

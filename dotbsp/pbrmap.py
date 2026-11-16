@@ -202,7 +202,7 @@ def seen(roots):
                     a[i] += c
                 a[3] += 1
             for name, t in kinds.items():
-                if t["kind"] == "generated" and t["generic"] in SEE_THROUGH or t["generic"] in SEE_THROUGH:
+                if t["generic"] in SEE_THROUGH or t["generic"].startswith("decal_"):
                     skip.add(name)
                     continue
                 a = acc.get(name)
