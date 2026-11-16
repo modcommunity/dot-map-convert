@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """Converts a Source 1 community sandbox .bsp (VBSP 19/20) into a game-playlot map document.
 
-    tools/import_bsp.py <map.bsp> <config-name> [--out=maps/<id>.json]
+    tools/import_bsp.py <map.bsp> <config-name> [--out=maps/<id>.json] [--no-world] [--store=<lossless store>]
+
+Two outputs. The document (maps/<id>.json) is boxes: what collides, what the survey reads, and the look of a game
+without the pack. The WORLD PACK (maps/world/pg_world_<name>/<id>.{json,bin}, plus textures/, credits.json, CREDITS.md and
+<id>.coverage.json) is the map drawn: dot-map's mesh route (`bsp.py store`, then `bsp.py regen` at this scale and
+the config's region as its crop), with the faces, displacements, free (CC0) textures, model stand-ins, sky, sun, fog
+and lightmap that route makes. The document names it in `world` (README, "PLAYLOT world"); --no-world skips the
+regen (the document still names the pack, and a game draws the boxes while the pack is not there).
 
 `CONFIGS` below says, per map, its id, name, author, page, how its author's textures become the
 game's materials, where the spawn is and what is dropped. The reader (bsp_read.py) and the material
@@ -18,7 +25,7 @@ What it does, and why each choice:
   horizontal axis, each as tall as the brush is at the slab's middle, so a ramp becomes a flight
   of 0.5 m risers, which a player climbs (the game's climb limit is 1.035 m).
 - Axes: Source is Z-up, godot is (x, z, -y). Scale: 1 unit = 0.01905 m, the family's.
-- Textures are NOT carried. A brush's surface comes from dot-map's shared list
+- The BOXES carry no textures (the world pack does). A brush's surface comes from dot-map's shared list
   (dot-map-convert/dotbsp/source_textures.tsv, a new texture goes there and `bsp.py unmapped <bsp>` lists
   what it misses); GAME_MATERIAL turns the list's generic ids into this game's materials and
   tints, drawn over Kenney's CC0 Prototype Textures grid like every other map.
@@ -51,6 +58,7 @@ from dotbsp import terrain  # noqa: E402  (displacement ground as tilted slabs)
 S = 0.01905
 SLAB = 28.0     # source units: ~0.53 m, a slope's riser
 MIN_SIDE = 0.04  # metres: a brush thinner than this in every direction is a bevel sliver, not a wall
+WORLD_GAME = "playlot"  # the lossless store's game folder for these maps' sources
 
 
 def brush_boxes(bsp, index, slab=None):
@@ -768,10 +776,80 @@ def build(bsp_path, name):
         "spawn": [round(sp[0] * S, 3), 1.0, round(-sp[1] * S, 3)],
         "spawn_yaw": round(sp_yaw - 90.0, 1),
         "boxes": boxes, "declared": cfg.get("declared", []),
+        "world": world_spec(cfg, y_off),
     }
     sourceframe.record(doc, bsp_path, S, (0.0, y_off, 0.0))
     print("%s: %d boxes (%d brushes cut into slabs, %d tool brushes dropped)" % (cfg["id"], len(boxes), slabbed, dropped))
     return doc
+
+
+def world_pack(map_id):
+    """The world pack's folder name under world/: `pg_world_<name>`, the map id without its `pgc_` prefix."""
+    return "pg_world_" + (map_id[4:] if map_id.startswith("pgc_") else map_id)
+
+
+def world_crop(cfg, y_off):
+    """The config's `region` as dot-map's regen --crop (x0,z0,x1,z1,ymin,ymax) in the pack's frame, or None for the whole
+    map. The pack is regenerated at y0 = 0, so only the height moves: by the spawn shift the boxes were given."""
+    region = cfg.get("region")
+    if not region:
+        return None
+    (x0, x1), (y0, y1), (z0, z1) = region
+    return [x0, z0, x1, z1, round(y0 + y_off, 5), round(y1 + y_off, 5)]
+
+
+def world_spec(cfg, y_off):
+    """doc["world"]: the mesh-route pack that draws this map, and where it stands over the boxes (README, "PLAYLOT world")."""
+    spec = {"pack": world_pack(cfg["id"]), "metres_per_unit": S, "offset": [0.0, round(-y_off, 5), 0.0]}
+    crop = world_crop(cfg, y_off)
+    if crop is not None:
+        spec["crop"] = crop
+    return spec
+
+
+def credit_of(cfg):
+    """(author, page) for the store entry, from the config's author and `source` ("<map>, <url>")."""
+    page = cfg["source"].split(", ", 1)[1] if ", " in cfg["source"] else cfg["source"]
+    return cfg["author"], page
+
+
+def world_commands(bsp_path, cfg, spec, root, store_root=None):
+    """The two bsp.py runs that write the world pack: store the source (the regen reads only the lossless store), then
+    regen it through the mesh route at this adapter's scale and the region's crop into <doc dir>/world/<pack>/<id>."""
+    bsp_py = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(docboxes.__file__))), "bsp.py")
+    author, page = credit_of(cfg)
+    # By hash, not <game>/<name>: a map of the same name stored from another game would take the plain key.
+    key = sourceframe.file_sha256(bsp_path)
+    rootargs = ["--root", store_root] if store_root else []
+    stores = os.path.join(root, "world", ".stores")
+    store = [sys.executable, "-P", bsp_py, "store", bsp_path, "--game", WORLD_GAME, "--author", author, "--page", page,
+             "--licence", "none stated", "--no-share-check", "credited with removal on request"] + rootargs
+    regen = [sys.executable, "-P", bsp_py, "regen", key, "--out", os.path.join(root, "world", spec["pack"], cfg["id"]),
+             "--scale", repr(spec["metres_per_unit"]), "--y0", "0",
+             "--pbr-store", os.path.join(stores, "pbr-library"), "--model-store", os.path.join(stores, "model-library")] + rootargs
+    if spec.get("crop"):
+        regen.append("--crop=" + ",".join(repr(float(v)) for v in spec["crop"]))
+    return store, regen
+
+
+def build_world(bsp_path, doc, cfg, root, store_root=None):
+    """Runs the mesh route for one map; returns the regen's exit code (0 shippable, 4 a licence problem, else failed)."""
+    import subprocess
+    store, regen = world_commands(bsp_path, cfg, doc["world"], root, store_root)
+    r = subprocess.run(store, stdout=subprocess.DEVNULL)
+    if r.returncode != 0:
+        print("world: storing %s failed (exit %d)" % (bsp_path, r.returncode), file=sys.stderr)
+        return r.returncode
+    r = subprocess.run(regen)
+    print("world: %s exit %d" % (doc["world"]["pack"], r.returncode))
+    return r.returncode
+
+
+def credit_world(doc, cfg):
+    """With the pack drawn the map wears free textures and stand-ins, not the box grid: say so."""
+    doc["attribution"] = ("Converted from %s by %s. Drawn from the map's own geometry with free (CC0) textures and "
+                          "stand-in models, listed in its world pack's credits; the author's textures and models are not carried. "
+                          "The author can have this conversion removed: contact %s." % (cfg["source"], cfg["author"], REMOVAL_CONTACT))
 
 
 def main(argv):
@@ -781,10 +859,18 @@ def main(argv):
         return 2
     doc = build(args[0], args[1])
     out = next((a[6:] for a in argv if a.startswith("--out=")), os.path.join(HERE, "..", "maps", doc["id"] + ".json"))
+    # The game reads the pack from beside the document (its map scan does not recurse into world/).
+    root = os.path.dirname(os.path.abspath(out))
+    rc = 0
+    if "--no-world" not in argv:
+        rc = build_world(args[0], doc, CONFIGS[args[1]], root, next((a[8:] for a in argv if a.startswith("--store=")), None))
+    # The attribution follows the pack that is there, so a --no-world re-import of a map with a pack keeps it.
+    if os.path.isfile(os.path.join(root, "world", doc["world"]["pack"], doc["id"] + ".json")):
+        credit_world(doc, CONFIGS[args[1]])
     with open(out, "w") as f:
         f.write(json.dumps(doc, indent=1) + "\n")
     print("wrote", out)
-    return 0
+    return rc
 
 
 if __name__ == "__main__":

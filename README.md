@@ -116,6 +116,26 @@ One JSON object. Map units and map axes throughout (Z up, 1 unit = 0.01905 m, Go
 
 The adapters in `adapters/` convert a map into each game's own document. A map repository (for example fc-dm-maps or zombie-zone-maps) keeps its data and a thin launcher that calls into this converter.
 
+### PLAYLOT world
+
+`adapters/playlot-maps/import_bsp.py <map.bsp> <config>` writes two things into the maps repository. The first is `maps/<id>.json`, the box document. Its boxes are what collides, and they are drawn only when the second output is missing. The second is the world pack, `maps/world/pg_world_<name>/` beside the document (`<name>` is the id without `pgc_`), which is the map as drawn. The pack comes from the mesh route: `bsp.py store` and then `bsp.py regen`. It holds `<id>.json` and `<id>.bin` (`dot-bsp-mesh` v1), `textures/`, `credits.json`, `CREDITS.md` and `<id>.coverage.json`. The pack contains the map's faces and displacements, free (CC0) textures, model stand-ins, `environment` (sky, sun, fog) and the lightmap. The PBR sets and models it points at are written once, under `maps/world/.stores/{pbr,model}-library`. Pass `--no-world` to skip the regen and `--store=<dir>` to choose the lossless store (the default is `$DOTBSP_STORE`).
+
+The document names the pack in a top-level `world` key:
+
+```json
+"world": {"pack": "pg_world_boreas", "metres_per_unit": 0.01905, "offset": [0.0, -5.123, 0.0],
+          "crop": [-148.9, 96.2, -38.9, 186.0, -2.877, 60.123]}
+```
+
+| Key | Meaning |
+| --- | --- |
+| `pack` | the folder under `world/` beside the document; the manifest is `<doc dir>/world/<pack>/<id>.json` and its mesh `<id>.bin` |
+| `metres_per_unit` | the scale the pack was made at; it must equal the manifest's `units.metres_per_unit`, otherwise draw the boxes |
+| `offset` | metres to add to a pack point to land in the document's frame. The pack is regenerated at `y0 = 0`, so this is the importer's spawn shift undone: `[0, -y_off, 0]` |
+| `crop` | optional: the config's `region` in the pack's frame (`x0,z0,x1,z1,ymin,ymax`), as passed to `regen --crop`. Faces, props and entities centred outside it are left out, just as boxes are |
+
+A game draws the pack in place of the box meshes with `DotMapDrawnWorld.attach(parent, mesh, {"transform": Transform3D(Basis.IDENTITY, offset), ...})` and keeps the boxes' collision. When the pack is missing or will not read, or its scale differs, the game draws the boxes. Once the pack exists, the document's `attribution` names the free textures and stand-ins instead of the box grid.
+
 ## Credits and removal
 
 Converted maps keep their authors' credit and licence; each map's `CREDITS.md` lists them. If you made one of these maps and want it removed, open an issue.
