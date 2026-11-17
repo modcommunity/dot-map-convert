@@ -1473,6 +1473,11 @@ def wire_size(doc):
     return len(zlib.compress(json.dumps(doc, separators=(",", ":")).encode()))
 
 
+def _snap(v, step):
+    """v on a grid of `step` metres, as a float without binary noise."""
+    return round(round(v / step) * step, 2)
+
+
 def fit_wire(doc, budget, log=print):
     """Cuts the smallest unprotected boxes until the document deflates to `budget` bytes or fewer (--max-wire); returns how many were cut.
 
@@ -1480,13 +1485,22 @@ def fit_wire(doc, budget, log=print):
     detailed map under it (gm_villa: 5500 boxes are 88 KB deflated). Boxes are rounded to centimetres first, then
     the box cap (`cap_boxes`, so floors, stairs, door frames and the ground under anchors stay and lost reach is
     restored) is run to the largest count that fits, found by bisection on the cut count."""
-    for b in doc["boxes"]:
-        b["at"] = [round(v, 2) for v in b["at"]]
-        b["size"] = [round(max(v, 0.01), 2) for v in b["size"]]
     start = wire_size(doc)
-    if start <= budget:
-        return 0
-    keep = cap_protected(doc)
+    # Centimetres first; only when the protected boxes alone are over budget (a floor-heavy map such as gm_villa:
+    # 60665 B against 57000 with every cuttable box gone) the grid goes to 5 cm, then 10 cm, which deflates much
+    # better. Logged, and "STILL OVER" below still fails loudly when even that is not enough.
+    for step in (0.01, 0.05, 0.1):
+        for b in doc["boxes"]:
+            b["at"] = [_snap(v, step) for v in b["at"]]
+            b["size"] = [max(_snap(v, step), 0.01) for v in b["size"]]
+        if wire_size(doc) <= budget:
+            return 0
+        keep = cap_protected(doc)
+        base = dict(doc)
+        base["boxes"] = [b for i, b in enumerate(doc["boxes"]) if i in keep]
+        if wire_size(base) <= budget or step == 0.1:
+            break
+        log("wire budget: the protected boxes alone are %d bytes (budget %d) at %g m, trying a coarser grid" % (wire_size(base), budget, step))
     boxes = doc["boxes"]
     order = sorted((i for i in range(len(boxes)) if i not in keep), key=lambda i: (boxes[i]["size"][0] * boxes[i]["size"][1] * boxes[i]["size"][2], i))
     base = dict(doc)

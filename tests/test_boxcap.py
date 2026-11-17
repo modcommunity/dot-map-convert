@@ -232,6 +232,29 @@ class Wire(unittest.TestCase):
         self.assertIn(4.0, [b["size"][0] for b in d["boxes"]])
         self.assertLess(len(d["boxes"]), 801)
 
+    def test_protected_floors_over_budget_coarsen_the_grid(self):
+        import random
+        r = random.Random(7)
+        floors = [box(x, x + 1.0 + r.randint(0, 40) / 100, -0.2, 0, z, z + 1.0 + r.randint(0, 40) / 100) for x in range(0, 60, 3) for z in range(0, 60, 3)]
+        for i, b in enumerate(floors):
+            b["at"] = [round(v + r.randint(0, 99) / 100, 2) for v in b["at"]]
+        d = doc_of(floors)
+        fine = copy.deepcopy(d)
+        D.fit_wire(fine, 1, log=lambda m: None)
+        coarse_floor = D.wire_size(fine)
+        probe = copy.deepcopy(d)
+        for b in probe["boxes"]:
+            b["at"] = [round(v, 2) for v in b["at"]]
+            b["size"] = [round(v, 2) for v in b["size"]]
+        cm = D.wire_size(probe)
+        self.assertLess(coarse_floor, cm)
+        budget = (cm + coarse_floor) // 2
+        out = []
+        D.fit_wire(d, budget, log=out.append)
+        self.assertLessEqual(D.wire_size(d), budget)
+        self.assertTrue(any("coarser grid" in m for m in out), out)
+        self.assertEqual(len(d["boxes"]), len(floors))
+
     def test_under_budget_only_rounds(self):
         d = doc_of([box(0, 4.0004, -0.2, 0, 0, 4)])
         D.fit_wire(d, 10 ** 6, log=lambda m: None)
