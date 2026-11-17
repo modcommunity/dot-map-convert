@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Turn a Source .bsp into an importable Airdrift map: mesh, textures, baked light, zones.
 
-    tools/bsp_import.py ../inspirations/g2gfast/surf_kitsune.bsp maps/imported --id surf_kitsune
+    tools/bsp_import.py ../inspirations/airdrift/surf_kitsune.bsp maps/imported --id surf_kitsune
 
 Writes into <out>/<id>/:
 

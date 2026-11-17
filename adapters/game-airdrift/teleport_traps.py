@@ -2,7 +2,7 @@
 """List teleport destinations that sit beside a door only a map's own logic opens.
 
     tools/teleport_traps.py [--near 400] [--all] <map.bsp>...
-    tools/teleport_traps.py ../inspirations/g2gfast/*.bsp      # the survey of every source map
+    tools/teleport_traps.py ../inspirations/airdrift/*.bsp      # the survey of every source map
 
 [b]This importer runs no outputs[/b], so a `func_door` that only a button (or any other entity's
 output) opens stays shut for good. Behind one of those is a trap if a `trigger_teleport` sends

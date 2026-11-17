@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Count the stock models imported maps place but cannot draw (step 5 of the stock-texture work).
 
-    tools/stock_props_survey.py [bsp-dir]        # default ../../inspirations/g2gfast
+    tools/stock_props_survey.py [bsp-dir]        # default ../../inspirations/airdrift
 
 A stock model is one the map's pakfile did not carry. The importer counts it and draws
 nothing (docs/imported-maps.md, Static props). This ranks them by placements, says how many
@@ -62,7 +62,7 @@ def stock_standins_why(base):
 
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
-    src = sys.argv[1] if len(sys.argv) > 1 else os.path.join(here, "..", "..", "inspirations", "g2gfast")
+    src = sys.argv[1] if len(sys.argv) > 1 else os.path.join(here, "..", "..", "inspirations", "airdrift")
     count, solid = collections.Counter(), collections.Counter()
     maps = collections.defaultdict(set)
     for f in sorted(os.listdir(src)):
