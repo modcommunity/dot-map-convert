@@ -1,4 +1,33 @@
 # name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour; an optional 8th column "fixed" ignores the measured size (a weapon header box is an idle-pose hull, not its shape) and uses the default w h d
+# Valve debris, shop and office models (2026-11-17): own CC0 models in tools/models/debris_goods.py replace bad fits (a drive tower as a box, rubble as Kenney rocks, rotting produce as Kenney food, a car battery as a sports car, a hanging shop light as a flat troffer, a chiller and plotter as plain boxes)
+^harddrive02$	^dm_drivecase$	0.37	0.38	0.14	box	b0aea0
+^light_shop2?$	^dm_shoplight$	1.24	0.82	0.29	box	d0d0c8
+^ceiling_light$	^dm_ceilinglantern$|^dm_lightdisc$	0.15	0.17	0.15	cyl	3a3836
+^concrete_debris\d+pile	^dm_rubblepile$|^dm_rubbleheap$	2.4	0.8	2.4	box	8a8984
+^(concrete_debris\d+barricade|plaster_floorpile)	^dm_rubbleheap$|^dm_rubblepile$	1.1	1.2	2.4	box	8a8984
+^concrete_section\d+floor	^dm_concreteslab$	1.22	0.15	1.22	box	9a9890
+^concrete_section\d+wall	^dm_concretewall$	0.3	2.4	2.4	box	9a9890
+^garbage256_composite	^dm_rubbish_pile$|^dm_trashcluster$	2.0	0.9	1.8	box	303438
+^food_pile\d	^dm_producepile$|^dm_producespread$	0.63	0.38	1.18	box	c07030
+^car_battery\d	^dm_carbattery$	0.18	0.2	0.3	box	202024
+^ibeam\d	^dm_ibeam$	0.15	0.3	2.4	box	6a4028
+^(prison|hospital)_shelf\d	^dm_wallshelf$	0.95	0.39	0.37	box	737876
+^prison_metalbed	^dm_metalbed$	0.8	0.55	2.0	box	60666a
+^shoe\d	^dm_shoe$	0.25	0.19	0.12	box	52341c
+^pushbroom$	^dm_pushbroom$	0.77	0.51	1.49	box	9a6a3c
+^tv_plasma$	^dm_plasmatv$	0.13	0.72	1.14	box	101012
+^industriallight\d	^dm_industriallamp$	0.56	0.52	0.56	cyl	526052
+^grocerystorechiller\d	^dm_grocerychiller$	0.91	1.85	2.77	box	d8dcde
+^plotter$	^dm_plotter$	0.9	1.1	0.7	box	d0d0cc
+^dollar$	^dm_cashbundle$	0.16	0.03	0.08	box	8c9a78
+^filecabinet02$	^dm_filecabinetlow$	0.63	0.58	0.41	box	858a85
+^trappropeller_engine$	^dm_propellerengine$	0.51	0.64	0.53	box	733a2c
+^prodcratesa$	^dm_cratestack$	2.96	2.0	2.06	box	9a7248
+^moneypallet$	^dm_moneypallet$	1.2	1.23	1.2	box	809a70
+^caseofbeer\d	^dm_beercase$	0.33	0.21	0.23	box	1a4088
+^boxes_garage_lower$	^dm_boxstack$	1.33	1.23	1.29	box	b8905c
+^exit_(wall|ceiling)$	^dm_exitsign$	0.12	0.26	0.42	box	30b050
+^jar\d	^dm_labjar$	0.12	0.2	0.12	cyl	b0d0cc
 # PLAYLOT (2026-11-15): PLAYLOT map models no row named. Single cypresses and the pickup go to CC0 library models; the stock models whose size is not in the store (no game files here) get an own block of the size below. Combined models (autocombines, propper buildings, curbs, wallworm groups) are measured piece by piece into model_parts.tsv instead (bsp.py modelparts)
 # gm_fork no-omission (2026-11-16): the skybox, dock and rooftop models the default leaves out, and three wrong fits (a cooling tank was an extinguisher, a dome a ceiling lamp, a tractor tyre a flatbed truck). Picked with modelmap --only --no-omit, so no other map's pick moves.
 # gm_fork placeholders (2026-11-16): the dock piles, fenders, crane tower, rooftop plant, dome, flue row, sprinkler run, cross-arm, track marker and lever had only a generated block; each now has its own CC0 Blender model sized to the original (tools/models/harbour_rooftop.py). rooftopcluser09a is a 12 m rooftop plant cluster, not one air conditioner drawn 15.8 m long.
