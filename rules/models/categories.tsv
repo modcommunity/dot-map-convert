@@ -28,6 +28,19 @@
 ^boxes_garage_lower$	^dm_boxstack$	1.33	1.23	1.29	box	b8905c
 ^exit_(wall|ceiling)$	^dm_exitsign$	0.12	0.26	0.42	box	30b050
 ^jar\d	^dm_labjar$	0.12	0.2	0.12	cyl	b0d0cc
+# Wall fixtures, racks, rails and lift (2026-11-17, second batch): own CC0 models in tools/models/detail_fixtures.py. The door keypad, prison wall bracket and wall pipe runs were left out as detail (now kept, standins.DETAIL_KEEP); the de_nuke cab glass was a generated box; the freight lift was a Kenney cemetery gate, the overhead line pole a 2 m Kenney column, the alley and stair handrails and the 25 m canal railing Kenney fences, the wooden shelving and pallet rack Kenney bookcases, the plank window walls a Kenney factory window. Kenney is CC0 and stays allowed; these were shape misfits.
+^keypad$	^dm_keypad$	0.03	0.22	0.125	box	9a9c98
+^prison_bracket\d	^dm_wallbracket$	0.095	1.02	1.26	box	4a4844
+^interiorpipecluster	^dm_wallpiperun$|^dm_wallpipebend$|^dm_pipecluster$	1.18	3.52	0.23	cyl	707070
+^truck_nuke_glass$	^dm_cabglass$	1.57	0.65	1.22	box	8a9aa8
+^freightelevator$	^dm_freightelevator$	2.78	3.31	3.28	box	555a5a
+^pole_448connection	^dm_catenarypole$	0.32	8.55	0.83	box	4a524e
+^handrail04_doublerise	^dm_handraildoublerise$	0.05	3.23	3.84	box	707878
+^handrail_alley	^dm_handraillong$|^dm_handrail$	0.04	0.76	4.95	box	707878
+^canal_bridge_railing02$	^dm_bridgerailing$	0.59	0.78	25.2	box	7a7870
+^shelves_wood$	^dm_woodshelves$	0.64	1.8	2.46	box	6a4a30
+^warehouse_shelf003$	^dm_palletrack$	1.31	2.45	3.06	box	2a4a8a
+^woodwall030b_window\d	^dm_woodwallwindow$|^dm_woodwallwindowwide$	1.07	1.22	0.16	box	73543a
 # PLAYLOT (2026-11-15): PLAYLOT map models no row named. Single cypresses and the pickup go to CC0 library models; the stock models whose size is not in the store (no game files here) get an own block of the size below. Combined models (autocombines, propper buildings, curbs, wallworm groups) are measured piece by piece into model_parts.tsv instead (bsp.py modelparts)
 # gm_fork no-omission (2026-11-16): the skybox, dock and rooftop models the default leaves out, and three wrong fits (a cooling tank was an extinguisher, a dome a ceiling lamp, a tractor tyre a flatbed truck). Picked with modelmap --only --no-omit, so no other map's pick moves.
 # gm_fork placeholders (2026-11-16): the dock piles, fenders, crane tower, rooftop plant, dome, flue row, sprinkler run, cross-arm, track marker and lever had only a generated block; each now has its own CC0 Blender model sized to the original (tools/models/harbour_rooftop.py). rooftopcluser09a is a 12 m rooftop plant cluster, not one air conditioner drawn 15.8 m long.
