@@ -3360,7 +3360,7 @@ def floor_boxes(bsp, solids, props):
     return out
 
 
-# (class, TeamNum) to the arena team tag: TeamNum 2 is the first side and 3 the second.
+# (class, TeamNum) to the FC team tag: TeamNum 2 is the first side and 3 the second.
 SPAWN_TEAMS = {("info_player_teamspawn", "2"): "red", ("info_player_teamspawn", "3"): "blue"}
 
 
@@ -4313,7 +4313,7 @@ def main(argv=None):
         # to the repository game-fatal-contact links at its own maps/imported, so the .import
         # markers written here still match the path they are mounted at.
         out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
-                               "arena-surf-dm-maps", "maps")
+                               "fc-surf-dm-maps", "maps")
         print("  kind arena: written to %s" % os.path.normpath(out_dir))
     d = os.path.join(out_dir, map_id)
     os.makedirs(d, exist_ok=True)

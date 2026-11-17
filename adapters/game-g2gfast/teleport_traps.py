@@ -14,7 +14,7 @@ A destination is listed when a `func_door*` is within `--near` units of it (the 
 by that much; default 400) AND the door is driven by an output (some entity's `On...` output
 names it) or is use-only (spawnflag 256) or starts locked. That is a candidate, not a verdict: a
 door nearby is not proof the destination is walled in. The proof is `headless_imported`'s fall-out
-check in game-arena, which walks a faller out. A door a zones file already lists under
+check in game-fatal-contact, which walks a faller out. A door a zones file already lists under
 `open_doors` is marked, not hidden, so a re-run shows what was handled.
 
 Exit status 1 when any unhandled candidate is listed, so a script can gate on it.

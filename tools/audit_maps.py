@@ -346,7 +346,7 @@ def targets(repo, idx, only):
         pref = [p for p in cands if os.path.basename(p)[:-4].lower() in mid.lower() or mid.lower().split("_", 1)[-1] in os.path.basename(p).lower()]
         return (pref or sorted(cands, key=os.path.getsize, reverse=True))[0]
 
-    if name in ("arena-surf-dm-maps", "g2gfast-maps"):
+    if name in ("fc-surf-dm-maps", "g2gfast-maps"):
         for d in sorted(glob.glob(os.path.join(repo, "worlds", "*", "*.json")) + glob.glob(os.path.join(repo, "worlds", "*.json"))):
             if d.endswith((".coverage.json", ".doc.json", "credits.json")):
                 continue
