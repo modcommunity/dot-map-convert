@@ -104,6 +104,42 @@ GAME_MATERIAL = {
 
 # Per map. "overrides" is (substring of the classified texture name, material, colour or None), first match
 # wins and is tried before the shared list: only what the list cannot say, and each entry needs a reason.
+# Crouch-only floor (a vent, a crawl, an attic under a low roof) the standing survey never sees,
+# found by the crouch-height pass (game-playground tools/map_crouch). Each is a patch the
+# converter leaves without a way in, declared like any other unreached roof: not a trap, and not
+# a widened passage. (min, max) are the survey's reported bounds; the box adds a cell's margin.
+_CROUCH_WHY = "crouch-height floor the converter leaves without a way in (surveyed unreached, not a trap)"
+CROUCH_DECLARED = {
+    "pgc_fork": [
+        ((217.2, 30.7, 187.4), (217.2, 30.7, 187.4)),
+        ((215.7, 30.2, 182.2), (218.0, 30.7, 186.2)),
+        ((-153.3, -44.5, -138.8), (-147.8, -44.5, -132.6)),
+        ((-147.5, -38.4, -145.1), (-138.0, -38.4, -136.6)),
+        ((-187.8, -42.1, -19.3), (-186.0, -42.1, -19.3)),
+        ((-184.0, -45.9, -1.8), (-181.8, -45.7, -0.6)),
+        ((-213.8, -47.2, -10.1), (-213.3, -47.2, -6.6)),
+        ((-213.8, -45.7, -9.1), (-213.3, -45.7, -6.6)),
+        ((-213.8, -45.7, -5.6), (-213.3, -45.7, -3.8)),
+        ((-196.5, -47.2, -4.3), (-196.0, -47.2, -2.6)),
+        ((-213.8, -47.4, -3.6), (-213.0, -47.2, -3.6)),
+        ((-12.5, -2.4, 191.7), (-11.3, -2.4, 194.2)),
+        ((-229.3, -45.1, 111.4), (-227.3, -45.1, 113.7)),
+    ],
+    "pgc_southside": [((13.6, 10.7, -63.7), (13.9, 10.7, -63.4)), ((13.6, 15.8, -63.7), (13.9, 15.8, -63.4)),
+                      ((43.6, 10.7, -63.7), (43.9, 10.7, -63.4)), ((43.6, 15.8, -63.7), (43.9, 15.8, -63.4)),
+                      ((34.9, 19.2, -61.4), (37.6, 19.6, -55.4))],
+    "pgc_asheville": [((-235.3, 3.8, -175.3), (-214.8, 3.8, -170.0))],
+    "pgc_rooftops": [((48.8, 11.5, -37.8), (48.8, 11.7, -37.5)), ((50.0, 11.5, -37.8), (50.0, 11.7, -37.5))],
+}
+
+
+def crouch_declared(map_id):
+    m = 0.3
+    return [{"min": [round(lo[0] - m, 2), round(lo[1] - 0.2, 2), round(lo[2] - m, 2)],
+             "max": [round(hi[0] + m, 2), round(hi[1] + 0.6, 2), round(hi[2] + m, 2)], "why": _CROUCH_WHY}
+            for lo, hi in CROUCH_DECLARED.get(map_id, [])]
+
+
 CONFIGS = {
     "construct_small": {
         "id": "pgc_construct_small",
@@ -824,7 +860,7 @@ def build(bsp_path, name, whole=True, orig=False):
                         "The author can have this conversion removed: contact %s." % (cfg["source"], cfg["author"], REMOVAL_CONTACT)),
         "spawn": [round(sp[0] * S, 3), 1.0, round(-sp[1] * S, 3)],
         "spawn_yaw": round(sp_yaw - 90.0, 1),
-        "boxes": boxes, "declared": cfg.get("declared", []),
+        "boxes": boxes, "declared": list(cfg.get("declared", [])) + crouch_declared(cfg["id"]),
         "world": world_spec(cfg, y_off),
     }
     if whole:
