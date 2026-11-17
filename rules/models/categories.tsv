@@ -515,3 +515,6 @@ pillow|cushion|plush|teddy	pillow|cushion|teddy|toy	0.4	0.15	0.4	box	a07080
 ^fanhousing$	ceiling_fan	1.2	0.5	1.2	cyl	707070
 # dm worlds (2026-11-11): CS:S stock models whose size is not in the store (no game files here), so the default size below is used
 ^platform$	NONE	2.0	0.3	2.0	box	808080
+# gm_york (2026-11-17): the rail pieces use the CC0 rail track model; the two fast-food props are plain generated blocks.
+^railway_\d+$	^dm_railtrack$	4.97	0.23	1.98	box	6a6660
+^cluckinbell1?$	NONE	2.0	3.0	2.0	box	b03a2a

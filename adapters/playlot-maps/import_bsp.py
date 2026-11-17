@@ -280,6 +280,18 @@ CONFIGS = {
         "declared": [{"min": [-31.1, 4.4, 247.9], "max": [-21.3, 7.0, 258.3], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-26.6, 7.0, 250.7], "max": [-21.3, 7.6, 254.8], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-29.6, 1.9, 254.4], "max": [-24.3, 2.5, 258.5], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-30.6, 1.5, 248.2], "max": [-29.3, 2.3, 250.0], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-61.1, 0.3, 272.4], "max": [-40.8, 0.9, 273.3], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-58.6, -0.3, 272.9], "max": [-24.3, 0.3, 279.3], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}, {"min": [-61.1, 0.3, 278.9], "max": [-40.8, 0.9, 280.0], "why": "a roof, ledge or room the converter leaves without a climb or a door (surveyed unreached, not a trap)"}],
         "min_size": 0.5,
     },
+    "york": {
+        "id": "pgc_york",
+        "name": "York",
+        "blurb": "A walled medieval-style city sandbox: the author's whole map.",
+        "author": "MergasTroll",
+        # A whole-map document is "unedited" (the game skips its survey), so the crack-closing pass has nothing to serve;
+        # on a city this size its pairwise sweep ran for 15 minutes without finishing.
+        "close_gaps": False, "slab": 15.0,
+        "source": "gm_york, https://steamcommunity.com/sharedfiles/filedetails/?id=1727393665",
+        "spawn_at": 0,
+        "min_size": 0.5,
+    },
     "balkans": {
         "id": "pgc_balkans",
         "name": "Balkans",
@@ -686,8 +698,20 @@ def weld_hairlines(boxes, eps=0.03):
     """Two upright boxes that meet at a corner or a face with a hairline between them (a rounding of a
     few thousandths of a metre) read to the survey as a slot. Grow the second across the hairline."""
     up = [b for b in boxes if "turn" not in b]
+    # A plan-view grid (8 m cells, boxes registered by their extent plus a metre) names each box's neighbours, so a city
+    # of a hundred thousand boxes is not compared pairwise; a pair is visited in the same order as before.
+    cell = 8.0
+    grid = {}
+    for n, b in enumerate(up):
+        for gx in range(int((b["at"][0] - b["size"][0] / 2 - 1.0) // cell), int((b["at"][0] + b["size"][0] / 2 + 1.0) // cell) + 1):
+            for gz in range(int((b["at"][2] - b["size"][2] / 2 - 1.0) // cell), int((b["at"][2] + b["size"][2] / 2 + 1.0) // cell) + 1):
+                grid.setdefault((gx, gz), []).append(n)
     for i, a in enumerate(up):
-        for b in up[i + 1:]:
+        near = set()
+        for gx in range(int((a["at"][0] - a["size"][0] / 2) // cell), int((a["at"][0] + a["size"][0] / 2) // cell) + 1):
+            for gz in range(int((a["at"][2] - a["size"][2] / 2) // cell), int((a["at"][2] + a["size"][2] / 2) // cell) + 1):
+                near.update(n for n in grid.get((gx, gz), ()) if n > i)
+        for b in (up[n] for n in sorted(near)):
             lo_a = [a["at"][k] - a["size"][k] / 2 for k in range(3)]
             hi_a = [a["at"][k] + a["size"][k] / 2 for k in range(3)]
             lo_b = [b["at"][k] - b["size"][k] / 2 for k in range(3)]
