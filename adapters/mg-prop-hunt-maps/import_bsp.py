@@ -29,7 +29,7 @@ ground boxes; without it a map whose yard is terrain has no floor.
 --merge-boxes joins touching same-material boxes with one cross-section; --min-box-volume=<m3> and
 --min-box-thickness=<m> then drop detail boxes below that size (a box a metre long or a walkable surface such as a stair or floor stays), so a
 trim-heavy map fits the 6000-box limit. All three are off by default and are reported before and after.
---max-boxes=N is a hard budget, run last: the smallest boxes go until N are left, keeping floors, stairs, door frames and the ground under a spawn, prop or light; the count cut, the largest cut and the spawns' reach before and after are printed. --max-wire=<bytes> then cuts further, smallest first with the same protections, until the document deflates to that size (the games' 60000-byte wire limit; 57000 leaves room for the header). Off by default.
+--max-boxes=N is a hard budget, run last: the smallest boxes go until N are left, keeping floors, stairs, door frames and the ground under a spawn, prop or light; the count cut, the largest cut and the spawns' reach before and after are printed. --max-wire=<bytes> then cuts further, smallest first with the same protections, until the document deflates to that size (the games' wire limit is 60000 bytes; 57000 is a margin for the header, not a second limit: a result a few hundred bytes over the budget but under 60000 still ships). Off by default.
 
 --start-island moves the start and hunter spawns onto the largest connected floor (walked at 0.25 m, any height, doors
 as widened) and tops them up there: for a map whose author starts include an isolated platform.

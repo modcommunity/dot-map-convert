@@ -5,7 +5,7 @@
 
 --merge-boxes, --min-box-volume=<m3> and --min-box-thickness=<m> shrink a trim-heavy map under the 6000-box limit: touching
 same-material boxes join, then detail boxes below that size go (a panel a metre long stays). Off by default; counts are printed.
---max-boxes=N is a hard budget, run last: the smallest boxes go until N are left, keeping floors, stairs, door frames and the ground under a spawn, prop or light; the count cut, the largest cut and the spawns' reach before and after are printed. --max-wire=<bytes> then cuts further, smallest first with the same protections, until the document deflates to that size (the games' 60000-byte wire limit; 57000 leaves room for the header). Off by default.
+--max-boxes=N is a hard budget, run last: the smallest boxes go until N are left, keeping floors, stairs, door frames and the ground under a spawn, prop or light; the count cut, the largest cut and the spawns' reach before and after are printed. --max-wire=<bytes> then cuts further, smallest first with the same protections, until the document deflates to that size (the games' wire limit is 60000 bytes; 57000 is a margin for the header, not a second limit: a result a few hundred bytes over the budget but under 60000 still ships). Off by default.
 
 Adapted from hide-n-seek-maps' importer (copied, not linked): one spawn group, `players`, from the author's starts plus the clearest open floor up to 24.
 

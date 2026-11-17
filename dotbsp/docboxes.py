@@ -1484,7 +1484,11 @@ def fit_wire(doc, budget, log=print):
     A game sends a map in one WebSocket message with a hard size limit, and the box count alone does not hold a
     detailed map under it (gm_villa: 5500 boxes are 88 KB deflated). Boxes are rounded to centimetres first, then
     the box cap (`cap_boxes`, so floors, stairs, door frames and the ground under anchors stay and lost reach is
-    restored) is run to the largest count that fits, found by bisection on the cut count."""
+    restored) is run to the largest count that fits, found by bisection on the cut count.
+
+    The budget is a target, not the limit: the games' wire limit is 60000 bytes and the usual 57000 leaves room for the
+    header, so a document that lands between the two is shippable (STILL OVER is logged when the protected boxes alone
+    miss the budget); tools/fit_doc.py on the committed document closes the last few hundred bytes without a re-import."""
     start = wire_size(doc)
     # Centimetres first; only when the protected boxes alone are over budget (a floor-heavy map such as gm_villa:
     # 60665 B against 57000 with every cuttable box gone) the grid goes to 5 cm, then 10 cm, which deflates much
