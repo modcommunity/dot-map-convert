@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn a Source .bsp into an importable g2gfast map: mesh, textures, baked light, zones.
+"""Turn a Source .bsp into an importable Airdrift map: mesh, textures, baked light, zones.
 
     tools/bsp_import.py ../inspirations/g2gfast/surf_kitsune.bsp maps/imported --id surf_kitsune
 
@@ -100,7 +100,7 @@ PLAYER_HALF_WIDTH = 16.0
 # How high a player's feet rise over the floor: a 57-unit jump, 18 more crouched in the air.
 HOP_REACH = 76.0
 
-# Where the g2gfast roles come from: the angle of the surface, not the name on it.
+# Where the Airdrift roles come from: the angle of the surface, not the name on it.
 #
 # [b]The material name was a guess and the slope is a fact.[/b] This used to be a list
 # of regexes over texture names -- `concretefloor039a` is a ramp, `nodraw` is a
@@ -114,7 +114,7 @@ HOP_REACH = 76.0
 # flat grey mass with the ramps in it invisible.
 #
 # The threshold is the game's own. A player stands on a surface up to
-# `G2GConfig.max_slope` and slides off anything steeper, so that angle is precisely the
+# `AirdriftConfig.max_slope` and slides off anything steeper, so that angle is precisely the
 # line between "a platform" and "a ramp" -- and painting it anywhere else would be a
 # texture that lies about what the movement will do. The default below is that cvar's
 # default; `--max-slope` is there for an operator who has changed it.
@@ -135,7 +135,7 @@ def role_for_normal(nz, cos_limit):
     return "FLOOR"              # walls, ceilings and undersides
 
 
-# How many of the genre's units one grid square covers. [G2GTextures]'s own
+# How many of the genre's units one grid square covers. [AirdriftTextures]'s own
 # UNITS_PER_SQUARE, and it has to stay that way: a square is 64 units on every surface
 # in this game, in a hand-built map and an imported one alike, because its size in the
 # world is the only cue a player has for how fast the ground is moving past them.
@@ -279,9 +279,9 @@ def packed_sky_faces(bsp, pak, tex_dir, notes):
 
     [b]A packed sky was drawn as one flat colour.[/b] Thirty-six of the seventy-five held
     maps ship `materials/skybox/<skyname><rt|bk|lf|ft|up|dn>`, and the game drew each as
-    G2GLighting's procedural sky, coloured from a table of stock sky NAMES -- surf_beginner2's
+    AirdriftLighting's procedural sky, coloured from a table of stock sky NAMES -- surf_beginner2's
     `sky47` is a sunset, and it rendered as a clear blue noon (against the WR run's own
-    footage, 2026-10-09). The six faces are decoded here and drawn by g2g_sky.gdshader in
+    footage, 2026-10-09). The six faces are decoded here and drawn by airdrift_sky.gdshader in
     the engine's own face layout. All six or nothing: a sky with a missing face is a hole
     in the horizon, which is worse than a colour. An HDR sky the decoder cannot read
     (`militia_hdr`) falls back to the colour, with a note.
@@ -1664,7 +1664,7 @@ def sky_dynamic_props(bsp, sky):
 
 
 # How far from the map's centre a 3D skybox may be drawn, in units: inside the player
-# camera's far plane (Camera3D's default 4000 m, which G2GCamera keeps) with room to
+# camera's far plane (Camera3D's default 4000 m, which AirdriftCamera keeps) with room to
 # spare for a player standing at the edge of a map ~300 m across.
 SKY_REACH = 3500.0 / 0.01905
 
@@ -3871,7 +3871,7 @@ def pit_catches(z, pit, at):
     if not all(lo[a] - 16.0 <= at[a] <= hi[a] + 16.0 for a in (0, 1)):
         return False
     # Touching: the feet inside the trigger's height, or within the two units under the feet
-    # that G2GMapMechanics.TOUCH_BELOW also gives (a trigger sheet lying on the floor). Not
+    # that AirdriftMapMechanics.TOUCH_BELOW also gives (a trigger sheet lying on the floor). Not
     # sixteen: bhop_badges' `1.1` stands nine units over its own section's fail sheet.
     if lo[2] - 16.0 <= at[2] <= hi[2] + 2.0:
         return True
@@ -4293,7 +4293,7 @@ def main(argv=None):
     ap.add_argument("--max-slope", type=float, default=MAX_SLOPE_DEGREES,
                     dest="max_slope",
                     help="the steepest a player can stand on, in degrees; the line "
-                         "between a PLATFORM and a RAMP. Must match G2GConfig.max_slope "
+                         "between a PLATFORM and a RAMP. Must match AirdriftConfig.max_slope "
                          "(default %g)" % MAX_SLOPE_DEGREES)
     ap.add_argument("--min-zone-thickness", type=float, default=MIN_ZONE_THICKNESS,
                     dest="min_zone_thickness",

@@ -21,13 +21,13 @@ what the mapper drew instead, game-neutral, in game metres and Godot axes:
   `coverage(bsp, mesh)` point-samples the source's drawn faces and solids against what was
   written, and `silhouette` compares the two from above.
 
-Kept from game-g2gfast's `tools/bsp_import.py` (where the mesh path was first built and
+Kept from game-airdrift's `tools/bsp_import.py` (where the mesh path was first built and
 measured): the face normal is the face's own plane, never negated by `dface_t.side`; the
 winding is not reversed; displacement normals are averaged over the grid while a brush face
 keeps its exact plane normal; `rendermode 10`, an alpha render mode at `renderamt 0` and a
 `func_brush` that starts disabled are not drawn. The 3D skybox
-(`skybox_of`, `sky_scale`) is g2g's too: its room's faces are moved out and scaled up around the
-world origin as the engine draws them, flagged `sky3d`, and never collide. Left in g2g for now:
+(`skybox_of`, `sky_scale`) is Airdrift's too: its room's faces are moved out and scaled up around the
+world origin as the engine draws them, flagged `sky3d`, and never collide. Left in Airdrift for now:
 packed textures (never shipped) and coplanar brush merging. The map's own baked light
 (`lightmap.py`) is imported: a second UV set per vertex into RGB9E5 atlas pages.
 
@@ -141,7 +141,7 @@ def skybox_of(bsp):
     larger, as if it surrounded the map.[/b] Imported as ordinary faces it is two faults at
     once: the backdrop is missing and a miniature of it hangs where it was compiled. The room
     is the area the sky camera stands in (every non-solid leaf with that area number, boxed);
-    a face all of whose corners are inside that box belongs to it. From game-g2gfast, where
+    a face all of whose corners are inside that box belongs to it. From game-airdrift, where
     ten of 26 maps had one; 66 of the 200 maps surveyed here do.
     """
     cams = [e for e in bsp.entities if e.get("classname") == "sky_camera"]
@@ -178,7 +178,7 @@ def sky_scale(bsp, sky, drawn):
     face past SKY_REACH; then the largest that brings it inside, but never so small that its
     nearest face comes inside the map's own bounds (the engine draws the sky behind
     everything; drawn into the world here it could stand in the play space). `drawn` is
-    [(face, offset)]. g2g measured this on a sky camera saying 512: its islands were 20 km
+    [(face, offset)]. Airdrift measured this on a sky camera saying 512: its islands were 20 km
     out, behind the far plane, imported and invisible."""
     if sky is None:
         return None

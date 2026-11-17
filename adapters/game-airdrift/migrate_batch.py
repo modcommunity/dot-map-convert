@@ -1,6 +1,6 @@
-"""Headless batch migration of g2gfast maps: re-import (hull kinds) and optionally regen into dot-map worlds.
+"""Headless batch migration of Airdrift maps: re-import (hull kinds) and optionally regen into dot-map worlds.
 
-    python3 -I migrate_batch.py --repo ../game-g2gfast --src ../inspirations/g2gfast --out DIR [--regen WORLDS] [--jobs 4] [ids... | --all]
+    python3 -I migrate_batch.py --repo ../game-airdrift --src ../inspirations/g2gfast --out DIR [--regen WORLDS] [--jobs 4] [ids... | --all]
 
 Per map: runs the game's `tools/bsp_import.py` (this directory's bsp_import.py through the launcher) into DIR, reads the manifest it wrote
 and records the hull count and the hull kinds (`collision.hull_kinds`: clip / glass / fence / sky; absent = all solid). With `--regen`,
@@ -72,7 +72,7 @@ def one(a, mid, bsp_index):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("ids", nargs="*")
-    ap.add_argument("--repo", default=os.path.join(ROOT, "..", "game-g2gfast"))
+    ap.add_argument("--repo", default=os.path.join(ROOT, "..", "game-airdrift"))
     ap.add_argument("--src", default=os.path.join(ROOT, "..", "inspirations", "g2gfast"))
     ap.add_argument("--out", required=True)
     ap.add_argument("--regen", default=None, help="worlds dir: also regen each id from the store into <dir>/<id>/")

@@ -10,7 +10,7 @@ a game can run that much without being a scripting engine. Everything else an ou
 (relays, counters, text) stays logic, in the intermediate's entity list.
 
 Every length is in game metres, every direction in Godot axes, every angle in degrees, every
-speed per second, as in `mesh`. Modelled on game-g2gfast's `tools/bsp_mechanics.py`, which
+speed per second, as in `mesh`. Modelled on game-airdrift's `tools/bsp_mechanics.py`, which
 measured the door, button and conveyor rules over 42 maps; the formulas are the original
 engine's (a door travels its size along its direction, less `lip`).
 

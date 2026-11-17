@@ -105,7 +105,7 @@ GAME_MATERIAL = {
 # Per map. "overrides" is (substring of the classified texture name, material, colour or None), first match
 # wins and is tried before the shared list: only what the list cannot say, and each entry needs a reason.
 # Crouch-only floor (a vent, a crawl, an attic under a low roof) the standing survey never sees,
-# found by the crouch-height pass (game-playground tools/map_crouch). Each is a patch the
+# found by the crouch-height pass (game-playlot tools/map_crouch). Each is a patch the
 # converter leaves without a way in, declared like any other unreached roof: not a trap, and not
 # a widened passage. (min, max) are the survey's reported bounds; the box adds a cell's margin.
 _CROUCH_WHY = "crouch-height floor the converter leaves without a way in (surveyed unreached, not a trap)"

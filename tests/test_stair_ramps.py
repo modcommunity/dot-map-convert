@@ -1,4 +1,4 @@
-"""The game-g2gfast importer gives a solid prop_dynamic drawn as a library staircase a walkable ramp (stair_hulls).
+"""The game-airdrift importer gives a solid prop_dynamic drawn as a library staircase a walkable ramp (stair_hulls).
 Run: python3 -P tests/test_stair_ramps.py
 """
 
@@ -9,19 +9,19 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-sys.path.insert(0, os.path.join(ROOT, "adapters", "game-g2gfast"))
+sys.path.insert(0, os.path.join(ROOT, "adapters", "game-airdrift"))
 sys.path.insert(0, ROOT)
 os.environ.setdefault("DOTBSP_PATH", ROOT)
-for READER in (os.environ.get("G2G_TOOLS", ""),
-               os.path.join(os.path.dirname(ROOT), "game-g2gfast", "tools"),
-               "/home/gamedev/godot/game-g2gfast/tools"):
+for READER in (os.environ.get("AIRDRIFT_TOOLS", "") or os.environ.get("G2G_TOOLS", ""),
+               os.path.join(os.path.dirname(ROOT), "game-airdrift", "tools"),
+               "/home/gamedev/godot/game-airdrift/tools"):
     if READER and os.path.isfile(os.path.join(READER, "bsp_read.py")):
         sys.path.append(READER)
         break
 try:
     import bsp_import  # noqa: E402
 except ModuleNotFoundError as err:
-    raise unittest.SkipTest("bsp_read not found (set G2G_TOOLS): %s" % err)
+    raise unittest.SkipTest("bsp_read not found (set AIRDRIFT_TOOLS): %s" % err)
 
 STAIRS = "models/props_trainyard/portable_stairs001.mdl"
 WALL_TOP = 249.0   # cp_orange_x3: the sniper walls stand 249 u over the floor the stairs are on

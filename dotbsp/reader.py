@@ -1,6 +1,6 @@
 """Read a compiled BSP map (the VBSP format, versions 19 to 21) far enough to convert it.
 
-This is the one reader every game's map converter uses. It started as game-g2gfast's
+This is the one reader every game's map converter uses. It started as game-airdrift's
 `tools/bsp_read.py`, which six repositories carried as byte-identical copies, and it keeps
 that file's names (`Bsp`, `to_godot`, `clean_material`, the `CONTENTS_*` and `SURF_*`
 constants) so a converter written against the old copy imports this unchanged.

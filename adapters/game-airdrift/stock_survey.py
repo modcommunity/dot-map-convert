@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Which stock materials are still drawn in the prototype grid, per imported map.
 
-Reads every manifest in the maps checkout (default ../g2gfast-maps/maps) and the
+Reads every manifest in the maps checkout (default ../airdrift-maps/maps) and the
 stand-in table (textures/stock/substitutes.json), matched the way
-G2GStockSubstitutes.for_material matches it: lowercase name, first glob wins, a
+AirdriftStockSubstitutes.for_material matches it: lowercase name, first glob wins, a
 'none' entry or a missing texture keeps the grid. Prints each map's share of
 triangles drawn textured (own + stand-in), worst first, and the materials that
 would move it most. Reads only this repository and the maps checkout; nothing
@@ -32,7 +32,7 @@ def classify(entries, material):
             if entry.get("none"):
                 return "none", entry["match"]
             if entry.get("treatment") == "glass":
-                # G2GStockSubstitutes.is_glass: drawn see-through, no texture needed.
+                # AirdriftStockSubstitutes.is_glass: drawn see-through, no texture needed.
                 return "stand-in", entry["match"]
             if "texture" not in entry:
                 return "none", entry["match"]
@@ -42,7 +42,7 @@ def classify(entries, material):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--maps", default=str(HERE.parent / "g2gfast-maps" / "maps"))
+    ap.add_argument("--maps", default=str(HERE.parent / "airdrift-maps" / "maps"))
     ap.add_argument("--top", type=int, default=6)
     ap.add_argument("--map", nargs="*")
     ap.add_argument("--unmatched", action="store_true",
@@ -68,7 +68,7 @@ def main():
             material = str(s.get("material", ""))
             last = material.lower().rsplit("/", 1)[-1]
             if ("water" in last or "vatten" in last or last.startswith("oceansurface")) and "waterfall" not in last:
-                # G2GBspMap.is_water_material: drawn by the water shader, not the grid.
+                # AirdriftBspMap.is_water_material: drawn by the water shader, not the grid.
                 drawn += tris
                 continue
             kind, rule = classify(entries, material)

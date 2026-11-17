@@ -76,7 +76,7 @@ author left unskinned); other maps keep the surface their material names say.
 What it does, and why each choice:
 
 - The world's brushes become BOXES, because a map document has no meshes. Each brush's convex
-  hull is found (bsp_read.Bsp.brush_hull, copied from game-g2gfast's importer) and its bounding
+  hull is found (bsp_read.Bsp.brush_hull, copied from game-airdrift's importer) and its bounding
   box is written; a brush that is NOT a box (a roof slope, a stair) is cut into slabs along its
   longer horizontal axis, each slab as tall as the brush is at the slab's middle, so a ramp
   becomes a staircase of 0.3 m risers rather than a block twice its height.

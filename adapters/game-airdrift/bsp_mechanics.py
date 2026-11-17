@@ -5,7 +5,7 @@ reads the rest of what the entity lump says about movement: where the water is, 
 volumes push, which change gravity, which hurt, which floors carry you, and which blocks
 sink under a player who stays on them. Each one is a list of boxes with a few numbers,
 in genre units and Godot axes like everything else in the manifest, and
-`game/g2g_map_mechanics.gd` is the one place that runs them.
+`game/airdrift_map_mechanics.gd` is the one place that runs them.
 
 Every brush entity Source's level editor offers is accounted for in
 `docs/brush-entities.md`, with what this importer does with it and why. The short form:
@@ -327,7 +327,7 @@ def conveyors(bsp, origin_of):
 
 def ladders(bsp, origin_of):
     """Ladder volumes: world brushes with CONTENTS_LADDER and `func_ladder`, climbed by
-    the game's ladder mode (`game/g2g_ladder_mode.gd`)."""
+    the game's ladder mode (`game/airdrift_ladder_mode.gd`)."""
     out = []
     for i in bsp.model_brushes(0):
         if bsp.brushes[i][2] & CONTENTS_LADDER:

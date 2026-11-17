@@ -10,11 +10,16 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # A renamed map repository whose launcher still says its old name (a checkout made before the rename).
-FORMER = {"game-playground-maps": "playlot-maps", "game-playlot-maps": "playlot-maps"}
+FORMER = {"game-playground-maps": "playlot-maps", "game-playlot-maps": "playlot-maps", "game-g2gfast": "game-airdrift"}
+
+
+def adapter_path(repo, name):
+    """The adapter file a launcher in `repo`'s tools/ runs; a former repository name resolves to its new one."""
+    return os.path.join(ROOT, "adapters", FORMER.get(repo, repo), name)
 
 
 def run(g, repo, name):
-    path = os.path.join(ROOT, "adapters", FORMER.get(repo, repo), name)
+    path = adapter_path(repo, name)
     with open(path, encoding="utf-8") as f:
         src = f.read()
     g["__doc__"] = ast.get_docstring(ast.parse(src), clean=False)

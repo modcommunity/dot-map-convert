@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn a Source 2 (CS2) map into an importable g2gfast map, through ValveResourceFormat.
+"""Turn a Source 2 (CS2) map into an importable Airdrift map, through ValveResourceFormat.
 
     tools/vrf_import.py surf_hologram.vpk maps/imported --id surf_hologram \\
         --cli /path/to/Source2Viewer-CLI --work /path/to/scratch/surf_hologram

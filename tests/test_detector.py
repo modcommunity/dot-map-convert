@@ -17,7 +17,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 MAX_LINES = 200
-EXTRA_REPOS = ("game-g2gfast", "mg-look-at-me")
+EXTRA_REPOS = ("game-airdrift", "mg-look-at-me")
 
 # Code that parses the format: the magic, a lump table or a lump constant. A docstring that names VBSP is fine.
 READS_BSP = re.compile(r"""b['"]VBSP|\bLUMP_[A-Z_]+\b|\blump_(?:table|dir|index|ofs|offset)\b|\blumps\s*\[""")

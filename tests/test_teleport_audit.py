@@ -9,21 +9,21 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-sys.path.insert(0, os.path.join(ROOT, "adapters", "game-g2gfast"))
+sys.path.insert(0, os.path.join(ROOT, "adapters", "game-airdrift"))
 sys.path.insert(0, ROOT)
 
 # bsp_import reads through game-airdrift's `bsp_read` shim, which lives in that game's repo.
 os.environ.setdefault("DOTBSP_PATH", ROOT)
-for READER in (os.environ.get("G2G_TOOLS", ""),
-               os.path.join(os.path.dirname(ROOT), "game-g2gfast", "tools"),
-               "/home/gamedev/godot/game-g2gfast/tools"):
+for READER in (os.environ.get("AIRDRIFT_TOOLS", "") or os.environ.get("G2G_TOOLS", ""),
+               os.path.join(os.path.dirname(ROOT), "game-airdrift", "tools"),
+               "/home/gamedev/godot/game-airdrift/tools"):
     if READER and os.path.isfile(os.path.join(READER, "bsp_read.py")):
         sys.path.append(READER)
         break
 try:
     import bsp_import  # noqa: E402
 except ModuleNotFoundError as err:
-    raise unittest.SkipTest("bsp_read not found (set G2G_TOOLS): %s" % err)
+    raise unittest.SkipTest("bsp_read not found (set AIRDRIFT_TOOLS): %s" % err)
 
 
 def dest(name, x, y, z):
