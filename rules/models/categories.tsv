@@ -10,6 +10,7 @@
 ^garbage256_composite	^dm_rubbish_pile$|^dm_trashcluster$	2.0	0.9	1.8	box	303438
 ^food_pile\d	^dm_producepile$|^dm_producespread$	0.63	0.38	1.18	box	c07030
 ^car_battery\d	^dm_carbattery$	0.18	0.2	0.3	box	202024
+^ibeam\d+a_cluster	^dm_ibeamstack$	3.82	0.7	0.52	box	5c3a24
 ^ibeam\d	^dm_ibeam$	0.15	0.3	2.4	box	6a4028
 ^(prison|hospital)_shelf\d	^dm_wallshelf$	0.95	0.39	0.37	box	737876
 ^prison_metalbed	^dm_metalbed$	0.8	0.55	2.0	box	60666a
@@ -28,6 +29,39 @@
 ^boxes_garage_lower$	^dm_boxstack$	1.33	1.23	1.29	box	b8905c
 ^exit_(wall|ceiling)$	^dm_exitsign$	0.12	0.26	0.42	box	30b050
 ^jar\d	^dm_labjar$	0.12	0.2	0.12	cyl	b0d0cc
+# FC, surf, hide-and-seek and wipeout placeholders (2026-11-17, third batch): own CC0 models in tools/models/fc_details.py for door knobs and lever handles, a ceiling air diffuser, a shuttered stone window, rebar stubs, a plastered dome, a jellyfish, a ribbed metal wall pillar, a wall push button, stacked I-beams, a roof beam grid, railway track, a crenellated wall cap, a book pile, a long-case clock and a teleporter ring stack; the rest go to existing CC0 models (Poly Haven trees, frames, sabre and statues; own ducts, rooftop plant, sprinkler, dock pile, handrails, flue row, keypad, lever and grille). Most were left out as detail or a plain placeholder block; the trees were CC-BY picks, the book pile cardboard boxes, the clock a wall clock, the sword a rifle, the rings a coffee mug.
+^doorknobb?$	^dm_doorknob$	0.07	0.14	0.15	box	b08a48
+^(de_train_doorhandle_\d+|handle)$	^dm_doorlever$	0.07	0.05	0.15	box	9a9c9a
+^airduct_hvac_001_vent	^dm_ceilingdiffuser$	0.61	0.23	0.61	box	d8dad6
+^airduct_hvac_001_sidevent	^dm_ventgrille$	0.21	0.31	0.46	box	a0a4a4
+^cb_wndsng\d+	^dm_shutterwindow$	0.39	1.76	1.35	box	9e9480
+^rebar_cluster\d+	^dm_rebar$	0.27	0.94	0.22	box	8a8984
+^du_dome_	^dm_dustdome$	3.16	1.93	3.16	cyl	c9b38a
+^jellyfish\d*$	^dm_jellyfish$	0.25	0.29	0.26	cyl	d878c0
+^combineinnerwall\d+	^dm_metalpillar$	5.83	19.02	5.65	box	283038
+^firetrap_button	^dm_pushbutton$	0.07	0.11	0.1	box	c02018
+^de_train_roofbeams	^dm_roofbeams$	2.47	0.32	2.47	box	66665e
+^railroadtracks\d+	^dm_railtrack$	4.97	0.23	1.98	box	6a6660
+^dustteeth	^dm_dustteeth$	8.35	1.18	0.67	box	c9b38a
+^bookpile	^dm_bookpile$|^ph_book_encyclopedia_set_01$	2.1	0.35	1.43	box	6a3a20
+^grandfather_clock	^dm_grandfatherclock$	0.6	2.63	0.81	box	4a2814
+^breentp_rings$	^dm_tprings$	3.26	3.06	3.26	cyl	50545a
+^sword\d*$	^ph_wooden_handle_saber$|^ph_antique_katana_01$	0.03	0.94	0.12	box	a0a0a8	fixed
+^baum02$	^ph_jacaranda_tree$	19.35	19.21	16.15	cyl	3a6a2a
+^baum0[16]$	^ph_island_tree_01$|^ph_island_tree_02$|^ph_tree_small_02$	10.15	13.15	8.66	cyl	3a6a2a
+^(offpainting[a-z]|gm_painting|frame001a)$	^ph_hanging_picture_frame_0\d$|^ph_fancy_picture_frame_0\d$	0.6	0.75	0.02	box	806040
+^(offcorkboard|offcertificate|offinsp)[a-z]$	^ph_hanging_picture_frame_02$|^ph_fancy_picture_frame_01$	0.81	0.46	0.02	box	b09060
+^(statue_horse|gate_statue|angel_statue_\d+)$	^ph_gothic_statue$|^ph_horse_statue_01$|^kenney_mini-arena_statue$	1.46	1.83	0.82	box	9a9890
+^ventilationduct\d+	^dm_ductrun$	0.61	0.68	0.61	box	a0a4a4
+^duct$	^dm_ductrun$	0.75	1.83	0.35	box	a0a4a4
+^rooftopcluser\d+a$	^dm_rooftophvac$	3.74	4.37	9.74	box	8a8c88
+^prison_sprinkler\d+[ab]$	^dm_sprinklerpipe$|^dm_pipestraight$	0.12	0.84	9.78	cyl	8a2020
+^dock03_pole	^dm_dockpile$	0.35	3.76	0.35	cyl	5a4a3a
+^handrailcluster	^dm_handrail$|^dm_handraillong$	0.1	1.13	1.87	box	707878
+^handrail_singlespan	^dm_handrail$|^dm_handraillong$	0.04	0.76	2.51	box	707878
+^chimneypipe_cluster	^dm_roofstackrow$	0.47	2.67	2.2	cyl	5a5a58
+^(keypad_door_control_\w+|elevator_buttons)$	^dm_keypad$	0.03	0.26	0.15	box	9a9c98
+^tpswitch$	^dm_lever$	0.23	0.65	0.39	box	5a5e60
 # Wall fixtures, racks, rails and lift (2026-11-17, second batch): own CC0 models in tools/models/detail_fixtures.py. The door keypad, prison wall bracket and wall pipe runs were left out as detail (now kept, standins.DETAIL_KEEP); the de_nuke cab glass was a generated box; the freight lift was a Kenney cemetery gate, the overhead line pole a 2 m Kenney column, the alley and stair handrails and the 25 m canal railing Kenney fences, the wooden shelving and pallet rack Kenney bookcases, the plank window walls a Kenney factory window. Kenney is CC0 and stays allowed; these were shape misfits.
 ^keypad$	^dm_keypad$	0.03	0.22	0.125	box	9a9c98
 ^prison_bracket\d	^dm_wallbracket$	0.095	1.02	1.26	box	4a4844
@@ -468,5 +502,4 @@ pillow|cushion|plush|teddy	pillow|cushion|teddy|toy	0.4	0.15	0.4	box	a07080
 ^st_(m_)?vagon	NONE	3.0	3.0	12.0	box	6a5a4a
 ^fanhousing$	ceiling_fan	1.2	0.5	1.2	cyl	707070
 # dm worlds (2026-11-11): CS:S stock models whose size is not in the store (no game files here), so the default size below is used
-^du_dome_	NONE	2.0	1.2	2.0	cyl	c9b38a
 ^platform$	NONE	2.0	0.3	2.0	box	808080
