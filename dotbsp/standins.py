@@ -44,8 +44,10 @@ DETAIL = re.compile(
 # and have an own CC0 model (tools/models/industrial.py; the door keypad, wall bracket and wall pipe run since 2026-11-17 in
 # tools/models/detail_fixtures.py; the FC door knobs and handles, office pictures, ceiling diffusers, rebar, wall pillar, push
 # buttons, beam stacks, rooftop plant, sprinklers, dock poles, handrail and flue clusters, statues, keypads and the teleporter
-# switch since the 2026-11-17 third batch, tools/models/fc_details.py or existing CC0 models).
-DETAIL_KEEP = re.compile(r"(^|/)(train00\d|(de_train_)?securityguard|watertower_\w+|speakercluster\w+|roof_dish\w+|gutter_drain\w+|dock_broken\w+|spoolwire|freightelevatorbutton\d*|rockcliff_cluster\w*|(furniture)?pipecluster\w*|combine_wire\d+|wall_wires\d|antenna\w*|du_antenna\w*|m33_antenna\w*|truss02[d-g]|de_train_truss02d|vent_(large|medium)_grill\w*|vent_medium_straight\w*|vent_cluster\d+|roof_vent\d+|wall_vent|vent001|lights_industrialcluster\w*|trashcluster\d+\w*|ceilingtruss_\w+|truss02h|keypad|prison_bracket\d+\w*|interiorpipecluster\w*|doorknobb?|de_train_doorhandle_\d+|nooze/handle|airduct_hvac_\w+|rebar_cluster\w+|jellyfish\d*|combineinnerwall\d+\w*|firetrap_button\w*|ibeam\d+a_cluster\d+|offpainting[a-z]|offcorkboard[a-z]|offcertificate[a-z]|offinsp[a-z]|frame001a|gm_painting|ventilationduct\d+|rooftopcluser\d+a|prison_sprinkler\d+[ab]|dock03_pole\w+|handrailcluster\w+|chimneypipe_cluster\w+|statue_horse|gate_statue|angel_statue_\d+|keypad_door_control_\w+|tpswitch|elevator_buttons)(\.mdl)?$")
+# switch since the 2026-11-17 third batch, tools/models/fc_details.py or existing CC0 models; the cranes, power lines, cable and
+# pipe runs, fans, pulleys, floor turret, plug holder, ruined wall, billboard and kitchen hood since the 2026-11-17 final pass,
+# tools/models/fc_final.py or existing CC0 models).
+DETAIL_KEEP = re.compile(r"(^|/)(train00\d|(de_train_)?securityguard|watertower_\w+|speakercluster\w+|roof_dish\w+|gutter_drain\w+|dock_broken\w+|spoolwire|freightelevatorbutton\d*|rockcliff_cluster\w*|(furniture)?pipecluster\w*|combine_wire\d+|wall_wires\d|antenna\w*|du_antenna\w*|m33_antenna\w*|truss02[d-g]|de_train_truss02d|vent_(large|medium)_grill\w*|vent_medium_straight\w*|vent_cluster\d+|roof_vent\d+|wall_vent|vent001|lights_industrialcluster\w*|trashcluster\d+\w*|ceilingtruss_\w+|truss02h|keypad|prison_bracket\d+\w*|interiorpipecluster\w*|doorknobb?|de_train_doorhandle_\d+|nooze/handle|airduct_hvac_\w+|rebar_cluster\w+|jellyfish\d*|combineinnerwall\d+\w*|firetrap_button\w*|ibeam\d+a_cluster\d+|offpainting[a-z]|offcorkboard[a-z]|offcertificate[a-z]|offinsp[a-z]|frame001a|gm_painting|ventilationduct\d+|rooftopcluser\d+a|prison_sprinkler\d+[ab]|dock03_pole\w+|handrailcluster\w+|chimneypipe_cluster\w+|statue_horse|gate_statue|angel_statue_\d+|keypad_door_control_\w+|tpswitch|elevator_buttons|crane_frame\w*|crane_body_lod|powerwires|prodcables\d+|wirepipe|de_inferno/ceiling_fan(_blade)?|de_prodigy/fanoff|pulleywheels_small\d+|floor_turret|tpplugholder_single|collapsedbuilding\d+awall|cs_assault/billboard|kitchen_vent\d+)(\.mdl)?$")
 
 
 # No-omission mode (`bsp.py regen --no-omit`, off by default): every placed model is mapped and placed, none is left out
@@ -59,13 +61,49 @@ def set_no_omit(on=True):
     NO_OMIT = bool(on)
 
 
+DROPPED_PATH = os.path.join(HERE, "..", "rules", "models", "dropped.tsv")
+_DROPPED = None
+
+
+def dropped_rows(path=None):
+    """The reviewed drop table (rules/models/dropped.tsv): [(regex, kind, reason)]. A row without a reason is an error."""
+    global _DROPPED
+    if path is None and _DROPPED is not None:
+        return _DROPPED
+    rows = []
+    with open(path or DROPPED_PATH, encoding="utf-8") as f:
+        for n, line in enumerate(f.read().splitlines(), 1):
+            if not line.strip() or line.startswith("#"):
+                continue
+            c = line.split("\t")
+            if len(c) != 3 or not c[2].strip():
+                raise ValueError("%s:%d: want regex, kind, reason" % (path or DROPPED_PATH, n))
+            rows.append((re.compile(c[0]), c[1], c[2]))
+    if path is None:
+        _DROPPED = rows
+    return rows
+
+
+def dropped(model):
+    """The drop-table row (kind, reason) of a model left out after review, or None. Never set in no-omission mode."""
+    if NO_OMIT:
+        return None
+    m = str(model or "").lower().replace("\\", "/")
+    for rx, kind, reason in dropped_rows():
+        if rx.search(m):
+            return kind, reason
+    return None
+
+
 def is_detail(model):
-    """True for a model left out on purpose (see DETAIL, bar DETAIL_KEEP); `is_skybox` models are a separate, silent case.
-    Never true in no-omission mode."""
+    """True for a model left out on purpose (see DETAIL, bar DETAIL_KEEP, and the reviewed `dropped` table); `is_skybox`
+    models are a separate, silent case. Never true in no-omission mode."""
     if NO_OMIT:
         return False
     m = str(model or "").lower().replace("\\", "/")
-    return not is_skybox(m) and bool(DETAIL.search(m)) and not DETAIL_KEEP.search(m)
+    if is_skybox(m):
+        return False
+    return dropped(m) is not None or (bool(DETAIL.search(m)) and not DETAIL_KEEP.search(m))
 
 
 def is_skybox(model):

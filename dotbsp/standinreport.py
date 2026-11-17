@@ -3,7 +3,8 @@
 `bsp.py standins <manifest | dir>...` reads each converted world's `licence.models` (what shipped),
 ranks every model by how many instances the worlds use, and sorts each into a tier by the stand-in's id:
 free (Poly Haven, Sketchfab CC0/CC-BY, Quaternius), kenney (a Kenney block, acceptable but an upgrade
-candidate), generated (a plain model of the original's size), placeholder (a box or a `detail` skip).
+candidate), generated (a plain model of the original's size), placeholder (a box or a `detail` skip), dropped
+(left out after review, rules/models/dropped.tsv, or sky dressing our sky draws).
 It also lists the sound rows that stay silent by rule, and where the shipped stand-in differs from
 `rules/models/picks.tsv` (a world that wants regenerating). `--strict` exits 1 while a model of the
 chosen tiers remains.
@@ -16,11 +17,13 @@ import sys
 
 from . import modeldims
 
-TIERS = ("free", "kenney", "generated", "placeholder")
+TIERS = ("free", "kenney", "generated", "placeholder", "dropped")
 
 
 def tier(stand_in):
     """The tier of a `licence.models` stand_in string."""
+    if stand_in in ("dropped", "skybox"):
+        return "dropped"
     if not stand_in.startswith("lib/"):
         return "placeholder" if stand_in in ("placeholder_box", "detail", "") else "kenney"
     ident = stand_in[4:]

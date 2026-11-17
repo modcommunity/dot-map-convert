@@ -1,4 +1,16 @@
 # name regex (on the model's file name)	library id regexes, best first, joined by | (NONE = generated only)	default w	h	d (m, when no size is known)	generated shape if nothing fits: box|cyl	colour; an optional 8th column "fixed" ignores the measured size (a weapon header box is an idle-pose hull, not its shape) and uses the default w h d
+# Final pass (2026-11-17): the last placeholder props of the FC, surf, hide-and-seek and wipeout maps get own CC0 models (tools/models/fc_final.py) or an existing CC0 model; a crane's LOD body is the dock crane, a kitchen vent is a cooker hood (own model)
+^wirepipe$	^dm_wallpiperun$	0.2	3.3	0.83	box	5a5a58
+^prodcables\d+$	^dm_cablerun$	2.44	0.21	0.03	box	101012
+^powerwires$	^dm_powerlines$	33.5	11.2	6.6	box	202020
+^(ceiling_fan_blade|fanoff)$	^dm_fanrotor$	1.45	0.06	1.45	cyl	6a5a48
+^ceiling_fan$	^dm_fanmount$|^ph_ceiling_fan$	0.39	0.48	0.39	cyl	6a5a48
+^pulleywheels_small\d+$	^dm_pulleywheels$	0.27	0.35	0.34	cyl	4a4a48
+^floor_turret$	^dm_floorturret$	0.61	1.22	0.61	box	6a6e70
+^tpplugholder_single$	^dm_plugholder$	0.46	0.35	0.16	box	8a8a80
+^collapsedbuilding\d+awall$	^dm_ruinwall$	12.3	3.9	1.67	box	8a8078
+^billboard$	^dm_billboard$	4.55	2.6	1.08	box	c0b8a0
+^kitchen_vent\d+$	^dm_kitchenhood$	1.2	1.03	0.65	box	b0b0b0
 # Valve debris, shop and office models (2026-11-17): own CC0 models in tools/models/debris_goods.py replace bad fits (a drive tower as a box, rubble as Kenney rocks, rotting produce as Kenney food, a car battery as a sports car, a hanging shop light as a flat troffer, a chiller and plotter as plain boxes)
 ^harddrive02$	^dm_drivecase$	0.37	0.38	0.14	box	b0aea0
 ^light_shop2?$	^dm_shoplight$	1.24	0.82	0.29	box	d0d0c8
@@ -99,7 +111,7 @@
 ^canal_bridge02$	^dm_steeltrestle$	6.06	5.49	19.51	box	4a3328
 ^scaffolding01a$	^dm_scaffoldbay$	1.62	2.70	4.88	box	909090
 ^tree_pine04(_snow|_lowdetail_cluster|_lowdetail_cluster_skybox)?$	^sf_pine_tree_d45218$	3.0	8.0	3.0	cyl	3a5a28
-^crane_docks$	kenney_factory_kit_crane|ph_overhead_crane	4.4	25.3	19.6	box	8a6a20
+^crane_(docks|body_lod)$	kenney_factory_kit_crane|ph_overhead_crane	4.4	25.3	19.6	box	8a6a20
 ^crane_frame(_interior)?$	^dm_latticetower$	5.4	9.6	5.4	box	7a6a30
 ^project_building0\d_skybox$	kenney_city_kit_commercial_building_\w|kenney_city_kit_industrial_building_\w	3.0	4.0	3.0	box	8a8070
 ^row_	kenney_city_kit_commercial_building_\w|kenney_city_kit_suburban_building_\w|kenney_city_kit_industrial_building_\w	5.0	5.0	5.0	box	8a7060

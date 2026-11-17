@@ -30,6 +30,8 @@ class Report(unittest.TestCase):
         self.assertEqual(t("placeholder_box"), "placeholder")
         self.assertEqual(t("detail"), "placeholder")
         self.assertEqual(t("tree"), "kenney")
+        self.assertEqual(t("dropped"), "dropped")
+        self.assertEqual(t("skybox"), "dropped")
 
     def test_rank_and_stale(self):
         with tempfile.TemporaryDirectory() as d:

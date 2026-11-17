@@ -1,0 +1,16 @@
+# Models left out on purpose after review (converted-maps policy final pass, 2026-11-17). Not a gap and not a placeholder:
+# each row says why no stand-in is placed. The licence block names these `dropped`; `bsp.py standins` counts them in the
+# dropped tier. Every row must name a reason; no-omission mode (`regen --no-omit`) ignores this table.
+# model path regex (searched in the lower-case path)	kind	reason
+(^|/)characters/hostage_\d+\.mdl$	character	a non-player figure: our games spawn their own players and NPCs, and a still figure reads as a stuck player
+(^|/)humans/(charple\d+|corpse\d+|group\d+/(fe)?male_\d+)\.mdl$	character	a citizen or corpse figure: our games spawn their own players and NPCs
+(^|/)zombie/(classic|classic_legs|classic_torso|fast|poison)\.mdl$	character	an NPC creature or its ragdoll part: NPCs are the game's, not the map's
+(^|/)headcrab\w*\.mdl$	character	an NPC creature: NPCs are the game's, not the map's
+(^|/)player/items/\w+/\w+_halloween\.mdl$	character	a character cosmetic shown on its own: it belongs to a character model, not to the map
+(^|/)shadertest/	effect	an engine shader test model (a cloaked figure), not scenery
+(^|/)effects/(combineball|vol_light)\.mdl$	effect	a glow or light-shaft effect: the map's own lights and our engine's fog and glow draw it
+(^|/)laboratory/wormhole\.mdl$	effect	a spinning portal effect parented to a rotator: an effect, not a prop
+(^|/)extras/(\w+/)?info_speech\.mdl$	editor	an editor marker for a speech point, invisible in the original game
+(^|/)cs_office/clouds\.mdl$	sky	cloud cards in the 3D sky room: our sky draws the clouds
+(^|/)props_combine/combine_citadel\w*\.mdl$	sky	a distant tower in the 3D sky room: sky dressing, drawn by our sky
+(^|/)props_buildings/(row_res_\d+|row_upscale|long_building\d+a)\.mdl$	sky	distant houses standing only in a 3D sky room (hs_restaurant): sky dressing, drawn by our sky

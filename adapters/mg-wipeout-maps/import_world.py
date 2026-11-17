@@ -169,19 +169,52 @@ def main_io(spec, worlds):
     with its source document beside it, and nothing generated; the game hosts what the map's entities do."""
     cid = spec["id"]
     prefix = os.path.join(worlds, cid)
-    subprocess.run([sys.executable, "-I", os.path.join(BSP, "bsp.py"), "regen", spec["io"]["store"],
-                    "--out", prefix, "--name", cid], check=True, stdout=subprocess.DEVNULL)
-    # The converter also writes credits and a rule stub; its generated flat images (textures/) stay: a "generated" surface reads them.
-    for extra in ("dot_map",):
-        shutil.rmtree(os.path.join(worlds, extra), ignore_errors=True)
-    if os.path.exists(os.path.join(worlds, "CREDITS.md")):
-        os.remove(os.path.join(worlds, "CREDITS.md"))
+    # The converter also writes a one-map CREDITS.md and a dot_map/ rule stub beside the world; the repository's own
+    # copies (the pack-wide credits, the hand-kept rules) are put back afterwards. Its generated flat images (textures/)
+    # stay: a "generated" surface reads them.
+    keep = os.path.join(worlds, ".import_keep")
+    shutil.rmtree(keep, ignore_errors=True)
+    os.makedirs(keep)
+    for extra in ("dot_map", "CREDITS.md"):
+        if os.path.exists(os.path.join(worlds, extra)):
+            shutil.move(os.path.join(worlds, extra), os.path.join(keep, extra))
+    try:
+        subprocess.run([sys.executable, "-P", os.path.join(BSP, "bsp.py"), "regen", spec["io"]["store"],
+                        "--out", prefix, "--name", cid], check=True, stdout=subprocess.DEVNULL)
+    finally:
+        for extra in ("dot_map", "CREDITS.md"):
+            dst = os.path.join(worlds, extra)
+            if os.path.isdir(dst):
+                shutil.rmtree(dst)
+            elif os.path.exists(dst):
+                os.remove(dst)
+            if os.path.exists(os.path.join(keep, extra)):
+                shutil.move(os.path.join(keep, extra), dst)
+        shutil.rmtree(keep, ignore_errors=True)
     doc = {k: spec[k] for k in ("format", "kind", "id", "name", "author", "blurb", "theme", "water_height",
                                 "course_seconds", "instant", "start", "finish", "io_route") if k in spec}
     doc["pieces"] = [{"kind": "world", "mesh": cid, "io": True}] + spec.get("pieces", [])
-    with open(os.path.join(REPO, "courses", cid + ".json"), "w") as out:
+    course = os.path.join(REPO, "courses", cid + ".json")
+    if os.path.exists(course):
+        # tools/build.py --ambient owns the ambience block; a reimport keeps it.
+        with open(course) as f:
+            old = json.load(f)
+        if "ambient" in old:
+            doc["ambient"] = old["ambient"]
+    with open(course, "w") as out:
         out.write(json.dumps(doc, indent=1) + "\n")
     print("%s: runs the map's own entities" % cid)
+
+
+def need_numpy():
+    """The converter reads the BSP with numpy; checks this interpreter has it before starting, so a missing module
+    reads as one line rather than a traceback from the converter's subprocess. -P (not -I) keeps the user site, where
+    numpy is usually installed."""
+    probe = subprocess.run([sys.executable, "-P", "-c", "import numpy"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if probe.returncode != 0:
+        sys.exit("import_world: numpy is missing for %s; the converter (bsp.py) needs it. Run with an interpreter that "
+                 "has numpy (pip install --user numpy, or the user whose site has it), as: python3 -P tools/import_world.py "
+                 "tools/imports/<course id>.json" % sys.executable)
 
 
 def main():
@@ -190,9 +223,10 @@ def main():
     cid = spec["id"]
     worlds = os.path.join(REPO, "worlds")
     os.makedirs(worlds, exist_ok=True)
+    need_numpy()
     if spec.get("io"):
         return main_io(spec, worlds)
-    subprocess.run([sys.executable, "-I", os.path.join(BSP, "bsp.py"), "mesh", os.path.expanduser(spec["source"]),
+    subprocess.run([sys.executable, "-P", os.path.join(BSP, "bsp.py"), "mesh", os.path.expanduser(spec["source"]),
                     "--out", os.path.join(worlds, cid), "--scale", "hull", "--author", spec["credit"]["author"],
                     "--page", spec["credit"]["page"]], check=True, stdout=subprocess.DEVNULL)
     manifest = json.load(open(os.path.join(worlds, cid + ".json")))
