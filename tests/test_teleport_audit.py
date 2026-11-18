@@ -59,7 +59,7 @@ class SeparatePits(unittest.TestCase):
         self.assertEqual(bsp_import.separate_pits([c, d]), 0)
         self.assertEqual(c["max"][0], 100)
 
-    def test_no_side_is_cut_thinner_than_a_tick(self):
+    def test_no_side_is_cut_thinner_than_a_tick_unless_both_must_be(self):
         a = pit((0, 0, 0), (40, 64, 64), (1000, 0, 0), original=((0, 0, 0), (16, 64, 64)))
         b = pit((20, 0, 0), (200, 64, 64), (2000, 0, 0), original=((24, 0, 0), (192, 64, 64)))
         self.assertEqual(bsp_import.separate_pits([a, b]), 1)
@@ -67,7 +67,14 @@ class SeparatePits(unittest.TestCase):
         self.assertEqual(b["min"][0], bsp_import.TICK_DEPTH)
         c = pit((0, 0, 0), (40, 64, 64), (1000, 0, 0), original=((0, 0, 0), (16, 64, 64)))
         d = pit((20, 0, 0), (50, 64, 64), (2000, 0, 0), original=((24, 0, 0), (40, 64, 64)))
-        self.assertEqual(bsp_import.separate_pits([c, d]), 0)
+        # Too close for both to keep a tick: still cut at the middle of the gap, each keeping
+        # all it was drawn. Left overlapping, c would take all of d as drawn (bhop_amor's
+        # back-to-back doors, 4 units apart), and d would never send anywhere.
+        self.assertEqual(bsp_import.separate_pits([c, d]), 1)
+        self.assertEqual(c["max"][0], 20)
+        self.assertEqual(d["min"][0], 20)
+        self.assertLessEqual(c["max"][0], d["original_min"][0])
+        self.assertGreaterEqual(d["min"][0], c["original_max"][0])
 
     def test_other_tracks_are_left(self):
         a = pit((0, 0, 0), (192, 64, 64), (1, 0, 0), track=0, original=((0, 0, 0), (64, 64, 64)))

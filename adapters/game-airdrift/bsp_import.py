@@ -88,6 +88,17 @@ LM_PAD = 1
 # play space, and a slab centred on the original plane is the honest approximation of
 # the swept test Source was doing. 192 units is seven ticks of travel at the genre's
 # ceiling speed.
+#
+# [b]That is the VERTICAL answer only, and for a pit not even that.[/b] Source touches a
+# trigger with the player's hull, 32 wide and 72 tall, so the feet it catches lie within
+# PLAYER_HALF_WIDTH of the trigger sideways and anywhere from PLAYER_HEIGHT under its
+# bottom up to its top -- never above it. Growing a thin axis sideways to 192 caught
+# feet 90 units from a door the mapper drew 8 thick (bhop_arcane_v2's stage-4/5 Restart
+# doors sent players strafing past the frame back to spawn), and growing a pit sheet
+# upward caught a player hopping over it (the same map's gap strips between its red
+# blocks, which reached 64 units over the block tops and reset every jump across a
+# gap). So see `inflate`: sideways a thin axis grows by the hull, and `inflate_pit`
+# never reaches above the mapper's sheet.
 MIN_ZONE_THICKNESS = 192.0
 
 # One tick of travel at the genre's ceiling, rounded up: 3500 u/s at 128 Hz is 27.3
@@ -1516,15 +1527,40 @@ def build_collision(bsp, notes, props=()):
 
 
 # -------------------------------------------------------------------- zones ---
+def hull_span(span, minimum):
+    """What a horizontal span thinner than `minimum` grows to: by the hull, up to it.
+
+    [b]Sideways, Source's trigger already reaches PLAYER_HALF_WIDTH past the brush.[/b]
+    Its touch test is the player's 32-wide hull against the brush, so the feet it
+    catches lie up to 16 units outside each face, and growing the box by exactly that
+    makes the point test dot-timer does ask the same question. It is also enough for
+    the tick: an 8-unit door becomes 40, and 3500 u/s at 128 Hz is 27.3 units a tick,
+    so nobody crosses it between two samples. Never past `minimum`, which is the most
+    the old centred growth ever made of it.
+    """
+    return min(minimum, span + 2.0 * PLAYER_HALF_WIDTH)
+
+
 def inflate(lo, hi, minimum):
-    """A box grown about its own centre until no axis is thinner than `minimum`."""
+    """A box grown about its own centre until no axis is thinner than `minimum` --
+    vertically. A horizontal axis thinner than that grows by the player hull only.
+
+    [b]A thin horizontal axis is a wall the mapper drew, not a sheet a player falls
+    through.[/b] Growing it to 192 like the vertical one put the catch 90 units each
+    side of an 8-unit door: bhop_arcane_v2's stage-4/5 Restart doors (trigger_teleports
+    to the spawn) respawned anyone strafing within 90 units of the frame. Source's
+    hull is 16 units from its centre, so that is all the zone grows sideways; see
+    `hull_span`. The vertical axis is still grown centred to `minimum` here, which is
+    right for a start or finish volume; a pit uses `inflate_pit`, which hangs it.
+    """
     lo, hi = list(lo), list(hi)
     grown = False
     for i in range(3):
         span = hi[i] - lo[i]
         if span < minimum:
             centre = (lo[i] + hi[i]) * 0.5
-            lo[i], hi[i] = centre - minimum * 0.5, centre + minimum * 0.5
+            want = minimum if i == 2 else hull_span(span, minimum)
+            lo[i], hi[i] = centre - want * 0.5, centre + want * 0.5
             grown = True
     return lo, hi, grown
 
@@ -1545,32 +1581,33 @@ def stands_between(solids, box, bottom, top):
     return False
 
 
-def inflate_pit(lo, hi, minimum, solids):
-    """A pit thickened the way `inflate` does, unless that would swallow a floor.
+def inflate_pit(lo, hi, minimum, solids=None):
+    """A pit thickened the way `inflate` does sideways, and hung from its top.
 
-    [b]Centred is right until the pit is closer to the route than half the slab.[/b]
-    `MIN_ZONE_THICKNESS` explains why a thin pit is grown at all and why centred was
-    the choice: downward is wrong for a boundary trigger above the play space. But a
-    bhop map draws its pit a block's height under the blocks -- 48 units on
-    bhop_evolve -- and a 192-unit slab centred on that reaches 48 units ABOVE the
-    block tops, so a player standing on a block is standing in the pit. 52 of that
-    map's 82 pits did it, the start room of bhop_pandora2_fix sat inside one, and
-    nothing about it reads as wrong from anywhere but a player's feet: the zone is in
-    the right place, the right size, and respawns people who landed perfectly.
+    [b]A pit never reaches above the sheet the mapper drew.[/b] Source touches a
+    trigger with the standing hull, so the feet it catches are anywhere from
+    PLAYER_HEIGHT under the trigger up to its top, and never one unit over it: a
+    player in the air above a pit is not in it, whatever is under them. So all the
+    thickness a thin pit needs goes downward, the side a falling player arrives from,
+    and its top stays where Source's was.
 
-    So when the upper half of the centred slab has somewhere to stand in it, the slab
-    hangs from the plane the mapper drew instead: its top stays where Source's
-    trigger was and all the thickness goes downward, which is the side a falling
-    player arrives from. A pit under open air stays centred, which keeps the old
-    answer for every map it was already right on.
+    This used to grow the slab centred and hang it only when the upper half had a
+    solid top strictly inside the pit's own footprint (bhop_evolve's pits a block's
+    height under the blocks: a slab centred on them reached 48 units over the block
+    tops). That test looked in the wrong place for the commonest bhop layout of all,
+    the strip of pit in the GAP between two blocks: nothing stands inside a gap, so
+    the slab stayed centred and its upper 96 units stood in the air between the
+    blocks, 64 over their tops on bhop_arcane_v2's stage-4 red blocks -- every hop
+    across a gap went through it and was sent back to the stage start. A centred
+    slab is only ever more than Source over the sheet; hung is never more there.
+
+    `solids` is accepted for the callers that pass it and no longer read: floors under
+    the hung slab are `clear_standers`'s job, as they were under a centred one.
     """
     top = hi[2]
     lo, hi, grown = inflate(lo, hi, minimum)
-    # Only the vertical axis can swallow a floor; a slab grown sideways is a wall.
-    if not grown or top >= hi[2]:
-        return lo, hi, grown, "centred" if grown else ""
-    if not stands_between(solids, (lo, hi), top, hi[2]):
-        return lo, hi, grown, "centred"
+    if not grown or hi[2] <= top:
+        return lo, hi, grown, ""
     lo[2], hi[2] = top - minimum, top
     return lo, hi, grown, "hung"
 
@@ -3519,11 +3556,12 @@ def classify_zones(bsp, min_thickness=MIN_ZONE_THICKNESS, doc=None, solids=None,
                     for a in (0, 1):
                         # Across the cut a slab spans the whole brush, so growing it
                         # there reaches over nothing a neighbour has; along the cut it
-                        # would. A brush narrower than a pit may be still gets its
-                        # width, centred, as it did before it was cut.
+                        # would. A brush narrower than a pit may be still grows by the
+                        # player hull, centred, as `inflate` grows any thin side.
                         whole = abs(lo[a] - full[0][a]) < 1.5 and abs(hi[a] - full[1][a]) < 1.5
                         if whole and hi[a] - lo[a] < z.min_thickness:
-                            grow = (z.min_thickness - (hi[a] - lo[a])) / 2.0
+                            grow = (hull_span(hi[a] - lo[a], z.min_thickness)
+                                    - (hi[a] - lo[a])) / 2.0
                             lo[a], hi[a] = lo[a] - grow, hi[a] + grow
                             zone["inflated"] = True
                     if hi[2] - lo[2] < z.min_thickness:
@@ -3847,10 +3885,13 @@ def separate_pits(pits):
             mid = ((oa[1][k] + ob[0][k]) if lower is a else (ob[1][k] + oa[0][k])) * 0.5
             # Never cut a side thinner than a tick of travel: a pit between two
             # neighbours (bhop_tranquility's rows) was left 12 units deep, which a falling player steps over.
+            # Two planes too close for both to keep a tick (bhop_amor's back-to-back doors,
+            # drawn 4 units apart and grown by the hull to 33 each) are still cut at the middle
+            # of their gap: left overlapping, the first in the list takes all of the other, and
+            # that door never sends anywhere. Each keeps all it was drawn, as in Source.
             floor, ceil = lower["min"][k] + TICK_DEPTH, upper["max"][k] - TICK_DEPTH
-            if floor > ceil:
-                continue
-            mid = min(max(mid, floor), ceil)
+            if floor <= ceil:
+                mid = min(max(mid, floor), ceil)
             lower["max"][k] = min(lower["max"][k], mid)
             upper["min"][k] = max(upper["min"][k], mid)
             cut += 1
