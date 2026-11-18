@@ -28,7 +28,7 @@ Everything that converts a map, a model, a texture or a sound lives in this repo
 | `zombie-zone-maps/import_bsp.py`, `build_worlds.py`, `auto_spec.py`, `completeness.py`, `coverage_report.py`, `check_worlds.py`, `make_stores_licence.py` | Zombie Zone document, drawn world, spec from a store entry, and the checks on them |
 | `hide-n-seek-maps/import_bsp.py`, `murder-mystery-maps/import_bsp.py` | those games' box documents |
 | `playlot-maps/import_bsp.py` | PLAYLOT box document plus its world pack through the mesh route (README, "PLAYLOT world") |
-| `mg-prop-hunt-maps/import_bsp.py`, `bsp_environment.py` | prop-hunt document and its environment pass |
+| `mg-prop-hunt-maps/import_bsp.py`, `bsp_environment.py` | prop-hunt document and its environment pass; its audit first lowers floating props onto the support below (`dotbsp/restack.py`, `max_drop` 0 = unlimited, strict raises when none) and drops only what has none |
 | `mg-wipeout-maps/import_world.py` | wipeout course from a regenerated world |
 | `mg-deathrun-maps/bsp_to_course.py`, `plan_route.py`, `draft_spec.py` | deathrun course from a spec, the route planner over the document the importer would write, and the first spec for a community map |
 | `mg-dangerous-delivery/bsp_route.py` | Dangerous Delivery route document (segments of length, turn, climb, width, walls, rails) along the longest drivable road of a converted map; no launcher there yet, run it here with the converted map's prefix |

@@ -72,6 +72,7 @@ sys.path.insert(0, HERE)
 import bsp_read  # noqa: E402  (a shim over dot-map's shared reader; it puts dotbsp on sys.path)
 from dotbsp import boxes as dboxes, docboxes, passledger  # noqa: E402  (the shared passes over a document's boxes)
 from dotbsp import models as bsp_models  # noqa: E402  (the models a map packs in its pakfile)
+from dotbsp import restack as dotrestack  # noqa: E402  (floating props are lowered onto the support below)
 from dotbsp import spawntopup  # noqa: E402  (props/hunters start top-up)
 from dotbsp import standins  # noqa: E402
 from dotbsp import sourceframe  # noqa: E402  (doc["source_frame"]: the origin shift and bounds, for the audit)
@@ -1269,13 +1270,27 @@ def drop_buried(boxes, field, cell=80.0):
     return keep
 
 
-def audit_props(doc):
-    """Drops what mg-prop-hunt's headless_maps would refuse, in the document's own coordinates: a prop
+def restack_props(doc, max_drop=0.0, strict=False):
+    """Sets each floating prop down on the support below it (a box top or another prop's top)
+    before the audit would drop it; the shared pass is dotbsp.restack. max_drop is the furthest
+    a prop may fall in metres (0 = unlimited); strict raises when a prop has no support within
+    reach, otherwise the audit that follows drops it. Returns (lowered, unsupported)."""
+    return dotrestack.restack(
+        doc, lambda q: build_maps.footprint(q["id"], q.get("yaw", 0.0)),
+        lambda under, dx, dz, q: build_maps.rest_on(under, dx, dz, q["id"], q.get("yaw", 0.0)),
+        max_drop=max_drop, skip=lambda q: "ceiling" in q["id"] or "lily" in q["id"], strict=strict)
+
+
+def audit_props(doc, max_drop=0.0, strict=False):
+    """Lowers floating props onto their support (restack_props), then drops what mg-prop-hunt's headless_maps would refuse, in the document's own coordinates: a prop
     whose middle is inside a solid box (an author's prop in a pit or a wall) and one with nothing
     under its base (a ray down from 4 cm above it finds no box top or prop top within 12 cm, from
     the nine points that audit samples). Repeats, because a dropped table leaves what stood on it
     floating. Returns the number dropped."""
     solid = [b for b in doc["boxes"] if b.get("solid", True)]
+    lowered, unsupported = restack_props(doc, max_drop, strict)
+    if lowered or unsupported:
+        print("audit: lowered %d floating props onto their support, %d have none within reach" % (len(lowered), len(unsupported)))
     gone = 0
     for _ in range(8):
         changed = False
