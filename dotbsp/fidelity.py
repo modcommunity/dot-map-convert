@@ -77,7 +77,14 @@ VOLUME_KEYS_READ = {
           "disablereceiveshadows", "disableshadows", "vrad_brush_cast_shadows", "_minlight", "solid",
           "origin_x", "texturescroll", "fadescale", "mindxlevel", "maxdxlevel", "inputfilter", "invert_exclusion",
           "spawnflags_", "damagefilter", "speed", "pushdir", "damage", "gravity", "landmark", "damagetype"},
+    # DotMapHurt._configure: rate, cap, doubling model, one-shot damage and knockback.
+    "trigger_hurt": {"hurtrate", "damagecap", "damagemodel", "damageonce", "damageforce", "nodmgforce"},
 }
+
+
+def volume_keys_read(cls):
+    """Keys the runtime reads for one volume class: the shared set plus the class's own."""
+    return VOLUME_KEYS_READ["*"] | VOLUME_KEYS_READ.get(cls.lower(), set())
 FILTERS_IMPLEMENTED = ("filter_activator_name", "filter_activator_class", "filter_activator_team", "filter_damage_type",
                        "filter_multi")
 SPECIAL = ("!activator", "!player", "!caller", "!self", "!picker", "!pvsplayer", "!speechtarget")
@@ -326,7 +333,7 @@ def findings(bsp):
         fn = r.get("filtername")
         if fn and str(v.get("filter", "")).lower() != fn.lower():
             add("filter_dropped", "%s#%d (%s) filter %s" % (r.cls, v["entity"], v["kind"], fn))
-        read = VOLUME_KEYS_READ["*"]
+        read = volume_keys_read(r.cls)
         for a, val in r.k.items():
             if a not in read and not a.startswith("on") and a not in class_outputs(r.cls):
                 gk = _volume_gameplay_keys(r.cls)

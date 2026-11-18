@@ -114,6 +114,15 @@ class Audit(unittest.TestCase):
         self.assertIn("input_unimplemented", rep["counts"])
         self.assertTrue(fidelity.gameplay_lost(rep))
 
+    def test_hurt_keys_the_runtime_reads_are_not_unread(self):
+        k = {"damage": "50", "damagecap": "100", "damagemodel": "1", "nodmgforce": "1", "hurtrate": "0.2"}
+        data = synth.build(entities=[WORLD], entity_box=(0, 0, 0, 32, 32, 32), entity_origin=(0, 0, 0),
+                           entity_class="trigger_hurt", entity_keys=k)
+        rep = fidelity.findings(reader.Bsp("t", data=data).load())
+        self.assertEqual([f for f in rep["findings"].get("volume_key_unread", []) if "trigger_hurt" in f], [])
+        self.assertIn("damagecap", fidelity.volume_keys_read("trigger_hurt"))
+        self.assertNotIn("damagecap", fidelity.volume_keys_read("trigger_push"))
+
     def test_the_converter_reads_the_lump_as_the_engine_does(self):
         bsp = teleport_map("orange", keys={"Target": "orange"})
         rep = fidelity.findings(bsp)
