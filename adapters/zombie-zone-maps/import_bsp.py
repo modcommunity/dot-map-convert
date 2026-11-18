@@ -66,6 +66,11 @@ TERRAIN = None
 # Its walk points after the last flood, which the game's graph is built on (nav_emulate mirrors it).
 TERRAIN_PTS = []
 FACES = []
+# The world pack's collision hulls the document will collide with (dotbsp.audit.collision_hulls), whose walkable tops
+# the nav flood stands on: the budget drops the small boxes that cut a ramp, and the hull is what the game walks up.
+NAV_HULLS = []
+HULL_WALK_NY = 0.7      # a hull face this upright or flatter (normal y) is a floor; a steeper one is a wall
+HULL_SAME_FLOOR = 0.3   # a hull top this close to a floor the boxes give is that floor
 GRAPH_MAIN = [0, 0]    # [points on the main ground, points] of the last conversion's game graph
 MAIN_SHARE_MIN = 0.6    # a whole-map graph below this share falls back to the spec's drop_small/max_boxes (see budgeted)
 
@@ -157,6 +162,81 @@ def world_pack(map_id):
 def world_pack_built(map_id):
     """Whether `world/<pack>/<id>.json` exists, so the game collides with the drawn world's hulls too."""
     return os.path.isfile(os.path.join(HERE, "..", "world", world_pack(map_id), map_id + ".json"))
+
+
+_HULL_READ = {}
+
+
+def world_collision_selection(spec, wc_models, wc_flat):
+    """The document's `world_collision` block: the box owners' models, flat breakables and the spec's cuts and region."""
+    hull_all = spec.get("hull_collision")    # {"cuts": [i, ...], "uncropped": bool}: the world's hulls collide where the boxes were cut or cropped
+    sel = {"models": sorted(set(wc_models)), "flat": sorted(set(wc_flat)), "flat_height": 0.5,
+           "skip": [list(c[:6]) for i, c in enumerate(spec.get("cut", [])) if len(c) < 7 and i not in (hull_all or {}).get("cuts", [])]}
+    if spec.get("crop") and not (hull_all or {}).get("uncropped"):
+        sel["within"] = list(spec["crop"])
+    if spec.get("clip_y") and not (hull_all or {}).get("uncropped"):
+        sel["band"] = list(spec["clip_y"])
+    return sel
+
+
+def selected_hulls(map_id, sel):
+    """The hulls `sel` selects from the built world pack of `map_id`; none when the pack is not built."""
+    prefix = os.path.join(HERE, "..", "world", world_pack(map_id), map_id)
+    if not os.path.isfile(prefix + ".json"):
+        return []
+    from dotbsp import audit as daudit, mesh as dmesh
+    if prefix not in _HULL_READ:
+        _HULL_READ.clear()
+        _HULL_READ[prefix] = dmesh.read(prefix)[1].hulls
+    return daudit.collision_hulls(_HULL_READ[prefix], sel)
+
+
+def hull_span(planes, x, z):
+    """(bottom, top, normal y of the top face) of the convex hull `planes` (n.p <= d) over (x, z), or None when it is not over it."""
+    lo, hi, ny_top = -1e9, 1e9, 0.0
+    for nx, ny, nz, d in planes:
+        r = d - nx * x - nz * z
+        if ny > 1e-6:
+            if r / ny < hi:
+                hi, ny_top = r / ny, ny
+        elif ny < -1e-6:
+            lo = max(lo, r / ny)
+        elif r < 0:
+            return None
+    return (lo, hi, ny_top) if hi - lo > 0.02 and ny_top else None
+
+
+def hull_surfaces(hulls, surf, spans_at):
+    """Puts the walkable tops of `hulls` into `surf` ({(ix, iz): [heights]}), the way dterrain.add_surfaces does for terrain.
+    A ramp the budget cut from the boxes is a hull of the world pack, and without a floor on it the flood never
+    climbs it and the prune cuts the links the importer drew through the slab beside it. A top within HULL_SAME_FLOOR
+    of a floor the boxes give is that floor; one with a box or another hull within HEAD above it is no floor."""
+    over = {}
+    for h in hulls:
+        pts = h["points"]
+        if not pts:
+            continue
+        planes = [tuple(pl) for pl in h["planes"]]
+        for ix in range(int(math.floor(min(p[0] for p in pts) / CELL)), int(math.floor(max(p[0] for p in pts) / CELL)) + 1):
+            for iz in range(int(math.floor(min(p[2] for p in pts) / CELL)), int(math.floor(max(p[2] for p in pts) / CELL)) + 1):
+                sp = hull_span(planes, (ix + 0.5) * CELL, (iz + 0.5) * CELL)
+                if sp:
+                    over.setdefault((ix, iz), []).append((sp[0], sp[1], sp[2] >= HULL_WALK_NY))
+    added = 0
+    for (ix, iz), spans in over.items():
+        mine = list(spans_at(ix, iz))
+        for lo, hi, walkable in spans:
+            if not walkable:
+                continue
+            h = round(hi, 2)
+            have = surf.get((ix, iz), [])
+            if any(abs(s - h) <= HULL_SAME_FLOOR for s in have) or (MIN_FLOOR_Y is not None and h < MIN_FLOOR_Y):
+                continue
+            if any(l2 < h + HEAD and h2 > h + 0.05 for l2, h2 in mine + [(a, b) for a, b, _w in spans if (a, b) != (lo, hi)]):
+                continue
+            surf[(ix, iz)] = sorted(have + [h])
+            added += 1
+    return added
 
 
 def name_world(doc, repo_root):
@@ -483,6 +563,8 @@ def nav_geometry(boxes):
             if s:
                 surf[(ix, iz)] = s
     tsurf = dterrain.add_surfaces(TERRAIN, surf, lambda a, b: spans_at(solid, grid, a, b), CELL, HEAD) if TERRAIN else set()
+    if NAV_HULLS:
+        hull_surfaces(NAV_HULLS, surf, lambda a, b: spans_at(solid, grid, a, b))
     treads = set()
     for (ix, iz), bis in grid.items():
         for bi in bis:
@@ -2190,6 +2272,11 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
                 e.update(only.get(e.get("targetname"), {}) if only else {})
                 gate_cands.append((e, gb))
 
+    global NAV_HULLS
+    NAV_HULLS = [] if spec.get("nav_hulls") is False else selected_hulls(spec["id"], world_collision_selection(spec, wc_models, wc_flat))
+    if NAV_HULLS:
+        print("  nav: %d world hulls give their walkable tops to the flood" % len(NAV_HULLS))
+
     # Authoring the source could not carry: a moving platform or a puzzle step is a thing the game
     # has no mover for, so a spec adds the boxes that stand in for it (`add_boxes`, game coordinates),
     # cuts the ones that must go (`cut`: regions [x0,y0,z0,x1,y1,z1] whose box centres are removed),
@@ -3271,12 +3358,7 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
         if moved:
             print("  world_collision: not written, the spec moves collision (%s)" % ", ".join(moved), file=sys.stderr)
         else:
-            doc["world_collision"] = {"models": sorted(set(wc_models)), "flat": sorted(set(wc_flat)), "flat_height": 0.5,
-                                      "skip": [list(c[:6]) for i, c in enumerate(spec.get("cut", [])) if len(c) < 7 and i not in (hull_all or {}).get("cuts", [])]}
-            if spec.get("crop") and not (hull_all or {}).get("uncropped"):
-                doc["world_collision"]["within"] = list(spec["crop"])
-            if spec.get("clip_y") and not (hull_all or {}).get("uncropped"):
-                doc["world_collision"]["band"] = list(spec["clip_y"])
+            doc["world_collision"] = world_collision_selection(spec, wc_models, wc_flat)
             print("  world_collision: %d models from the world pack's hulls" % len(doc["world_collision"]["models"]))
     doc = cut_blocked_links(doc, spec.get("extra_links", []))
     if not spec.get("keep_dead_links"):
