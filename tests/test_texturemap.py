@@ -156,7 +156,8 @@ class TextureMapTests(unittest.TestCase):
             "BUCKNASTY/RIVER_FLOW": "water", "SMOOTH/RIVER_FLOW": "water", "COLLAB/BIGLOOP_THUMB": "flat",
             "GR_V4/V4_WEP_AK47": "flat", "SURF_BATHROOM/SURF_BATHROOM_TOWEL_BLUE": "flat", "SURF/CLEAR": "glass",
             "TEXTURY/ZZ13": "concrete", "NATURE/CAVEWALL005A": "rock", "DE_PRODIGY/FLOOR01": "tile_floor",
-            "MODELS/EFFECTS/VOL_LIGHSTUB": None, "MODELS/EFFECTS/VOL_LIGHT002": "invisible",
+            "MODELS/EFFECTS/VOL_LIGHSTUB": None, "/Z_JUST_JUMP": "flat", "GRUEDDI/CT_MACHINE": "flat",
+            "HUD/T_VICTORIES_COUNTER-TERRORIST-ELIMINATED": "flat", "MODELS/EFFECTS/PORTALFUNNEL_SHEET": "invisible", "MODELS/EFFECTS/VOL_LIGHT002": "invisible",
         }.items():
             hit = t.lookup(name)
             if material is None:
@@ -164,7 +165,8 @@ class TextureMapTests(unittest.TestCase):
             self.assertIsNotNone(hit, name)
             self.assertEqual(hit[0], material, name)
         rows, sizes = standins.models(), standins.Sizes()
-        for name in ("props_wasteland/prison_padlock001a.mdl", "my model/circlejaillasers.mdl", "my model/circlejailnames2.mdl"):
+        for name in ("props_wasteland/prison_padlock001a.mdl", "my model/circlejaillasers.mdl", "my model/circlejailnames2.mdl",
+                     "pg_props/pg_park/pg_felsen3.mdl", "pg_props/pg_park/pg_felsenformation2.mdl", "kloetengott/ente.mdl"):
             row = rows.get(name)
             self.assertIsNotNone(row, name)
             self.assertEqual(row["licence"], "CC0-1.0", name)

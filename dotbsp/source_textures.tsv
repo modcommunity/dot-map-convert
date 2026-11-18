@@ -948,3 +948,8 @@ MODELS/PROPS_CANAL/CANAL_BRIDGE_RAILING_01C	metal
 MODELS/PROPS_COMBINE/STASISFIELD_BEAM	shield
 MODELS/PROPS_COMBINE/PORTALBALL001_SHEET	flat	0.8,0.85,0.95
 MODELS/PROPS_LAB/ROTATO_SHEETRED	flat	0.8,0.15,0.15
+# --- surf_machine, surf_megamachine, surf_skate_park_v2 (combat surf): credits/HUD cards are a flat average colour, the effect sheet is left out
+/Z_*	flat	0.8,0.8,0.8
+GRUEDDI/*	flat	0.6,0.6,0.62
+HUD/*	flat	0.8,0.8,0.8
+MODELS/EFFECTS/PORTALFUNNEL_SHEET	invisible
