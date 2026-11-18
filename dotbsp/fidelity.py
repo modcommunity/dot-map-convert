@@ -69,7 +69,7 @@ SEVERE = ("lost", "changed", "unsupported")
 
 # Parents that never move by themselves: the runtime walks through them to the mover above (DotMapVolumeNode._movers_above).
 STILL_PARENTS = {"info_target", "info_null", "func_brush", "func_wall", "func_illusionary", "func_wall_toggle",
-                 "func_lod", "info_teleport_destination", "point_template"}
+                 "func_lod", "info_teleport_destination", "point_template", "path_track", "path_corner"}
 
 
 def _parent_chain(refs, resolve, mov_by, parentname):
@@ -86,7 +86,7 @@ def _parent_chain(refs, resolve, mov_by, parentname):
         j = found[0]
         if j in mov_by:
             follows = True
-        elif refs[j].cls not in STILL_PARENTS:
+        elif refs[j].cls not in STILL_PARENTS and not refs[j].cls.startswith("trigger_"):
             return "volume_parented"
         name = (refs[j].get("parentname") or "").split(",")[0].strip()
     return "volume_follows" if follows else None
