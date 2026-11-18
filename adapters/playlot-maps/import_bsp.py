@@ -584,6 +584,8 @@ def material_for(cfg, names):
     if pick is not None or not [n for n in names if not n.startswith("TOOLS/")]:
         return pick
     hit = docboxes.majority_material(names, TEXTURE_MAP, ("", None))
+    if hit[0] == "invisible":
+        return None                           # a decal, fog card or screen: the shared list draws no face, so no box
     if not hit[0]:
         return ("concrete", None)             # a texture the list does not map, or maps to nothing
     mat, colour = GAME_MATERIAL.get(hit[0], (hit[0], None))

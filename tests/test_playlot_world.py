@@ -133,5 +133,14 @@ class PlaylotWorld(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.tmp, "repo", "maps", "world")))
 
 
+@unittest.skipIf(I is None, "adapter or numpy did not import")
+class PlaylotMaterialFor(unittest.TestCase):
+    def test_invisible_texture_is_no_box(self):
+        # The shared list's `invisible` (decals, fog cards, screens) is not a game material: pg_data refuses
+        # a box made of it (pgc_boreas, box 10432). Such a brush is dropped, as a tools-only one is.
+        self.assertIsNone(I.material_for({}, ["DECALS/OFFPAINTING1"]))
+        self.assertNotEqual((I.material_for({}, ["BRICK/BRICKWALL001A"]) or ("",))[0], "invisible")
+
+
 if __name__ == "__main__":
     unittest.main()
