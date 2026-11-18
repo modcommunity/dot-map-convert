@@ -35,7 +35,7 @@ def fixture():
               ("message", "a,b,c"), ("note", "x,y,z,notanumber,2")),
         Pairs(("classname", "point_servercommand"), ("targetname", "cmd")),
         Pairs(("classname", "logic_auto"), ("OnMapSpawn", "cmd,Command,sv_airaccelerate 150,0,-1")),
-        Pairs(("classname", "game_ui"), ("PressedAttack", "door,Open,,0,-1"), ("PlayerOn", "relay,Enable\x1b\x1b0\x1b-1")),
+        Pairs(("classname", "game_ui"), ("PressedAttack", "door,Open,,0,-1"), ("PlayerOn", "relay\x1bEnable\x1b\x1b0\x1b-1")),
     ])
 
 
@@ -51,7 +51,8 @@ class RepeatedKeys(unittest.TestCase):
 
     def test_dict_view_unchanged(self):
         trig = self.bsp.entities[1]
-        self.assertEqual(trig["filtername"], "a")
+        self.assertEqual(trig["filtername"], "b")       # the engine's reading: the last value wins
+        self.assertEqual(trig["FilterName"], "b")       # and keys compare case-insensitively
         self.assertEqual(trig["OnTrigger"], "door,Open,,0,-1\ndoor,Close,,2.5,1")
 
     def test_on_outputs_come_first_and_unchanged(self):

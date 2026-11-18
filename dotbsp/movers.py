@@ -52,7 +52,13 @@ SF_ROTATING_NOT_SOLID = 64
 SF_TRAIN_NOT_SOLID = 8
 SF_TRIGGER_CLIENTS = 1
 
-_OUTPUT_SPLIT = re.compile(r"[,\x1b]")
+
+
+def _split_output(value):
+    """The engine's split of an output value: on ESC when it holds one (newer compilers write
+    ESC so a parameter may carry commas, `RunScriptCode(f(a,b))`), else on commas."""
+    value = str(value)
+    return value.split("\x1b") if "\x1b" in value else value.split(",")
 
 
 def _f(e, k, d=0.0):
@@ -83,7 +89,7 @@ def gdir(v):
 
 
 def _output_link(key, line):
-    parts = _OUTPUT_SPLIT.split(line)
+    parts = _split_output(line)
     if len(parts) < 2:
         return None
     parts += [""] * (5 - len(parts))
@@ -102,7 +108,7 @@ def _output_link(key, line):
 def output_shaped(value):
     """True for a value written as `target,input,param,delay,times`: the shape decides, because
     input-capture entities name their outputs `PressedAttack` and counters `OutValue`."""
-    parts = _OUTPUT_SPLIT.split(str(value))
+    parts = _split_output(value)
     if len(parts) != 5 or not parts[0].strip() or not parts[1].strip():
         return False
     try:
@@ -121,14 +127,14 @@ def outputs(e):
     """
     out = []
     for k, v in e.items():
-        if not k.startswith("On"):
+        if k[:2].lower() != "on":
             continue
         for line in str(v).split("\n"):
             rec = _output_link(k, line)
             if rec:
                 out.append(rec)
     for k, v in getattr(e, "pairs", ()):
-        if not k.startswith("On") and output_shaped(v):
+        if k[:2].lower() != "on" and output_shaped(v):
             out.append(_output_link(k, v))
     return out
 
@@ -360,9 +366,15 @@ VOLUME_KINDS = {"trigger_multiple": "multiple", "trigger_once": "once", "trigger
                 "func_ladder": "ladder", "trigger_soundscape": "soundscape"}
 
 
-def volumes(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
+def volumes(bsp, scale=_units.VISUAL, y0=0.0, owners=None, release=False):
     """One record per trigger volume, water brush and ladder: kind, its keys that matter, and
-    its brushes as plane lists (n.p <= d inside, metres, Godot axes)."""
+    its brushes as plane lists (n.p <= d inside, metres, Godot axes).
+
+    Every trigger kind records its `filter` (filtername). A teleport's `target` (and `landmark`)
+    is the name its destination is recorded under in `destinations`, matched as the engine
+    matches names (case-insensitive, first entity wins). `release` runs `release_pits`, which
+    re-aims teleports the author wired; it changes the map's gameplay, so it is off unless a
+    caller asks for it by name."""
     from . import mesh
     owners = owners if owners is not None else mesh.model_entities(bsp)
 
@@ -371,6 +383,8 @@ def volumes(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
                 for nx, ny, nz, d in bsp.brush_planes(bi, off)]
 
     out = []
+    dests = destinations(bsp, scale, y0)
+    canon = {n.lower(): n for n in dests}
     for mi, ei in sorted(owners.items()):
         e = bsp.entities[ei]
         kind = VOLUME_KINDS.get(e.get("classname", ""))
@@ -381,12 +395,17 @@ def volumes(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
                "targetname": e.get("targetname", ""), "spawnflags": _i(e, "spawnflags"),
                "disabled": str(e.get("StartDisabled", "0")).strip() == "1", "outputs": outputs(e),
                "brushes": [planes(bi, off) for bi in sorted(bsp.model_brushes(mi)) if bi < len(bsp.brushes)]}
+        if kind not in ("water", "ladder"):
+            rec["filter"] = e.get("filtername", "")
         if kind in ("multiple", "once"):
             rec["wait"] = -1.0 if kind == "once" else _f(e, "wait", 1.0)
-            rec["filter"] = e.get("filtername", "")
         elif kind == "teleport":
-            rec["target"] = e.get("target", "")
-            rec["filter"] = e.get("filtername", "")
+            t = e.get("target", "")
+            rec["target"] = canon.get(t.lower(), t)
+            lm = e.get("landmark", "")
+            if lm:
+                rec["landmark"] = canon.get(lm.lower(), lm)
+            rec["landmark_angles"] = str(e.get("UseLandmarkAngles", "0")).strip() not in ("", "0")
         elif kind == "push":
             rec["direction"] = gdir(angle_vector(e.get("pushdir", "0 0 0")))
             rec["speed"] = round(_f(e, "speed", 40.0) * scale, 4)
@@ -404,7 +423,8 @@ def volumes(bsp, scale=_units.VISUAL, y0=0.0, owners=None):
         if kind:
             out.append({"entity": None, "model": 0, "classname": "worldspawn", "kind": kind, "brush": bi,
                         "slime": bool(c & reader.CONTENTS_SLIME), "brushes": [planes(bi, (0.0, 0.0, 0.0))]})
-    release_pits(out, destinations(bsp, scale, y0))
+    if release:
+        release_pits(out, dests)
     return out
 
 
@@ -576,12 +596,42 @@ def pickups(bsp, scale=_units.VISUAL, y0=0.0):
     return out
 
 
+DESTINATION_CLASSES = ("info_teleport_destination", "info_target", "info_landmark", "point_teleport")
+
+
 def destinations(bsp, scale=_units.VISUAL, y0=0.0):
-    """{name: {at, yaw}} of every point a teleport may send a body to."""
-    out = {}
+    """{name: {at, yaw}} of every point a teleport may send a body to.
+
+    The engine's trigger_teleport finds its target (and landmark) by name among ALL entities,
+    case-insensitively, the first one winning, and lands at its origin: a spawn point, another
+    trigger or a prop is a destination as much as an info_teleport_destination. So the named
+    destination classes are recorded, and any other entity a teleport names (its target or
+    landmark, a SetRemoteDestination, an AddOutput of target or landmark), under the spelling
+    of the first entity of that name."""
+    wanted = set()
     for e in bsp.entities:
-        if e.get("classname") in ("info_teleport_destination", "info_target", "info_landmark", "point_teleport") and e.get("targetname"):
-            p = reader.entity_vec(e)
-            out.setdefault(e["targetname"], {"at": [round(p[0] * scale, 4), round(p[2] * scale - y0, 4), round(-p[1] * scale, 4)],
-                                             "yaw": round(reader.yaw_to_godot(reader.entity_yaw(e)), 3)})
+        c = e.get("classname", "")
+        if c == "trigger_teleport" or c == "point_teleport":
+            for k in ("target", "landmark"):
+                if e.get(k):
+                    wanted.add(e[k].lower())
+    for o in links(bsp):
+        il, param = o["input"].lower(), o["param"]
+        if il == "setremotedestination" and param:
+            wanted.add(param.strip().lower())
+        elif il == "addoutput":
+            m = re.match(r"\s*(target|landmark)[\s:]+(\S+)", param, re.I)
+            if m:
+                wanted.add(m.group(2).lower())
+    out, seen = {}, set()
+    for e in bsp.entities:
+        n = e.get("targetname")
+        if not n or n.lower() in seen:
+            continue
+        if e.get("classname") not in DESTINATION_CLASSES and n.lower() not in wanted:
+            continue
+        seen.add(n.lower())
+        p = reader.entity_vec(e)
+        out[n] = {"at": [round(p[0] * scale, 4), round(p[2] * scale - y0, 4), round(-p[1] * scale, 4)],
+                  "yaw": round(reader.yaw_to_godot(reader.entity_yaw(e)), 3)}
     return out

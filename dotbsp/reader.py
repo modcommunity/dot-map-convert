@@ -670,9 +670,70 @@ def to_metres(p, scale=METRES_PER_UNIT):
 
 
 class Entity(dict):
-    """One entity as the dict every reader uses, plus `pairs`: every key and value in file order."""
+    """One entity as the dict every reader uses, plus `pairs`: every key and value in file order.
+
+    Keys are looked up as the engine looks them up: case-insensitively (`Target`, `StartDisabled`
+    and `startdisabled` are one key). The dict keeps the spelling a key first appeared in.
+    """
 
     pairs = ()
+
+    def _canon(self, k):
+        if dict.__contains__(self, k) or not isinstance(k, str):
+            return k
+        low = k.lower()
+        for a in dict.keys(self):
+            if isinstance(a, str) and a.lower() == low:
+                return a
+        return k
+
+    def __missing__(self, k):
+        c = self._canon(k)
+        if c is k:
+            raise KeyError(k)
+        return dict.__getitem__(self, c)
+
+    def __contains__(self, k):
+        return dict.__contains__(self, self._canon(k))
+
+    def get(self, k, default=None):
+        return dict.get(self, self._canon(k), default)
+
+    def __setitem__(self, k, v):
+        dict.__setitem__(self, self._canon(k), v)
+
+    def setdefault(self, k, default=None):
+        return dict.setdefault(self, self._canon(k), default)
+
+    def pop(self, k, *default):
+        return dict.pop(self, self._canon(k), *default)
+
+    def __delitem__(self, k):
+        dict.__delitem__(self, self._canon(k))
+
+
+_TOKEN = re.compile(r'"([^"]*)"|([{}])')
+
+
+def entity_pairs(text):
+    """[[(key, value), ...], ...]: every entity's pairs in file order, read as the engine reads
+    the lump: quoted strings may hold braces, and a block with no pairs is no entity."""
+    out, cur, pend = [], None, None
+    for m in _TOKEN.finditer(text):
+        q, b = m.group(1), m.group(2)
+        if b == "{":
+            cur, pend = [], None
+        elif b == "}":
+            if cur:
+                out.append(cur)
+            cur, pend = None, None
+        elif cur is not None:
+            if pend is None:
+                pend = q
+            else:
+                cur.append((pend, q))
+                pend = None
+    return out
 
 
 def parse_entities(text):
@@ -681,22 +742,20 @@ def parse_entities(text):
     [b]An output key repeats, and every repeat is kept.[/b] A trigger that does two things
     on touch carries two OnTrigger keys, and a dict that kept only the first lost the second
     (32 traps imported as nothing). Repeats of an On* key are joined with newlines, which
-    every reader of outputs already scans with a regex that stops at whitespace. Any other
-    key keeps its first value in the dict; `pairs` keeps all of them, for outputs that are
-    not named On* and for the lossless store.
+    every reader of outputs already scans with a regex that stops at whitespace. Any other key
+    takes its LAST value, as the engine does (keys compare case-insensitively); `pairs` keeps
+    all of them, for outputs that are not named On* and for the lossless store.
     """
     out = []
-    for blk in re.findall(r"\{([^{}]*)\}", text):
+    for pairs in entity_pairs(text):
         kv = Entity()
-        pairs = re.findall(r'"([^"]*)"\s*"([^"]*)"', blk)
         for k, v in pairs:
-            if k in kv and k.startswith("On"):
+            if k in kv and k[:2].lower() == "on":
                 kv[k] += "\n" + v
             else:
-                kv.setdefault(k, v)
-        if kv:
-            kv.pairs = pairs
-            out.append(kv)
+                kv[k] = v
+        kv.pairs = pairs
+        out.append(kv)
     return out
 
 
