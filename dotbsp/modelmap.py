@@ -355,6 +355,42 @@ def missing_uris(path):
     return [u for u in uris if not os.path.exists(os.path.join(os.path.dirname(path), u))]
 
 
+def gltf_triangles(path):
+    """Triangles a .gltf lists (index counts of its triangle primitives; unindexed ones by vertex count), 0 if unreadable."""
+    try:
+        with open(path) as f:
+            doc = json.load(f)
+        acc = doc.get("accessors", [])
+        n = 0
+        for mesh in doc.get("meshes", []):
+            for p in mesh.get("primitives", []):
+                if p.get("mode", 4) != 4:
+                    continue
+                a = p.get("indices", p.get("attributes", {}).get("POSITION"))
+                n += acc[a]["count"] // 3 if a is not None else 0
+        return n
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        return 0
+
+
+def tri_budget():
+    """Triangles above which a shipped model draws a warning: DOTBSP_MODEL_TRI_BUDGET, default 300000, 0 = no check."""
+    try:
+        return int(os.environ.get("DOTBSP_MODEL_TRI_BUDGET", "300000"))
+    except ValueError:
+        return 300000
+
+
+def warn_heavy(rel, path, budget=None):
+    """Warns (never fails) when a library .gltf is over the triangle budget: the web build parses it whole (a 1.07M-triangle
+    tree peaked at 472 MB of wasm heap). Decimate it in the library (art-library/tools/decimate_gltf)."""
+    budget = tri_budget() if budget is None else budget
+    n = gltf_triangles(path) if budget > 0 and path.endswith(".gltf") else 0
+    if budget > 0 and n > budget:
+        print("warning: %s has %d triangles, over the %d budget (DOTBSP_MODEL_TRI_BUDGET, 0 = off); decimate it in the library" % (rel, n, budget), file=sys.stderr)
+    return n
+
+
 def ship(row, store, root=None):
     """Copies a picked library model into the shared model store, keeping its library-relative path (a pack's
     models share its texture folder), and returns that path. A glTF goes with everything beside it."""
@@ -367,6 +403,7 @@ def ship(row, store, root=None):
     dst = os.path.join(store, rel)
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     if rel.endswith(".gltf"):
+        warn_heavy(rel, src)
         if not os.path.isfile(dst):
             shutil.copytree(os.path.dirname(src), os.path.dirname(dst), dirs_exist_ok=True)
         return rel

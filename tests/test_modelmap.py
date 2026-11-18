@@ -19,6 +19,30 @@ def rec(ident, dims, source="Poly Haven"):
             "dims": dims, "file": ident + "/" + ident + ".glb", "own": False}
 
 
+class TriBudget(unittest.TestCase):
+    def write(self, d, counts):
+        import json
+        acc = [{"count": c} for c in counts]
+        prims = [{"indices": i, "attributes": {"POSITION": i}} for i in range(len(counts))]
+        p = os.path.join(d, "m.gltf")
+        with open(p, "w") as f:
+            json.dump({"accessors": acc, "meshes": [{"primitives": prims}]}, f)
+        return p
+
+    def test_counts_and_warns_over_budget(self):
+        import contextlib
+        import io
+        with tempfile.TemporaryDirectory() as d:
+            p = self.write(d, [3000, 6000])
+            self.assertEqual(modelmap.gltf_triangles(p), 3000)
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                self.assertEqual(modelmap.warn_heavy("m.gltf", p, budget=500), 3000)
+                self.assertEqual(modelmap.warn_heavy("m.gltf", p, budget=0), 0)
+            self.assertEqual(err.getvalue().count("over the 500 budget"), 1)
+            self.assertEqual(modelmap.gltf_triangles(os.path.join(d, "none.gltf")), 0)
+
+
 class ModelMap(unittest.TestCase):
     def test_distance_exact_and_turned(self):
         d, s, t = modelmap.distance((0.6, 1.0, 0.4), (0.4, 1.0, 0.6))

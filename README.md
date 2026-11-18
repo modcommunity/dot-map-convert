@@ -31,6 +31,8 @@ The converter finds the dot-map addon it writes into as the sibling checkout `..
 | `unmapped`, `classes`, `modeldims`, `modelparts`, `modelmap`, `pbrmap`, `standins` | Coverage reports and the mapping steps for textures, entity classes and models |
 | `storepack`, `bundle` | Ship the texture and model stores as dot-cloud slices, or make a world self-contained for a map pack |
 
+Shipping a library model over `DOTBSP_MODEL_TRI_BUDGET` triangles (default 300000, 0 = off) warns on stderr; decimate it in the library with `art-library/tools/decimate_gltf`.
+
 ## How an import works
 
 1. **Raw import**, outside every repository, at `<root>/<game>/raw/<map>/` (`--raw-root`, `$DOTBSP_RAW_ROOT`, default `~/mapsrc`): the mesh, every entity key, a texture and model census and the packed file list.
