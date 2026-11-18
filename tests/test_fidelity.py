@@ -123,6 +123,33 @@ class Audit(unittest.TestCase):
         self.assertIn("damagecap", fidelity.volume_keys_read("trigger_hurt"))
         self.assertNotIn("damagecap", fidelity.volume_keys_read("trigger_push"))
 
+    def test_a_volume_on_a_prop_dynamic_is_unsupported_and_on_a_still_target_is_no_finding(self):
+        for parent, want in (("prop_dynamic", 1), ("info_target", 0)):
+            data = synth.build(entities=[WORLD, Pairs(("classname", parent), ("targetname", "p"), ("origin", "0 0 0"))],
+                               entity_box=(0, 0, 0, 32, 32, 32), entity_class="trigger_hurt",
+                               entity_keys={"damage": "5", "parentname": "p"})
+            rep = fidelity.findings(reader.Bsp("t", data=data).load())
+            self.assertEqual(rep["counts"].get("volume_parented", 0), want, parent)
+            self.assertEqual(rep["counts"].get("volume_follows", 0), 0, parent)
+
+    def test_a_volume_follows_a_mover_through_still_parents(self):
+        class R:
+            def __init__(self, cls, **kv):
+                self.cls, self.kv = cls, kv
+
+            def get(self, k):
+                return self.kv.get(k, "")
+        refs = [R("func_brush", targetname="b", parentname="door"), R("func_door", targetname="door"),
+                R("prop_dynamic", targetname="arm"), R("func_brush", targetname="c", parentname="arm,attach")]
+        names = {"b": [0], "door": [1], "arm": [2], "c": [3]}
+        resolve = lambda t: names.get(t.lower(), [])      # noqa: E731
+        movers_ = {1: {}}
+        self.assertEqual(fidelity._parent_chain(refs, resolve, movers_, "b"), "volume_follows")
+        self.assertEqual(fidelity._parent_chain(refs, resolve, movers_, "door,attachment"), "volume_follows")
+        self.assertEqual(fidelity._parent_chain(refs, resolve, movers_, "c"), "volume_parented")
+        self.assertIsNone(fidelity._parent_chain(refs, resolve, movers_, "nobody"))
+        self.assertNotIn(fidelity.FINDINGS["volume_follows"][0], fidelity.SEVERE)
+
     def test_the_converter_reads_the_lump_as_the_engine_does(self):
         bsp = teleport_map("orange", keys={"Target": "orange"})
         rep = fidelity.findings(bsp)

@@ -50,7 +50,8 @@ FINDINGS = {
     "filter_class_unsupported": ("unsupported", "a filter class the runtime does not evaluate (admits everyone)"),
     "volume_unrecorded": ("lost", "a trigger/volume brush entity with no volume record (nothing touches it)"),
     "volume_empty": ("lost", "a volume record with no brushes (its model has none the tree reaches)"),
-    "volume_parented": ("unsupported", "a volume parented to a moving entity; the volume stays where it was compiled"),
+    "volume_parented": ("unsupported", "a volume parented to something that moves without a mover record (a prop_dynamic, a physics object): the volume stays where it was compiled"),
+    "volume_follows": ("handled", "a volume parented to a door, lift, train or spinner (through parents that do not move): DotMapVolumeNode carries it with the mover chain, SetParent included"),
     "volume_key_unread": ("unsupported", "a gameplay key on a volume the runtime does not apply"),
     "mover_unrecorded": ("lost", "a moving brush entity with no mover record"),
     "class_unsupported": ("unsupported", "a gameplay class (wired by outputs, or a trigger/logic/filter/game class) with no runtime component"),
@@ -65,6 +66,30 @@ FINDINGS = {
     "teleport_dangling": ("source", "a trigger_teleport target no entity carries (the engine does nothing)"),
 }
 SEVERE = ("lost", "changed", "unsupported")
+
+# Parents that never move by themselves: the runtime walks through them to the mover above (DotMapVolumeNode._movers_above).
+STILL_PARENTS = {"info_target", "info_null", "func_brush", "func_wall", "func_illusionary", "func_wall_toggle",
+                 "func_lod", "info_teleport_destination", "point_template"}
+
+
+def _parent_chain(refs, resolve, mov_by, parentname):
+    """`volume_follows` when the parent chain reaches a recorded mover through still parents, `volume_parented` when a
+    link moves without a mover record, None when nothing above moves (the volume stays, as in the engine)."""
+    seen = set()
+    name = parentname.split(",")[0].strip()
+    follows = False
+    while name and name.lower() not in seen:
+        seen.add(name.lower())
+        found = resolve(name)
+        if not found:
+            break
+        j = found[0]
+        if j in mov_by:
+            follows = True
+        elif refs[j].cls not in STILL_PARENTS:
+            return "volume_parented"
+        name = (refs[j].get("parentname") or "").split(",")[0].strip()
+    return "volume_follows" if follows else None
 
 # Keys the converter's records read by exact name.
 RECORD_KEYS = ("classname", "targetname", "target", "parentname", "filtername", "origin", "angles", "model",
@@ -327,9 +352,9 @@ def findings(bsp):
         if not v.get("brushes"):
             add("volume_empty", "%s#%d %s" % (r.cls, v["entity"], r.get("targetname")))
         if r.get("parentname"):
-            p = resolve(r.get("parentname").split(",")[0])
-            if p and any(refs[j].cls != "info_target" for j in p):
-                add("volume_parented", "%s#%d -> %s" % (r.cls, v["entity"], r.get("parentname")))
+            how = _parent_chain(refs, resolve, mov_by, r.get("parentname"))
+            if how:
+                add(how, "%s#%d -> %s" % (r.cls, v["entity"], r.get("parentname")))
         fn = r.get("filtername")
         if fn and str(v.get("filter", "")).lower() != fn.lower():
             add("filter_dropped", "%s#%d (%s) filter %s" % (r.cls, v["entity"], v["kind"], fn))
