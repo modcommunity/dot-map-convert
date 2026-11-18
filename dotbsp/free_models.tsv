@@ -147,3 +147,5 @@ hover_rings	barrel	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Ken
 (^|/)mountain/mountain\d*	rock	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
 frictionizer	crate	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
 props/scaffold\.mdl	fence	Kenney Nature Kit	https://kenney.nl/assets/nature-kit	Kenney	CC0-1.0
+prison_padlock	bucket	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0
+(^|/)circlejail(lasers|names)\d*	signpost	Kenney Survival Kit	https://kenney.nl/assets/survival-kit	Kenney	CC0-1.0

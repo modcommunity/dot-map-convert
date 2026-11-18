@@ -147,6 +147,29 @@ class TextureMapTests(unittest.TestCase):
             self.assertIn(row["licence"], ("CC0-1.0", "MIT", "Public Domain"), name)
             self.assertIsNotNone(sizes.get(name), name)
 
+    def test_surf_maps_textures_and_models_are_all_mapped(self):
+        # the combat surf pack's unmapped lists (2026-11-18): cards and credits are flat, surfaces take a material
+        from dotbsp import standins
+        t = texturemap.load()
+        for name, material in {
+            "AUSTINPOWERSTEX/5": "flat", "AUSTINPOWERSTEX/CLEAR": "glass", "AUSTINPOWERSTEX/CRATE": "wood_planks",
+            "BUCKNASTY/RIVER_FLOW": "water", "SMOOTH/RIVER_FLOW": "water", "COLLAB/BIGLOOP_THUMB": "flat",
+            "GR_V4/V4_WEP_AK47": "flat", "SURF_BATHROOM/SURF_BATHROOM_TOWEL_BLUE": "flat", "SURF/CLEAR": "glass",
+            "TEXTURY/ZZ13": "concrete", "NATURE/CAVEWALL005A": "rock", "DE_PRODIGY/FLOOR01": "tile_floor",
+            "MODELS/EFFECTS/VOL_LIGHSTUB": None, "MODELS/EFFECTS/VOL_LIGHT002": "invisible",
+        }.items():
+            hit = t.lookup(name)
+            if material is None:
+                continue
+            self.assertIsNotNone(hit, name)
+            self.assertEqual(hit[0], material, name)
+        rows, sizes = standins.models(), standins.Sizes()
+        for name in ("props_wasteland/prison_padlock001a.mdl", "my model/circlejaillasers.mdl", "my model/circlejailnames2.mdl"):
+            row = rows.get(name)
+            self.assertIsNotNone(row, name)
+            self.assertEqual(row["licence"], "CC0-1.0", name)
+            self.assertIsNotNone(sizes.get(name), name)
+
     def test_cli_unmapped_reads_a_map(self):
         import synth
         with tempfile.TemporaryDirectory() as d:

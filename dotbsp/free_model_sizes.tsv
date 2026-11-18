@@ -78,3 +78,5 @@ hover_rings	1.0
 (^|/)mountain/mountain\d*	30.0
 frictionizer	0.8
 props/scaffold\.mdl	3.0
+prison_padlock	0.15
+(^|/)circlejail(lasers|names)\d*	1.2
