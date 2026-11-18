@@ -75,6 +75,14 @@ class HullRamp(unittest.TestCase):
         I.hull_surfaces(self.hulls, surf, lambda a, b: [(1.5, 1.7)] if a == 2 else [])
         self.assertFalse(any(k[0] == 2 for k in surf))
 
+    def test_grown_floor_follows_the_next_tread(self):
+        # a floor strip grown onto the next tread (0.2 m up) takes its height, so the ramp does not split
+        surf = {(0, 0): [1.0], (1, 0): [1.2]}
+        self.assertEqual(I.grown_floor_height([0.0, 0.0, 1.0, 0.5, 1.0], surf), 1.2)
+        self.assertEqual(I.grown_floor_height([0.0, 0.0, 0.5, 0.5, 1.0], surf), 1.0)
+        surf[(1, 0)] = [2.0]    # a wall-high neighbour is not a step
+        self.assertEqual(I.grown_floor_height([0.0, 0.0, 1.0, 0.5, 1.0], surf), 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

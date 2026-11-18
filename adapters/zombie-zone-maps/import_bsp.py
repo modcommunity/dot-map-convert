@@ -239,6 +239,20 @@ def hull_surfaces(hulls, surf, spans_at):
     return added
 
 
+def grown_floor_height(f, surf):
+    """The height of the floor rectangle `f` after `nav_min_depth` grew it: on a ramp of small treads the grown strip spills
+    onto the next, higher tread, and a floor below that tread's top has its points cut by it (the ramp splits into pieces
+    with a gap of a tread or two). The strip takes the highest surface of the cells it now covers that a body steps up to
+    from it (STEP), so the tread it spilled onto is no longer above it."""
+    top = f[4]
+    for ix in range(int(math.floor(f[0] / CELL)), int(math.floor((f[2] - 1e-6) / CELL)) + 1):
+        for iz in range(int(math.floor(f[1] / CELL)), int(math.floor((f[3] - 1e-6) / CELL)) + 1):
+            for h in surf.get((ix, iz), ()):
+                if f[4] < h <= f[4] + STEP and h > top:
+                    top = h
+    return r3(top)
+
+
 def name_world(doc, repo_root):
     """`doc` with `"world"` after its id when `world/<pack>/<id>.json` has been built, else as it is.
     The game draws that mesh in place of the boxes (which still collide); without it, the boxes."""
@@ -2742,11 +2756,15 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
     if spec.get("nav_min_depth"):
         nd, n_grown = float(spec["nav_min_depth"]), 0
         for f in floors:
+            grown = False
             for lo, hi in ((0, 2), (1, 3)):
                 if f[hi] - f[lo] < nd:
                     mid = (f[lo] + f[hi]) / 2
                     f[lo], f[hi] = r3(mid - nd / 2), r3(mid + nd / 2)
                     n_grown += 1
+                    grown = True
+            if grown:
+                f[4] = grown_floor_height(f, surf)
         print("  nav_min_depth: %d floor sides grown to %.2f m" % (n_grown, nd))
     lost = {(a, b) for a, b, _ in seen} - {(a, b) for a, b, _ in have}
     seen = seen2
