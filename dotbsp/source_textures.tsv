@@ -868,7 +868,7 @@ MERGASTROLL/SIGN2	flat	0.7,0.6,0.4
 MERGASTROLL/TEXTURE1	flat	0.5,0.45,0.4
 MERGASTROLL/TEXTURE4	flat	0.5,0.45,0.4
 MERGASTROLL/TEXTURE5	flat	0.5,0.45,0.4
-# --- combat surf maps (fc-surf-dm-maps): map-specific logos, credits, posters, thumbnails and number cards are a flat average colour (never the artwork); real surfaces take a generic material
+# --- combat surf maps (arena-surf-dm-maps): map-specific logos, credits, posters, thumbnails and number cards are a flat average colour (never the artwork); real surfaces take a generic material
 360G/KIWI	flat	0.45,0.6,0.2
 360G/SPRAYLOGO	flat	0.8,0.8,0.8
 CUSTOMS/LOGOS/*	flat	0.8,0.8,0.8
