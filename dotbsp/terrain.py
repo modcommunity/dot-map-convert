@@ -516,6 +516,154 @@ def tilted_tiles(hf, thick=1.0, slope_q=0.02, height_q=0.05, max_slope=1.5, pad=
     return out + cols
 
 
+def _cell_plane_y(hf, x, z, max_slope):
+    """What tilted_tiles lays over (x, z): ("slab", the cell plane's height), ("column", (low, high)), or None."""
+    if hf is None:
+        return None
+    c = hf.cell
+    fx, fz = (x - hf.x0) / c, (z - hf.z0) / c
+    i, j = int(math.floor(fx)), int(math.floor(fz))
+    # A point on the field's far rim belongs to the last cell, as in Heightfield.height.
+    if i == hf.nx - 1 and fx - i < 1e-6:
+        i -= 1
+    if j == hf.nz - 1 and fz - j < 1e-6:
+        j -= 1
+    h00, h10, h01, h11 = hf.at(i, j), hf.at(i + 1, j), hf.at(i, j + 1), hf.at(i + 1, j + 1)
+    if None in (h00, h10, h01, h11):
+        return None
+    bx = ((h10 + h11) - (h00 + h01)) / (2 * c)
+    bz = ((h01 + h11) - (h00 + h10)) / (2 * c)
+    if math.hypot(bx, bz) > max_slope:
+        return "column", (min(h00, h10, h01, h11), max(h00, h10, h01, h11))
+    return "slab", (h00 + h10 + h01 + h11) / 4 + bx * (fx - i - 0.5) * c + bz * (fz - j - 0.5) * c
+
+
+def _sub(a, b):
+    return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
+
+
+def _cross(a, b):
+    return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+
+
+def _dot(a, b):
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+def _unit(v):
+    n = math.sqrt(_dot(v, v))
+    return (v[0] / n, v[1] / n, v[2] / n) if n > 1e-12 else None
+
+
+def _up_normal(t):
+    n = _unit(_cross(_sub(t[1], t[0]), _sub(t[2], t[0])))
+    if n is None:
+        return None
+    return n if n[1] >= 0 else (-n[0], -n[1], -n[2])
+
+
+def edge_slabs(tris, hf, thick=1.0, max_slope=1.5, cliff_columns=False, min_ny=0.7, tol=0.3):
+    """Slabs for the walkable ground tilted_tiles(hf, ...) does not reach, so no drawn floor is left without one.
+
+    tilted_tiles lays a cell only when all four of its corners are on the terrain, and the field keeps only the
+    highest surface at each corner. So it leaves out every strip along a displacement's edge narrower than a cell
+    (a bank beside a canal, a hill's rim against a road) and any ground under higher ground, and a player walking
+    the drawn surface there falls through it (pgc_fork: 4% of its walkable displacement, in 284 holes).
+    Each triangle of `tris` facing up (normal y >= `min_ny`) with a point (a corner or its centre) not within `tol`
+    of the slab tilted_tiles put there (nor inside its cliff column, with `cliff_columns`) gets a slab: it and the
+    triangle after it that shares an edge with it (its displacement quad's other half, when that is open too) as one
+    tilted box `thick` deep, its top on their plane and its footprint their extent along their own sides, so it
+    reaches no further than the drawn ground does. Same box dicts as tilted_tiles, in the field's metres.
+    """
+    def covered(p):
+        got = _cell_plane_y(hf, p[0], p[2], max_slope)
+        if got is None:
+            return False
+        kind, v = got
+        if kind == "column":
+            return cliff_columns and v[0] - thick - tol <= p[1] <= v[1] + tol
+        return abs(v - p[1]) <= tol
+
+    def open_tri(t):
+        n = _up_normal(t)
+        if n is None or n[1] < min_ny:
+            return False
+        mid = tuple(sum(p[k] for p in t) / 3 for k in range(3))
+        return not all(covered(p) for p in (t[0], t[1], t[2], mid))
+
+    out = []
+    k = 0
+    while k < len(tris):
+        t = tris[k]
+        if not open_tri(t):
+            k += 1
+            continue
+        face = [t]
+        if k + 1 < len(tris):
+            u = tris[k + 1]
+            nu = _up_normal(u)
+            if sum(1 for p in u if p in t) == 2 and nu is not None and _dot(_up_normal(t), nu) > 0.995 and open_tri(u):
+                face.append(u)
+                k += 1
+        k += 1
+        out.append(_patch(face, thick))
+    return out
+
+
+def _patch(face, thick):
+    """A tilted box `thick` deep whose top lies on the plane of [param face] (one triangle, or the two of a quad)
+    and covers it: local x along the face's longest side (never a quad's diagonal), z across it in the plane."""
+    n = (0.0, 0.0, 0.0)
+    for t in face:
+        m = _up_normal(t)
+        n = (n[0] + m[0], n[1] + m[1], n[2] + m[2])
+    n = _unit(n)
+    pts = list(face[0]) + [p for t in face[1:] for p in t if p not in face[0]]
+    diagonals = []
+    if len(face) == 2:
+        shared = [p for p in face[1] if p in face[0]]
+        diagonals = [set(shared), {pts[3], next(p for p in face[0] if p not in shared)}]
+    best, tx = -1.0, None
+    for i in range(len(pts)):
+        for j in range(i + 1, len(pts)):
+            if {pts[i], pts[j]} in diagonals:
+                continue
+            e = _sub(pts[j], pts[i])
+            d = _dot(e, n)
+            e = (e[0] - n[0] * d, e[1] - n[1] * d, e[2] - n[2] * d)
+            ln = math.sqrt(_dot(e, e))
+            if ln > best:
+                best, tx = ln, (e[0] / ln, e[1] / ln, e[2] / ln)
+    tz = _cross(tx, n)
+    us = [_dot(p, tx) for p in pts]
+    vs = [_dot(p, tz) for p in pts]
+    # The top through the highest point, so no drawn corner stands above it (a twisted quad is not flat).
+    w = max(_dot(p, n) for p in pts)
+    um, vm = (min(us) + max(us)) / 2, (min(vs) + max(vs)) / 2
+    at = [tx[k] * um + tz[k] * vm + n[k] * (w - thick / 2) for k in range(3)]
+    b = {"at": [round(v, 4) for v in at], "size": [round(max(us) - min(us), 4), round(thick, 4), round(max(vs) - min(vs), 4)]}
+    turn = _axis_angle([[tx[0], n[0], tz[0]], [tx[1], n[1], tz[1]], [tx[2], n[2], tz[2]]])
+    if turn:
+        b["turn"] = turn
+    return b
+
+
+def _axis_angle(r):
+    """The rotation matrix [param r] as [ax, ay, az, degrees], or None when it is (nearly) none."""
+    ang = math.acos(max(-1.0, min(1.0, (r[0][0] + r[1][1] + r[2][2] - 1) / 2)))
+    if ang <= 1e-4:
+        return None
+    ax = (r[2][1] - r[1][2], r[0][2] - r[2][0], r[1][0] - r[0][1])
+    ln = math.sqrt(_dot(ax, ax))
+    if ln < 1e-6:
+        # Near a half turn the skew part vanishes: the axis is the longest column of r + I.
+        m = [[r[a][c] + (1.0 if a == c else 0.0) for c in range(3)] for a in range(3)]
+        col = max(range(3), key=lambda c: sum(m[a][c] ** 2 for a in range(3)))
+        ax = (m[0][col], m[1][col], m[2][col])
+        ln = math.sqrt(_dot(ax, ax))
+    return [round(ax[0] / ln, 5), round(ax[1] / ln, 5), round(ax[2] / ln, 5), round(math.degrees(ang), 3)]
+
+
 def _tile(x0, x1, z0, z1, bx, bz, h0, ox, oz, thick):
     """One slab whose top is y = h0 + bx x + bz z over [x0, x1] x [z0, z1], offset by (ox, oz)."""
     def unit(v):

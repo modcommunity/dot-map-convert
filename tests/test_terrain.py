@@ -381,6 +381,58 @@ class TestTiltedTiles(unittest.TestCase):
             self.assertGreater(b["size"][2], a["size"][2] + 0.15)
 
 
+def tops_at(boxes, x, z):
+    return [t for t in (tile_top(b, x, z) for b in boxes) if t is not None]
+
+
+class TestEdgeSlabs(unittest.TestCase):
+    def test_a_strip_narrower_than_a_cell_gets_slabs_lying_in_it(self):
+        # A 2.5 m wide sloping bank on a 4 m field: no cell has all four corners on it, so tilted_tiles lays nothing.
+        f = lambda x, z: 1.0 + 0.3 * x  # noqa: E731
+        tris = grid_tris(f, 0.5, 0, 3.0, 20, 0.5)
+        hf = terrain.Heightfield.from_tris(tris, 4.0)
+        self.assertTrue(hf is None or terrain.tilted_tiles(hf, thick=1.0) == [])
+        edges = terrain.edge_slabs(tris, hf, thick=1.0)
+        self.assertTrue(edges)
+        for x in (0.6, 1.3, 2.2, 2.9):
+            for z in (0.2, 7.7, 19.8):
+                tops = tops_at(edges, x, z)
+                self.assertTrue(tops, (x, z))
+                self.assertLess(min(abs(t - f(x, z)) for t in tops), 0.02, (x, z))
+        # No slab reaches past the drawn bank.
+        for x, z in ((0.3, 10.0), (3.2, 10.0), (1.5, -0.2), (1.5, 20.2)):
+            self.assertEqual(tops_at(edges, x, z), [], (x, z))
+
+    def test_ground_the_tiles_cover_gets_no_edge_slab(self):
+        f = lambda x, z: 1.0 + 0.2 * x + 0.1 * z  # noqa: E731
+        tris = grid_tris(f, 0, 0, 20, 20, 1.0)
+        hf = terrain.Heightfield.from_tris(tris, 2.0, bounds=(0, 0, 20, 20))
+        self.assertEqual(terrain.edge_slabs(tris, hf, thick=1.0), [])
+
+    def test_ground_under_higher_ground_gets_slabs(self):
+        # A shelf 3 m above the low ground over half of it: the field keeps only the shelf there.
+        low = grid_tris(lambda x, z: 0.0, 0, 0, 20, 20, 1.0)
+        shelf = grid_tris(lambda x, z: 3.0, 0, 0, 10, 20, 1.0)
+        hf = terrain.Heightfield.from_tris(low + shelf, 2.0, bounds=(0, 0, 20, 20))
+        edges = terrain.edge_slabs(low + shelf, hf, thick=1.0)
+        for x, z in ((2.5, 2.5), (7.5, 15.5)):
+            self.assertIn(0.0, [round(t, 3) for t in tops_at(edges, x, z)], (x, z))
+        self.assertEqual(tops_at(edges, 15.5, 10.5), [])
+
+    def test_a_quad_is_one_slab_along_its_sides(self):
+        f = lambda x, z: 0.25 * x  # noqa: E731
+        tris = grid_tris(f, 0, 0, 1.0, 1.0, 1.0)
+        hf = terrain.Heightfield.from_tris(tris, 4.0)
+        edges = terrain.edge_slabs(tris, hf, thick=1.0)
+        self.assertEqual(len(edges), 1)
+        self.assertAlmostEqual(edges[0]["size"][0] * edges[0]["size"][2], math.hypot(1.0, 0.25), delta=1e-3)
+
+    def test_steep_faces_are_left_to_the_cliff_columns(self):
+        tris = grid_tris(lambda x, z: 3.0 * x, 0, 0, 3.0, 10, 0.5)
+        hf = terrain.Heightfield.from_tris(tris, 4.0)
+        self.assertEqual(terrain.edge_slabs(tris, hf, thick=1.0), [])
+
+
 class TestFixture(unittest.TestCase):
     def test_fixture_current(self):
         with open(FIXTURE) as f:

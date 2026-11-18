@@ -770,8 +770,20 @@ def terrain_boxes(bsp, cfg, y_off):
             b["colour"] = t["colour"]
         b.setdefault("turn", [0, 1, 0, 0.0])
         out.append(b)
-    print("  terrain: %d displacement triangles -> %dx%d cells at %.1f m -> %d tilted slabs"
-          % (len(tris), hf.nx - 1, hf.nz - 1, hf.cell, len(out)))
+    tiled = len(out)
+    # The strips along displacement edges narrower than a cell, and ground under higher ground, which the field's
+    # cells miss: a slab per open displacement quad, so every walkable drawn floor has one under it ("edges": false
+    # leaves them out).
+    if t.get("edges", True):
+        for b in terrain.edge_slabs(tris, hf, thick=float(t.get("thick", 1.0)), max_slope=float(t.get("max_slope", 0.8)),
+                                    cliff_columns=True):
+            b["material"] = t.get("material", "grass")
+            if t.get("colour"):
+                b["colour"] = t["colour"]
+            b.setdefault("turn", [0, 1, 0, 0.0])
+            out.append(b)
+    print("  terrain: %d displacement triangles -> %dx%d cells at %.1f m -> %d tilted slabs, %d edge slabs"
+          % (len(tris), hf.nx - 1, hf.nz - 1, hf.cell, tiled, len(out) - tiled))
     return out
 
 
