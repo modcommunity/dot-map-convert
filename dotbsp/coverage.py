@@ -9,12 +9,13 @@ import collections
 import json
 import os
 
-from . import classes as _classes, defs, inputs as _inputs, movers
+from . import classes as _classes, defs, fidelity, inputs as _inputs, movers
 
 FORMAT = "dot-bsp-coverage"
 VERSION = 1
 LISTS = ("textures_unmapped", "textures_flat", "models_unmapped", "sounds_unmapped",
-         "classes_unmapped", "keys_unmapped", "links_unresolved", "surfaces_opaque", "inputs_unimplemented")
+         "classes_unmapped", "keys_unmapped", "links_unresolved", "surfaces_opaque", "inputs_unimplemented",
+         "gameplay_lost")
 # Keys every entity may carry and the catalogue need not repeat.
 COMMON_KEYS = frozenset(("classname", "origin", "angles", "targetname", "parentname", "hammerid", "id", "model"))
 
@@ -118,6 +119,9 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
                                    if {"translucent", "alpha_test", "additive"} & set(s.get("material_flags", ()))
                                    and not s.get("glass") and not s.get("water") and not s.get("decal")}),
     }
+    # what the map does that the converted map does not (dotbsp.fidelity): a gameplay loss, change or unsupported
+    # class/input/key, never silently dropped. Fix it generically or give the class a component; the ratchet keeps it from growing.
+    play, lists["gameplay_lost"] = gameplay(bsp, {c for c in classes if used["classes"].get(c) is not None})
     if in_source:    # only when present, so a map without any keeps its report byte for byte
         lists["links_dangling"] = in_source
     return {
@@ -131,9 +135,31 @@ def build(rs, bsp, doc, links, name, sha256, cat=None):
                     "by_tier": _tiers({c: used["classes"].get(c) for c in classes})},
         "keys": {"catalogue": cat is not None, "unmapped": {c: sorted(k) for c, k in sorted(keys.items())}},
         "links": {"total": len(links), "unresolved": len(unresolved)},
+        "gameplay": play,
         "lists": lists,
         "counts": {k: len(v) for k, v in lists.items()},
     }
+
+
+def gameplay(bsp, decided=()):
+    """({findings, severity, classes} summary, gameplay_lost list) of one loaded map (dotbsp.fidelity).
+    A class in `decided` (a rule tier gave it a row for this game) is not listed as unknown."""
+    fid = fidelity.findings(bsp)
+    skip = {"class_unknown:" + c for c in decided}
+    lost = [l for l in fidelity.gameplay_lost(fid) if l not in skip]
+    return ({"findings": {k: len(v) for k, v in sorted(fid["findings"].items())},
+             "severity": {k: fidelity.FINDINGS.get(k, ("lost",))[0] for k in sorted(fid["findings"])},
+             "classes": dict(sorted(collections.Counter(fid["classes"].values()).items()))}, lost)
+
+
+def add_gameplay(rep, bsp):
+    """Brings a coverage report written before `gameplay_lost` existed up to date in place, from its source map
+    (classes its `classes_unmapped` does not list were decided by a tier). Returns the report."""
+    unmapped = set(rep.get("lists", {}).get("classes_unmapped", ()))
+    decided = {e.get("classname", "") for e in bsp.entities} - unmapped
+    rep["gameplay"], rep.setdefault("lists", {})["gameplay_lost"] = gameplay(bsp, decided)
+    rep["counts"] = {k: len(v) for k, v in rep["lists"].items()}
+    return rep
 
 
 def ratchet(current, baseline):
@@ -156,6 +182,11 @@ def text(rep):
         _fmt(t), _fmt(rep["models"]["by_tier"]), _fmt(rep["sounds"]["by_tier"]), _fmt(rep["classes"]["by_tier"]))]
     out.append("  unmapped: " + ", ".join("%s %d" % (k, v) for k, v in c.items()) +
                ("" if rep["keys"]["catalogue"] else "  (no class catalogue: keys not checked)"))
+    lost = rep["lists"].get("gameplay_lost", ())
+    if lost:
+        g = rep.get("gameplay", {})
+        out.append("  GAMEPLAY NOT AS THE ORIGINAL: %d (%s)" % (len(lost), ", ".join(
+            "%s %d" % (k, n) for k, n in g.get("findings", {}).items() if g.get("severity", {}).get(k) in fidelity.SEVERE)))
     return "\n".join(out)
 
 

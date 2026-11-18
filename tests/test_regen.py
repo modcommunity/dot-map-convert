@@ -136,6 +136,18 @@ class RegenTests(unittest.TestCase):
         self.assertEqual(self.run_regen(ratchet=True), 5)                        # a rule gone: fails
         self.assertEqual(self.report()["lists"], better)                         # and the baseline is not rewritten
 
+    def test_gameplay_losses_are_listed_and_ratcheted(self):
+        self.assertIn(self.run_regen(), (0, 4))
+        rep = self.report()
+        # the fixture's unknown class is wired by an output: the fidelity audit names it
+        self.assertIn("class_unknown:zz_brand_new_class", rep["lists"]["gameplay_lost"])
+        self.assertIn("gameplay", rep)
+        base = os.path.join(tempfile.mkdtemp(), "base.json")
+        rep["lists"]["gameplay_lost"] = [l for l in rep["lists"]["gameplay_lost"] if not l.startswith("class_unknown:")]
+        with open(base, "w") as f:
+            json.dump(rep, f)
+        self.assertEqual(self.run_regen(ratchet=True, baseline=base), 5)        # a new gameplay loss fails
+
     def test_ratchet_needs_a_baseline(self):
         self.assertEqual(self.run_regen(ratchet=True), 2)
 

@@ -121,5 +121,39 @@ class Audit(unittest.TestCase):
         self.assertEqual(rep["counts"].get("key_case", 0), 0)
 
 
+class ShippedReports(unittest.TestCase):
+    def test_a_shipped_report_gains_the_gameplay_section_and_check_ratchets_it(self):
+        import json
+        import tempfile
+        sys.path.insert(0, os.path.join(os.path.dirname(HERE), "tools"))
+        import coverage_gameplay
+        from dotbsp import store
+        root = tempfile.mkdtemp()
+        data = synth.build(entities=[{"classname": "worldspawn"},
+                                     {"classname": "zz_unheard_of", "targetname": "z", "OnTrigger": "z,Kill,,0,-1"}])
+        h, _new = store.put(root, "t", "m", data, {"author": "A", "page": "https://example.invalid"})
+        rp = os.path.join(tempfile.mkdtemp(), "m.coverage.json")
+        with open(rp, "w") as f:
+            json.dump({"map": "m", "sha256": h, "lists": {"classes_unmapped": ["zz_unheard_of"]}, "counts": {}}, f)
+        self.assertEqual(coverage_gameplay.main(["--store", root, "--check", rp]), 5)      # no section yet
+        self.assertEqual(coverage_gameplay.main(["--store", root, rp]), 0)
+        rep = json.load(open(rp))
+        self.assertIn("class_unknown:zz_unheard_of", rep["lists"]["gameplay_lost"])
+        self.assertEqual(rep["counts"]["gameplay_lost"], len(rep["lists"]["gameplay_lost"]))
+        self.assertEqual(coverage_gameplay.main(["--store", root, "--check", rp]), 0)
+        rep["lists"]["gameplay_lost"] = []
+        with open(rp, "w") as f:
+            json.dump(rep, f)
+        self.assertEqual(coverage_gameplay.main(["--store", root, "--check", rp]), 5)      # a new loss fails
+        rep["sha256"] = "0" * 64
+        with open(rp, "w") as f:
+            json.dump(rep, f)
+        self.assertEqual(coverage_gameplay.main(["--store", root, rp]), 2)                 # missing source: loud
+
+    def test_runtime_handled_teleport_constructs_are_not_losses(self):
+        self.assertNotIn(fidelity.FINDINGS["teleport_target_dynamic"][0], fidelity.SEVERE)
+        self.assertNotIn(fidelity.FINDINGS["teleport_landmark_angles"][0], fidelity.SEVERE)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -15,7 +15,8 @@ class's definition says so (any case), as well as by the converter's own rules.
 Each finding class is in `FINDINGS` with its severity: `lost` (gameplay the original had does
 not happen), `changed` (it happens differently), `unsupported` (the class or input is not
 implemented and the map uses it), `source` (the original itself is broken there; nothing to
-convert, listed so nobody chases it). A class of entity is `implemented`, `approximated`,
+convert, listed so nobody chases it), `handled` (a construct the runtime runs as the engine does,
+counted so the audit shows how often it matters). A class of entity is `implemented`, `approximated`,
 `ignored` or `unknown` (`class_status`). `gameplay_lost` (coverage list, ratcheted) is the
 sorted `class:detail` strings of every `lost`/`changed`/`unsupported` finding.
 """
@@ -42,9 +43,9 @@ FINDINGS = {
     "teleport_dest_lost": ("lost", "a trigger_teleport whose destination the engine finds and the runtime does not (class, case or name)"),
     "teleport_dest_moved": ("changed", "a trigger_teleport sent to another place than the engine sends it (duplicate names, first vs last)"),
     "teleport_retargeted": ("changed", "the converter's release_pits heuristic re-aimed a teleport the author wired elsewhere"),
-    "teleport_target_dynamic": ("lost", "a trigger_teleport whose target logic changes at run time (AddOutput target / SetRemoteDestination); the runtime keeps the record's target"),
+    "teleport_target_dynamic": ("handled", "a trigger_teleport whose target logic changes at run time (AddOutput target / SetRemoteDestination); DotMapTeleport re-aims it as the engine does"),
     "teleport_landmark_lost": ("lost", "a landmark the engine resolves that the runtime's destinations lack"),
-    "teleport_landmark_angles": ("unsupported", "UseLandmarkAngles: the engine keeps the body's view relative to the landmark"),
+    "teleport_landmark_angles": ("handled", "UseLandmarkAngles: DotMapVolumeNode snaps the body to the destination's yaw as the engine does"),
     "filter_dropped": ("lost", "a filtername on a volume kind whose record drops it (everyone passes)"),
     "filter_class_unsupported": ("unsupported", "a filter class the runtime does not evaluate (admits everyone)"),
     "volume_unrecorded": ("lost", "a trigger/volume brush entity with no volume record (nothing touches it)"),
