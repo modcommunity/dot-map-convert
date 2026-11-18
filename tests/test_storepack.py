@@ -122,6 +122,22 @@ class Slice(unittest.TestCase):
         self.assertNotEqual(a, storepack.version_of(dest, files))
         self.assertNotEqual(a, storepack.version_of(dest, files, deps=[{"id": "o/x", "version": "h2"}]))
 
+    def test_stamp_changes_only_the_stamp(self):
+        """A compact manifest differs from the stamped one by the store_pack member alone: floats, non-ASCII credits
+        (escaped as the converter writes them) and key order stay byte for byte."""
+        mp = os.path.join(self.t, "manifest.json")
+        doc = json.loads(json.dumps(DOC))
+        doc["licence"]["credits"] = [{"author": "Ren\u00e9 \u2603", "area": 842.0, "tiny": 1e-07}]
+        before = json.dumps(doc, sort_keys=True, separators=(",", ":"))
+        with open(mp, "w") as f:
+            f.write(before + "\n")
+        self.assertTrue(storepack.stamp(mp, "o/n", "h1", [{"id": "o/s", "version": "h2"}]))
+        with open(mp) as f:
+            after = f.read()
+        stamp = '"store_pack":{"id":"o/n","shared":[{"id":"o/s","version":"h2"}],"version":"h1"}'
+        self.assertEqual(after.count(stamp), 1)
+        self.assertEqual(after.replace(stamp + ",", "").replace("," + stamp, "").rstrip("\n"), before)
+
     def test_stamp_keeps_the_layout(self):
         mp = os.path.join(self.t, "manifest.json")
         with open(mp, "w") as f:
