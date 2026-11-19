@@ -242,6 +242,7 @@ def hull_surfaces(hulls, surf, spans_at):
 UNDERLAY_SLAB = 0.4     # the thickest floor slab buried_boxes lets cover a block (clip_underlay's 0.4 m)
 UNDERLAY_CLEAR = 0.35   # the game graph's clearance round a box
 BODY_TALL = 2.0         # a floor this far under a block's bottom has it overhead
+UNDERLAY_SIDE = 0.7     # how much of a block's side a storey floor beside it shares (a body's width)
 
 
 def _counts_for_slab(b):
@@ -292,6 +293,18 @@ def remember_slabs(boxes):
     return len(covers)
 
 
+def _storey_floor_beside(f, nb):
+    """True when floor `f` lies beside or under block bounds `nb` along a side (sharing at least UNDERLAY_SIDE of it, its
+    edge within UNDERLAY_CLEAR) and within BODY_TALL below the block's top: the block is a wall of that storey. A floor
+    that only reaches a corner within the clearance (gm_valley's 2.4 x 1 m tread at 114,81) does not make one."""
+    if not nb[1] - BODY_TALL < f[4] < nb[4] - 0.12:
+        return False
+    ox = min(f[2], nb[3]) - max(f[0], nb[0])
+    oz = min(f[3], nb[5]) - max(f[1], nb[2])
+    g = UNDERLAY_CLEAR
+    return (ox >= UNDERLAY_SIDE and oz > -g) or (oz >= UNDERLAY_SIDE and ox > -g)
+
+
 def buried_boxes(boxes, floors):
     """Marks `"nav": false` on each solid box whose whole top is under one floor slab resting on it, and returns how many.
     The game's graph forgives a box only when its top is within 0.12 m of a floor and grows every other box by the
@@ -314,9 +327,7 @@ def buried_boxes(boxes, floors):
             continue
         if not any(nav_emulate._is_floor(list(na), by_top) for na in covers.get(id(b), []) + list(b.get("_slabs", ()))):
             continue
-        g = UNDERLAY_CLEAR
-        if not any(f[0] < nb[3] + g and f[2] > nb[0] - g and f[1] < nb[5] + g and f[3] > nb[2] - g
-                   and nb[1] - BODY_TALL < f[4] < nb[4] - 0.12 for f in floors):
+        if not any(_storey_floor_beside(f, nb) for f in floors):
             b["nav"] = False
             n += 1
     return n
