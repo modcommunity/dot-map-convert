@@ -909,6 +909,8 @@ class LinkSolids:
     BODY_LIFT = 0.3
     BODY_HEIGHT = 1.75
     BODY_STEP = 0.25
+    BODY_MARGIN = 0.1   # zz_nav_prune.MARGIN: the strict test's extra radius
+    BODY_NUDGE = 0.3    # zz_nav_prune.NUDGE: how far the game slides a point the strict test blocks
     BODY_CLIMB = 0.6    # the game's zz_nav_prune.CLIMB: a bigger level change is crossed by a column, not along the line
 
     def _grown(self, planes):
@@ -917,6 +919,29 @@ class LinkSolids:
         if hit is None:
             hit = self.grown[id(planes)] = [(nx, ny, nz, d + self.BODY_RADIUS * math.sqrt(nx * nx + ny * ny + nz * nz)) for nx, ny, nz, d in planes]
         return hit
+
+    def body_at(self, p, r=None):
+        """Whether the game's prune body stands in a solid at floor point `p`: its capsule of radius `r` (BODY_RADIUS bare,
+        BODY_RADIUS + BODY_MARGIN as the strict test) from BODY_LIFT to BODY_HEIGHT over it (zz_nav_prune._hit)."""
+        r = self.BODY_RADIUS if r is None else r
+        a = [p[0], p[1] + self.BODY_LIFT + r, p[2]]
+        b = [p[0], p[1] + self.BODY_HEIGHT - r, p[2]]
+        seen = set()
+        for gx in range(int((p[0] - r) // self.CELL), int((p[0] + r) // self.CELL) + 1):
+            for gz in range(int((p[2] - r) // self.CELL), int((p[2] + r) // self.CELL) + 1):
+                for planes, lo, hi in self.cells.get((gx, gz), ()):
+                    if id(planes) in seen:
+                        continue
+                    seen.add(id(planes))
+                    if lo[1] - r > b[1] or hi[1] + r < a[1] or lo[0] - r > p[0] or hi[0] + r < p[0] or lo[2] - r > p[2] or hi[2] + r < p[2]:
+                        continue
+                    key = (id(planes), r)
+                    grown = self.grown.get(key)
+                    if grown is None:
+                        grown = self.grown[key] = [(nx, ny, nz, d + r * math.sqrt(nx * nx + ny * ny + nz * nz)) for nx, ny, nz, d in planes]
+                    if self._crosses(grown, a, b):
+                        return True
+        return False
 
     def body_blocked(self, p, q):
         """Whether the game's prune cuts the edge p-q: its bare capsule hits a solid at a sample between the ends. A level change over BODY_CLIMB is left to the rays."""
@@ -1252,6 +1277,46 @@ def doc_terrain_pts(doc):
         return []
     hf, walk = dterrain.Heightfield.decode(t)
     return dterrain.walk_points(hf, walk, 1.0)
+
+
+NAV_SLIDE = 0.45   # clear_points: metres a floor point the game's prune would drop may move; under half a spacing, so it stays that point
+
+
+def _ring(p, radius, step=0.05, directions=16):
+    """Spots on rings `step` apart round `p` (same height) out to `radius`, nearest first."""
+    for k in range(1, int(radius / step + 1e-6) + 1):
+        for d in range(directions):
+            ang = 2 * math.pi * d / directions
+            yield (p[0] + math.cos(ang) * k * step, p[1], p[2] + math.sin(ang) * k * step)
+
+
+def clear_points(doc):
+    """Moves each floor point the game's prune would drop onto clear ground beside it, as a floor of its own ahead of the
+    rest. The game lays a floor's points a spacing apart from its corner and its prune (game/zz_nav_prune.gd) drops a
+    point whose body stands in a solid, unless the strict body fits within BODY_NUDGE of it or the bare one fits on it.
+    In a lane a metre wide between kerbs or stair stringers (gm_mallparking's ramp stair to the east deck) that grid
+    rarely lands within the 0.14 m the bare body has, so the lane holds no point and the deck is cut off. A point that
+    fails all of those tests gets the nearest spot within NAV_SLIDE where the bare body stands and the builder's clearance
+    passes. The game takes a point within half a spacing of an earlier one as the same point, so the moved point stands
+    in for the blocked one. Returns how many points moved."""
+    import nav_emulate
+    nav = doc["nav"]
+    sizes = json.load(open(os.path.join(HERE, "prop_sizes.json")))["props"]
+    G = nav_emulate.Graph(doc["boxes"], doc.get("props", []), sizes, nav["floors"], spacing=float(nav.get("spacing", 1.0)), clearance=float(nav.get("clearance", 0.35)), solid_props=doc.get("solid_props", []))
+    solids = link_solids(doc)
+    strict = LinkSolids.BODY_RADIUS + LinkSolids.BODY_MARGIN
+    moved = []
+    for p in G.pts:
+        if not solids.body_at(p) or not solids.body_at(p, strict):
+            continue
+        if any(not solids.body_at(q, strict) for q in _ring(p, LinkSolids.BODY_NUDGE)):
+            continue
+        for q in _ring(p, NAV_SLIDE):
+            if not solids.body_at(q) and not G.blocked(*q):
+                moved.append([r3(q[0] - 0.1), r3(q[2] - 0.1), r3(q[0] + 0.1), r3(q[2] + 0.1), r3(q[1])])
+                break
+    nav["floors"] = moved + nav["floors"]
+    return len(moved)
 
 
 def cut_blocked(doc, extra, fixed):
@@ -3378,6 +3443,9 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
         else:
             doc["world_collision"] = world_collision_selection(spec, wc_models, wc_flat)
             print("  world_collision: %d models from the world pack's hulls" % len(doc["world_collision"]["models"]))
+    slid = clear_points(doc)
+    if slid:
+        print("  nav: %d floor points moved clear of what the game's prune body hits" % slid)
     doc = cut_blocked_links(doc, spec.get("extra_links", []))
     if not spec.get("keep_dead_links"):
         dead = drop_dead_links(doc, None, spec.get("extra_links", []))

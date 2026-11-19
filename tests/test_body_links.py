@@ -41,6 +41,29 @@ class BodyLinks(unittest.TestCase):
         self.assertTrue(s.body_blocked(GRAZE[:3], GRAZE[3:]))
         self.assertFalse(s.body_blocked([9.5, 0.0, 4.75], [11.1, 0.0, 4.75]))
 
+    def test_point_in_a_wall_face_slides_clear(self):
+        # A world hull (the emulated graph does not see it) 0.05 m past the x 5.5 column of points: the game's nudge
+        # (0.3 m) leaves the strict body in it, so its prune would drop the column; clear_points puts a floor point at the
+        # nearest spot up to 0.45 m back where the bare body fits.
+        hull = {"at": [5.75, 1.2, 5.0], "size": [0.6, 2.4, 10.0], "mat": "concrete"}
+        d = doc()
+        d["boxes"], d["nav"]["floors"], d["nav"]["links"] = [], [[0, 0.25, 10, 10, 0.0]], []
+        s = I.link_solids(d, [hull])
+        self.assertTrue(s.body_at([5.5, 0.0, 4.75]))
+        self.assertFalse(s.body_at([5.05, 0.0, 4.75]))
+        self.assertTrue(s.body_at([5.12, 0.0, 4.75], I.LinkSolids.BODY_RADIUS + I.LinkSolids.BODY_MARGIN))
+        real = I.link_solids
+        I.link_solids = lambda doc, extra=(): real(doc, [hull])
+        try:
+            n = I.clear_points(d)
+        finally:
+            I.link_solids = real
+        self.assertEqual(n, 10)
+        for f in d["nav"]["floors"][:n]:
+            self.assertAlmostEqual((f[0] + f[2]) / 2, 5.1, places=2)    # the nearest spot the bare body fits
+        self.assertEqual(d["nav"]["floors"][n:], [[0, 0.25, 10, 10, 0.0]])
+
+
     def test_tight_only_join_replaced(self):
         d = doc()
         n, _m, stuck = I.cut_blocked(d, None, [])
