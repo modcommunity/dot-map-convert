@@ -244,37 +244,26 @@ UNDERLAY_CLEAR = 0.35   # the game graph's clearance round a box
 BODY_TALL = 2.0         # a floor this far under a block's bottom has it overhead
 
 
-def buried_boxes(boxes, floors):
-    """Marks `"nav": false` on each solid box whose whole top is under one floor slab resting on it, and returns how many.
-    The game's graph forgives a box only when its top is within 0.12 m of a floor and grows every other box by the
-    clearance, so the block under gm_valley's 15 cm start slab (its top 0.15 m below the floor) took every point off
-    the slab; the start kept a point only while a grown strip at -0.1 m happened to forgive the block. The slab is a
-    floor the graph forgives, sides and all, and it stands over the block's whole footprint, so the pair is one floor
-    column to the graph, as the two boxes merged would be. Bodies still collide with both. Only a slab up to
-    UNDERLAY_SLAB thick counts, and a block with a floor beside or under it within BODY_TALL of its height (a wall of
-    the storey under a ceiling slab) is a wall of that floor and stays."""
+def _counts_for_slab(b):
+    return b.get("solid", True) and not b.get("gate") and b.get("kind") != "sky" and "nav" not in b
+
+
+def slab_covers(boxes):
+    """{id(box): [bounds of each slab up to UNDERLAY_SLAB thick whose bottom rests on the box's top and covers all of it]}.
+    A turned pair covers only when it is the same footprint."""
     import nav_emulate
-    by_top = nav_emulate._floors_by_top(floors)
-
-    def counts(b):
-        return b.get("solid", True) and not b.get("gate") and b.get("kind") != "sky" and "nav" not in b
-
     cells = {}      # (4 m cell, bottom to 0.1 m): the boxes over that cell with that bottom
     for i, b in enumerate(boxes):
-        if counts(b):
+        if _counts_for_slab(b):
             nb = nav_emulate._bounds(b)
             for ix in range(int(math.floor(nb[0] / 4)), int(math.floor(nb[3] / 4)) + 1):
                 for iz in range(int(math.floor(nb[2] / 4)), int(math.floor(nb[5] / 4)) + 1):
                     cells.setdefault((ix, iz, round(nb[1], 1)), []).append(i)
-    slab_floor = {}
-    n = 0
+    out = {}
     for b in boxes:
-        if not counts(b):
+        if not _counts_for_slab(b):
             continue
         nb = nav_emulate._bounds(b)
-        if nav_emulate._is_floor(nb, by_top):
-            continue
-        hit = False
         for dy in (-0.1, 0.0, 0.1):
             for j in cells.get((int(math.floor(nb[0] / 4)), int(math.floor(nb[2] / 4)), round(nb[4] + dy, 1)), ()):
                 a = boxes[j]
@@ -285,19 +274,49 @@ def buried_boxes(boxes, floors):
                     continue
                 if b.get("yaw") and (abs(a["at"][0] - b["at"][0]) > 0.002 or abs(a["at"][2] - b["at"][2]) > 0.002
                                      or abs(a["size"][0] - b["size"][0]) > 0.002 or abs(a["size"][2] - b["size"][2]) > 0.002):
-                    continue     # a turned pair covers only when it is the same footprint
+                    continue
                 if na[4] - nb[4] > UNDERLAY_SLAB:
                     continue
-                if j not in slab_floor:
-                    slab_floor[j] = nav_emulate._is_floor(na, by_top)
-                if slab_floor[j]:
-                    hit = True
-                    break
-            if hit:
-                break
+                out.setdefault(id(b), []).append(tuple(na))
+    return out
+
+
+def remember_slabs(boxes):
+    """Stores on each box the slabs that cover it (`_slabs`, see slab_covers) before the budget (`drop_small`, `max_boxes`)
+    drops any: gm_valley's 15 cm start slab is 9.75 x 0.15 x 9.75 m, small by volume, so the cap took it and left the
+    block under it, its top 0.15 m below the floor, cutting every point off the start. Returns how many boxes have one."""
+    covers = slab_covers(boxes)
+    for b in boxes:
+        if id(b) in covers:
+            b["_slabs"] = covers[id(b)]
+    return len(covers)
+
+
+def buried_boxes(boxes, floors):
+    """Marks `"nav": false` on each solid box whose whole top is under one floor slab resting on it, and returns how many.
+    The game's graph forgives a box only when its top is within 0.12 m of a floor and grows every other box by the
+    clearance, so the block under gm_valley's 15 cm start slab (its top 0.15 m below the floor) took every point off
+    the slab; the start kept a point only while a grown strip at -0.1 m happened to forgive the block. The slab is a
+    floor the graph forgives, sides and all, and it stands over the block's whole footprint, so the pair is one floor
+    column to the graph, as the two boxes merged would be. Bodies still collide with both. Only a slab up to
+    UNDERLAY_SLAB thick counts, and a block with a floor beside or under it within BODY_TALL of its height (a wall of
+    the storey under a ceiling slab) is a wall of that floor and stays. A slab the budget dropped still counts through
+    the `_slabs` remember_slabs stored, as long as the floor it was is still there."""
+    import nav_emulate
+    by_top = nav_emulate._floors_by_top(floors)
+    covers = slab_covers(boxes)
+    n = 0
+    for b in boxes:
+        if not _counts_for_slab(b):
+            continue
+        nb = nav_emulate._bounds(b)
+        if nav_emulate._is_floor(nb, by_top):
+            continue
+        if not any(nav_emulate._is_floor(list(na), by_top) for na in covers.get(id(b), []) + list(b.get("_slabs", ()))):
+            continue
         g = UNDERLAY_CLEAR
-        if hit and not any(f[0] < nb[3] + g and f[2] > nb[0] - g and f[1] < nb[5] + g and f[3] > nb[2] - g
-                           and nb[1] - BODY_TALL < f[4] < nb[4] - 0.12 for f in floors):
+        if not any(f[0] < nb[3] + g and f[2] > nb[0] - g and f[1] < nb[5] + g and f[3] > nb[2] - g
+                   and nb[1] - BODY_TALL < f[4] < nb[4] - 0.12 for f in floors):
             b["nav"] = False
             n += 1
     return n
@@ -2518,6 +2537,7 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
                 b["size"][ax] = r3(mf)
                 n_fl += 1
         print("  min_floor: %d floor strips widened to %.2f m" % (n_fl, mf))
+    remember_slabs(boxes)
     # `drop_small` [volume, longest side]: detail too small to matter to a body or the graph (shelf
     # slats, trim, rail posts) is dropped so a big map fits the document's box limit. A box that
     # long is a floor strip or a stair slab, never dropped whatever its volume.
