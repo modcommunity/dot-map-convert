@@ -65,6 +65,12 @@ class BuriedBoxes(unittest.TestCase):
         boxes = [box(0, 0, 9.75, -0.152, 0.0), box(0, 0, 9.75, -2.6, -0.152)]
         self.assertEqual(I.buried_boxes(boxes, floors), 0)
 
+    def test_storey_floor_at_the_block_corner_only_does_not_keep_it(self):
+        # gm_valley 114,81: a 2.4 x 1 m tread 4.6 m down reaches 0.1 m past the block's corner, along no side of it
+        floors = self.floors + [[-7.2, -5.9, -4.8, -4.9, -2.5]]
+        boxes = [box(0, 0, 9.75, -0.152, 0.0), box(0, 0, 9.75, -2.6, -0.152)]
+        self.assertEqual(I.buried_boxes(boxes, floors), 1)
+
     def test_block_under_a_slab_the_budget_dropped_gives_its_points_back(self):
         # max_boxes drops the thin slab (small by volume) and keeps the block: the slab remembered before it counts
         slab, block = box(0, 0, 9.75, -0.152, 0.0), box(0, 0, 9.75, -15.85, -0.152)
