@@ -239,6 +239,70 @@ def hull_surfaces(hulls, surf, spans_at):
     return added
 
 
+UNDERLAY_SLAB = 0.4     # the thickest floor slab buried_boxes lets cover a block (clip_underlay's 0.4 m)
+UNDERLAY_CLEAR = 0.35   # the game graph's clearance round a box
+BODY_TALL = 2.0         # a floor this far under a block's bottom has it overhead
+
+
+def buried_boxes(boxes, floors):
+    """Marks `"nav": false` on each solid box whose whole top is under one floor slab resting on it, and returns how many.
+    The game's graph forgives a box only when its top is within 0.12 m of a floor and grows every other box by the
+    clearance, so the block under gm_valley's 15 cm start slab (its top 0.15 m below the floor) took every point off
+    the slab; the start kept a point only while a grown strip at -0.1 m happened to forgive the block. The slab is a
+    floor the graph forgives, sides and all, and it stands over the block's whole footprint, so the pair is one floor
+    column to the graph, as the two boxes merged would be. Bodies still collide with both. Only a slab up to
+    UNDERLAY_SLAB thick counts, and a block with a floor beside or under it within BODY_TALL of its height (a wall of
+    the storey under a ceiling slab) is a wall of that floor and stays."""
+    import nav_emulate
+    by_top = nav_emulate._floors_by_top(floors)
+
+    def counts(b):
+        return b.get("solid", True) and not b.get("gate") and b.get("kind") != "sky" and "nav" not in b
+
+    cells = {}      # (4 m cell, bottom to 0.1 m): the boxes over that cell with that bottom
+    for i, b in enumerate(boxes):
+        if counts(b):
+            nb = nav_emulate._bounds(b)
+            for ix in range(int(math.floor(nb[0] / 4)), int(math.floor(nb[3] / 4)) + 1):
+                for iz in range(int(math.floor(nb[2] / 4)), int(math.floor(nb[5] / 4)) + 1):
+                    cells.setdefault((ix, iz, round(nb[1], 1)), []).append(i)
+    slab_floor = {}
+    n = 0
+    for b in boxes:
+        if not counts(b):
+            continue
+        nb = nav_emulate._bounds(b)
+        if nav_emulate._is_floor(nb, by_top):
+            continue
+        hit = False
+        for dy in (-0.1, 0.0, 0.1):
+            for j in cells.get((int(math.floor(nb[0] / 4)), int(math.floor(nb[2] / 4)), round(nb[4] + dy, 1)), ()):
+                a = boxes[j]
+                if a is b or (a.get("yaw") or 0.0) != (b.get("yaw") or 0.0):
+                    continue
+                na = nav_emulate._bounds(a)
+                if abs(na[1] - nb[4]) > 0.02 or na[0] > nb[0] + 0.002 or na[2] > nb[2] + 0.002 or na[3] < nb[3] - 0.002 or na[5] < nb[5] - 0.002:
+                    continue
+                if b.get("yaw") and (abs(a["at"][0] - b["at"][0]) > 0.002 or abs(a["at"][2] - b["at"][2]) > 0.002
+                                     or abs(a["size"][0] - b["size"][0]) > 0.002 or abs(a["size"][2] - b["size"][2]) > 0.002):
+                    continue     # a turned pair covers only when it is the same footprint
+                if na[4] - nb[4] > UNDERLAY_SLAB:
+                    continue
+                if j not in slab_floor:
+                    slab_floor[j] = nav_emulate._is_floor(na, by_top)
+                if slab_floor[j]:
+                    hit = True
+                    break
+            if hit:
+                break
+        g = UNDERLAY_CLEAR
+        if hit and not any(f[0] < nb[3] + g and f[2] > nb[0] - g and f[1] < nb[5] + g and f[3] > nb[2] - g
+                           and nb[1] - BODY_TALL < f[4] < nb[4] - 0.12 for f in floors):
+            b["nav"] = False
+            n += 1
+    return n
+
+
 def grown_floor_height(f, surf):
     """The height of the floor rectangle `f` after `nav_min_depth` grew it: on a ramp of small treads the grown strip spills
     onto the next, higher tread, and a floor below that tread's top has its points cut by it (the ramp splits into pieces
@@ -2884,6 +2948,9 @@ def convert(argv, skip=(), keep_small=0, max_boxes=0):
                 b["nav"] = False
                 under += 1
         print("  clip_underlay: %d invisible slab(s) under a floor left out of the graph" % under)
+    buried = buried_boxes(boxes, floors)
+    if buried:
+        print("  nav: %d box(es) under a floor slab that covers their top left out of the graph" % buried)
     G = nav_emulate.Graph(boxes + bar_boxes, keep, sizes, floors, terrain_pts=TERRAIN_PTS, solid_props=prior_solid_props(os.path.join(out_dir, spec["id"] + ".json")))
     links = list(build_nav.links)
     dead = set()
