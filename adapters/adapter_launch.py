@@ -9,7 +9,7 @@ import ast
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# A renamed map repository whose launcher still says its old name (a checkout made before the rename).
+# legacy id: a renamed map repository whose launcher still says its old name (a checkout made before the rename).
 FORMER = {"game-playground-maps": "playlot-maps", "game-playlot-maps": "playlot-maps", "game-g2gfast": "game-airdrift"}
 
 

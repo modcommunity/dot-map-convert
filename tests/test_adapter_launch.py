@@ -19,7 +19,7 @@ class AdapterLaunch(unittest.TestCase):
             self.assertFalse(os.path.exists(os.path.join(ROOT, "adapters", old)), "%s still has a directory of its own" % old)
 
     def test_a_launcher_under_the_old_name_runs_the_same_file_as_the_new(self):
-        # Launchers in checkouts made before a rename still pass the old name.
+        # legacy id: launchers in checkouts made before a rename still pass the old name.
         for old, new, name in (("game-g2gfast", "game-airdrift", "bsp_import.py"),
                                ("game-playground-maps", "playlot-maps", "import_bsp.py")):
             path = adapter_launch.adapter_path(new, name)
