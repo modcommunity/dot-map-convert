@@ -65,6 +65,20 @@ class BuriedBoxes(unittest.TestCase):
         boxes = [box(0, 0, 9.75, -0.152, 0.0), box(0, 0, 9.75, -2.6, -0.152)]
         self.assertEqual(I.buried_boxes(boxes, floors), 0)
 
+    def test_block_under_a_slab_the_budget_dropped_gives_its_points_back(self):
+        # max_boxes drops the thin slab (small by volume) and keeps the block: the slab remembered before it counts
+        slab, block = box(0, 0, 9.75, -0.152, 0.0), box(0, 0, 9.75, -15.85, -0.152)
+        boxes = [slab, block]
+        self.assertEqual(I.remember_slabs(boxes), 1)
+        boxes = [block]
+        self.assertEqual(I.buried_boxes(boxes, self.floors), 1)
+        self.assertIs(block.get("nav"), False)
+
+    def test_remembered_slab_that_is_no_floor_keeps_the_block(self):
+        slab, block = box(20, 20, 4.0, 1.0, 1.2), box(20, 20, 4.0, 0.0, 1.0)
+        I.remember_slabs([slab, block])
+        self.assertEqual(I.buried_boxes([block], self.floors), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
