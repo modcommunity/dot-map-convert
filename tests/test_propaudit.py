@@ -20,10 +20,12 @@ def measure(x, y, z):
 
 class FitPass(unittest.TestCase):
     def setUp(self):
-        self._env = {k: os.environ.pop(k) for k in list(os.environ) if k.startswith("DOT_PROP_FIT")}
+        self._env = {k: os.environ.pop(k) for k in list(os.environ) if k.startswith(("DOT_PROP_FIT", "DOT_PROP_MISFIT"))}
         standins.FIT_STATS.clear()
 
     def tearDown(self):
+        for k in [k for k in os.environ if k.startswith(("DOT_PROP_FIT", "DOT_PROP_MISFIT"))]:
+            del os.environ[k]
         os.environ.update(self._env)
 
     def fit(self, rec, m, sc=1.0):
@@ -52,6 +54,24 @@ class FitPass(unittest.TestCase):
         self.assertEqual(out["box"], [12.2, 2.4, 0.08])
         self.assertEqual(out["solid"], 6)
         self.assertEqual(out["model"], "window1.mdl")
+
+    def test_a_large_open_misfit_keeps_its_stand_in_fitted_inside(self):
+        # streetlight_traffic_rev.mdl: 5.8 x 7.7 x 1.3 m (pole and arm) through ceiling_light; a block of that is a slab
+        native = standins.standin_dims("ceiling_light")
+        rec = {"stand_in": "ceiling_light", "model": "streetlight.mdl", "at": [0, 0, 0], "yaw": 0, "scale": 1.0, "size": 7.7}
+        out = self.fit(rec, measure(5.8, 7.7, 1.3))
+        self.assertNotIn("box", out)
+        self.assertEqual(out["misfit"], "ceiling_light")
+        drawn = sorted(v * out["size"] / max(native) for v in native)
+        for d, s in zip(drawn, sorted([5.8, 7.7, 1.3])):
+            self.assertLessEqual(d, s + 0.01)
+        self.assertEqual(standins.FIT_STATS.get("fitted_in"), 1)
+        os.environ["DOT_PROP_MISFIT"] = "box"
+        self.assertIn("box", self.fit(dict(rec, size=7.7), measure(5.8, 7.7, 1.3)))
+        os.environ["DOT_PROP_MISFIT"] = "bogus"
+        with self.assertRaises(ValueError):
+            self.fit(dict(rec, size=7.7), measure(5.8, 7.7, 1.3))
+        del os.environ["DOT_PROP_MISFIT"]
 
     def test_trees_keep_their_height_fit_unless_far_off(self):
         rec = {"stand_in": "tree", "model": "t.mdl", "at": [0, 0, 0], "yaw": 0, "scale": 1.0, "size": 9.0}

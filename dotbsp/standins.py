@@ -401,6 +401,7 @@ def _fit_natural(rec, measured, modelscale):
 # - then, a stand-in whose proportions still do not fit (sorted sides, one off by more than FIT_DISTORT times and
 #   FIT_SLACK metres; a 12 x 2.4 x 0.08 m window drawn as a 12 x 8 x 4 m block) is replaced by a neutral block of
 #   the source's measured box (`boxed`; the record keeps `model`, `solid` and says `misfit: <stand-in>`).
+#   Only a panel or a small model is boxed; a large open one is fitted inside its box instead (see `fitted_in` below).
 # Upright natural stand-ins (trees, plants) are sized by height on purpose and are only rescaled when FIT_OUTLIER
 # times off. No measure (a stock model missing from model_dims.tsv), no check (`unmeasured`). The policy is
 # $DOT_PROP_FIT: `rescale` (the default), `off`, or `fail` (raise on the first misfit instead of fixing it);
@@ -408,6 +409,7 @@ def _fit_natural(rec, measured, modelscale):
 # coverage report's `prop_fit`.
 FIT_LOW, FIT_HIGH, FIT_DISTORT, FIT_SLACK, FIT_OUTLIER = 0.8, 1.25, 2.5, 0.5, 10.0
 FIT_MIN_SIDE = 0.05
+FIT_PANEL, FIT_SMALL = 0.3, 2.0
 FIT_STATS = {}
 _STANDIN_DIMS = None
 
@@ -488,6 +490,23 @@ def fit_prop(rec, measured, o, yaw, modelscale, scale, y0):
     if pol == "fail":
         raise ValueError("prop fit: %s as %s is the wrong shape (%s m drawn for %s m)" % (rec.get("model"), rec.get("stand_in"),
                          [round(v, 2) for v in out], [round(v, 2) for v in src]))
+    # A block of the source's box is faithful only for a panel (thinnest side under FIT_PANEL: a window, a sign, a
+    # board) or a small model (longest side under FIT_SMALL). A large open model (a traffic light's pole and arm, a lamp
+    # post, a pipe run, a shelf) fills a fraction of its box: a block of it is a 6 x 8 m slab across a street. That one
+    # keeps its stand-in, uniformly scaled to fit inside the source's box (`fitted_in`, still labelled `misfit`).
+    # $DOT_PROP_MISFIT: `auto` (the default), `box` (always the block) or `fitin` (never the block).
+    mode = os.environ.get("DOT_PROP_MISFIT", "auto") or "auto"
+    if mode not in ("auto", "box", "fitin"):
+        raise ValueError("DOT_PROP_MISFIT=%r: use auto, box or fitin" % mode)
+    ssrc = sorted(src)
+    blockish = ssrc[0] < _fit_env("PANEL", FIT_PANEL) or ssrc[-1] <= _fit_env("SMALL", FIT_SMALL)
+    if mode == "fitin" or (mode == "auto" and not blockish):
+        snat = sorted(native)
+        f = min(ssrc[i] / (k * snat[i]) for i in range(3) if snat[i] > 0.001)   # drawn side i = k * f * native side i
+        rec["size"] = round(f * max(native), 3)
+        rec["misfit"] = rec.get("stand_in")
+        _count("fitted_in")
+        return rec
     tmp = {}
     _collide(tmp, measured, o, yaw, modelscale, scale, y0, key="bounds")
     box = {"box": tmp["bounds"]["box"], "at": tmp["bounds"]["at"], "yaw": tmp["bounds"]["yaw"], "scale": 1.0,
