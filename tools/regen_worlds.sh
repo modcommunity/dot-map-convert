@@ -3,7 +3,7 @@
 #   [SRC=dir] [GAME=arena] tools/regen_worlds.sh <maps repo> [map ids...]
 # Credit comes from <maps repo>/maps.json (id, author, source) or else maps/<id>/licence.json.
 # Default ids: every maps/<id>. Writes worlds/<id>/<id>.*; art stores are <repo>/.stores/{pbr,model}-library when
-# .stores exists (the dot-bootstrap lock-store layout the committed manifests point at), else <repo>/{pbr,model}-library.
+# .stores exists (the GameSpice Bootstrap lock-store layout the committed manifests point at), else <repo>/{pbr,model}-library.
 set -u
 # HEAVY= (empty) runs the regen unqueued, for a box without heavy (gpu.sh py).
 HERE="$(cd "$(dirname "$0")" && pwd)"

@@ -23,8 +23,8 @@ The skybox and detail models the default rules leave out, and the three earlier 
 | Valve model | instances | asset | source | licence |
 |---|---|---|---|---|
 | `cranes/crane_docks` | 1 | `ph_overhead_crane` | Poly Haven | CC0-1.0 |
-| `cranes/crane_frame` | 1 | `dm_latticetower` | dot-map Blender model | CC0-1.0 |
-| `cranes/crane_frame_interior` | 1 | `dm_latticetower` | dot-map Blender model | CC0-1.0 |
+| `cranes/crane_frame` | 1 | `dm_latticetower` | GameSpice Map Blender model | CC0-1.0 |
+| `cranes/crane_frame_interior` | 1 | `dm_latticetower` | GameSpice Map Blender model | CC0-1.0 |
 | `props_buildings/project_building01_skybox` | 8 | `kenney_city-kit-commercial_building-f` | Kenney City Kit - Commercial | CC0-1.0 |
 | `props_buildings/project_building02_skybox` | 4 | `kenney_city-kit-industrial_building-s` | Kenney City Kit - Industrial | CC0-1.0 |
 | `props_buildings/project_building03_skybox` | 3 | `kenney_city-kit-commercial_building-i` | Kenney City Kit - Commercial | CC0-1.0 |
@@ -37,29 +37,29 @@ The skybox and detail models the default rules leave out, and the three earlier 
 | `props_buildings/row_res_2` | 4 | `kenney_city-kit-industrial_building-s` | Kenney City Kit - Industrial | CC0-1.0 |
 | `props_buildings/row_res_2_ascend` | 5 | `kenney_city-kit-commercial_building-k` | Kenney City Kit - Commercial | CC0-1.0 |
 | `props_buildings/row_upscale` | 7 | `kenney_city-kit-industrial_building-s` | Kenney City Kit - Industrial | CC0-1.0 |
-| `props_c17/utilityconnecter002` | 2 | `dm_linecrossarm` | dot-map Blender model | CC0-1.0 |
+| `props_c17/utilityconnecter002` | 2 | `dm_linecrossarm` | GameSpice Map Blender model | CC0-1.0 |
 | `props_canal/refinery_03_skybox` | 2 | `sf_rusted_tank_storage_57be2e` | Sketchfab | CC-BY-4.0 |
-| `props_docks/dock01_pole01a_128` | 8 | `dm_dockpileshort` | dot-map Blender model | CC0-1.0 |
-| `props_docks/dock01_pole01a_256` | 13 | `dm_dockpile` | dot-map Blender model | CC0-1.0 |
-| `props_docks/dock01_polecluster01b` | 7 | `dm_dockpilecluster` | dot-map Blender model | CC0-1.0 |
-| `props_docks/dock01_polecluster01b_256` | 1 | `dm_dockpileclustershort` | dot-map Blender model | CC0-1.0 |
-| `props_docks/dock02_pole02a` | 1 | `dm_dockpiletall` | dot-map Blender model | CC0-1.0 |
-| `props_docks/dock_bumper01a` | 3 | `dm_dockfendersquare` | dot-map Blender model | CC0-1.0 |
-| `props_docks/dock_bumper01b_256` | 1 | `dm_dockfenderhalf` | dot-map Blender model | CC0-1.0 |
-| `props_docks/dock_bumper02a` | 3 | `dm_dockfenderlong` | dot-map Blender model | CC0-1.0 |
-| `props_docks/dock_bumper03a` | 2 | `dm_dockfenderlong` | dot-map Blender model | CC0-1.0 |
-| `props_rooftop/chimneysmokestack_cluster01a` | 1 | `dm_roofstackrow` | dot-map Blender model | CC0-1.0 |
-| `props_rooftop/dome004` | 1 | `dm_roofdome` | dot-map Blender model | CC0-1.0 |
-| `props_rooftop/rooftopcluser09a` | 6 | `dm_rooftophvac` | dot-map Blender model | CC0-1.0 |
-| `props_rooftop/satellitedish02` | 1 | `dm_roofdish` | dot-map Blender model | CC0-1.0 |
-| `props_trainstation/trackmarkers01` | 12 | `dm_trackmarker` | dot-map Blender model | CC0-1.0 |
+| `props_docks/dock01_pole01a_128` | 8 | `dm_dockpileshort` | GameSpice Map Blender model | CC0-1.0 |
+| `props_docks/dock01_pole01a_256` | 13 | `dm_dockpile` | GameSpice Map Blender model | CC0-1.0 |
+| `props_docks/dock01_polecluster01b` | 7 | `dm_dockpilecluster` | GameSpice Map Blender model | CC0-1.0 |
+| `props_docks/dock01_polecluster01b_256` | 1 | `dm_dockpileclustershort` | GameSpice Map Blender model | CC0-1.0 |
+| `props_docks/dock02_pole02a` | 1 | `dm_dockpiletall` | GameSpice Map Blender model | CC0-1.0 |
+| `props_docks/dock_bumper01a` | 3 | `dm_dockfendersquare` | GameSpice Map Blender model | CC0-1.0 |
+| `props_docks/dock_bumper01b_256` | 1 | `dm_dockfenderhalf` | GameSpice Map Blender model | CC0-1.0 |
+| `props_docks/dock_bumper02a` | 3 | `dm_dockfenderlong` | GameSpice Map Blender model | CC0-1.0 |
+| `props_docks/dock_bumper03a` | 2 | `dm_dockfenderlong` | GameSpice Map Blender model | CC0-1.0 |
+| `props_rooftop/chimneysmokestack_cluster01a` | 1 | `dm_roofstackrow` | GameSpice Map Blender model | CC0-1.0 |
+| `props_rooftop/dome004` | 1 | `dm_roofdome` | GameSpice Map Blender model | CC0-1.0 |
+| `props_rooftop/rooftopcluser09a` | 6 | `dm_rooftophvac` | GameSpice Map Blender model | CC0-1.0 |
+| `props_rooftop/satellitedish02` | 1 | `dm_roofdish` | GameSpice Map Blender model | CC0-1.0 |
+| `props_trainstation/trackmarkers01` | 12 | `dm_trackmarker` | GameSpice Map Blender model | CC0-1.0 |
 | `props_vehicles/tire001a_tractor` | 2 | `ph_old_tyre` | Poly Haven | CC0-1.0 |
 | `props_vents/vent_large_corner001` | 1 | `ph_modular_airduct_rectangular_01` | Poly Haven | CC0-1.0 |
-| `props_vents/vent_large_corner002` | 4 | `dm_ductrun` | dot-map Blender model | CC0-1.0 |
-| `props_vents/vent_large_straight001` | 5 | `dm_ductrun` | dot-map Blender model | CC0-1.0 |
-| `props_vents/vent_large_straight002` | 2 | `dm_ductrun` | dot-map Blender model | CC0-1.0 |
+| `props_vents/vent_large_corner002` | 4 | `dm_ductrun` | GameSpice Map Blender model | CC0-1.0 |
+| `props_vents/vent_large_straight001` | 5 | `dm_ductrun` | GameSpice Map Blender model | CC0-1.0 |
+| `props_vents/vent_large_straight002` | 2 | `dm_ductrun` | GameSpice Map Blender model | CC0-1.0 |
 | `props_wasteland/coolingtank02` | 4 | `sf_rusted_tank_storage_57be2e` | Sketchfab | CC-BY-4.0 |
-| `props_wasteland/prison_sprinkler001b` | 6 | `dm_sprinklerpipe` | dot-map Blender model | CC0-1.0 |
+| `props_wasteland/prison_sprinkler001b` | 6 | `dm_sprinklerpipe` | GameSpice Map Blender model | CC0-1.0 |
 
 ## Open items
 

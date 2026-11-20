@@ -29,7 +29,7 @@ The converter finds the dot-map addon it writes into as the sibling checkout `..
 | `regen` | Rebuild a map's manifest, textures and `CREDITS.md` from the store and the rules; `--ratchet` fails if coverage drops |
 | `audit` | Check the output keeps every player-solid brush and walkable top |
 | `unmapped`, `classes`, `modeldims`, `modelparts`, `modelmap`, `pbrmap`, `standins` | Coverage reports and the mapping steps for textures, entity classes and models |
-| `storepack`, `bundle` | Ship the texture and model stores as dot-cloud slices, or make a world self-contained for a map pack |
+| `storepack`, `bundle` | Ship the texture and model stores as GameSpice Cloud slices, or make a world self-contained for a map pack |
 
 To keep a maps repository's `.stores/model-library` (a link tree into `~/art-library/models`) from going stale, run `tools/refresh_stores.sh <maps repo>`: it links each library file the store lacks and never touches what is there.
 

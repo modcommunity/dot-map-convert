@@ -1,4 +1,4 @@
-# dot-map-convert
+# GameSpice Map Convert
 
 The family's one map converter: community BSP maps (VBSP v19-21) to the documented intermediate, the drawn mesh and the per-game manifests, plus every table that maps an original texture, model or sound to its free replacement or records that it is kept. Python 3 standard library only, no Godot project. It moved here from `dot-map/tools/bsp` on 2026-11-01 with its history; the engine-runtime code stays in `dot-map`.
 
