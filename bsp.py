@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dotbsp import bundle, licence, pbrmap, modeldims, modelmap, modelparts, standinreport, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality, unconverted  # noqa: E402
+from dotbsp import bundle, licence, pbrmap, propaudit, modeldims, modelmap, modelparts, standinreport, storepack, storecheck, audit, classes, regen, units, docboxes, environment, gma, importer, intermediate, mesh, movers, reader, sources, store, terrain, texturemap, texquality, unconverted  # noqa: E402
 
 
 def _credit(args):
@@ -557,10 +557,11 @@ def main(argv):
     sa.add_argument("manifests", nargs="+", help="a pack's manifest json")
     sa.add_argument("--pbr-store", help="the PBR store; default the manifest's licence.pbr_store")
     sa.add_argument("--px", type=int, default=licence.SMALL_PX, help="side in pixels (default %d)" % licence.SMALL_PX)
+    propaudit.add_parser(sub)
     args = ap.parse_args(argv[1:])
     try:
         return {"convert": cmd_convert, "list": cmd_list, "unmapped": cmd_unmapped, "mesh": cmd_mesh,
-                "classes": cmd_classes, "unconverted": cmd_unconverted, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelparts": modelparts.cmd, "modelmap": modelmap.cmd, "standins": standinreport.cmd, "storepack": storepack.run_cmd, "bundle": bundle.cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd}[args.cmd](args)
+                "classes": cmd_classes, "unconverted": cmd_unconverted, "audit": cmd_audit, "import": cmd_import, "store": lambda a: store.cmd(a), "regen": regen.cmd, "pbrmap": pbrmap.cmd, "modeldims": modeldims.cmd, "modelparts": modelparts.cmd, "modelmap": modelmap.cmd, "standins": standinreport.cmd, "storepack": storepack.run_cmd, "bundle": bundle.cmd, "storecheck": storecheck.cmd, "smallalbedo": licence.cmd_small, "texquality": texquality.cmd, "propaudit": propaudit.cmd}[args.cmd](args)
     except gma.GmaMissing as e:
         print("bsp.py: %s" % e, file=sys.stderr)
         return 2

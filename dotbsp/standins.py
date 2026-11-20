@@ -329,6 +329,7 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
     packed = packed if packed is not None else _models_measure(bsp)
     doc = {"entities": [{"classname": e.get("classname", ""), "keys": e} for e in bsp.entities],
            "static_props": bsp.static_props()}
+    FIT_STATS.clear()
     out = []
     for p in _props.placed_props(doc, free):
         if game_table is not None and game_table.get(p["model"]) is not None:
@@ -347,6 +348,8 @@ def placements(bsp, game_table=None, table=None, scale=0.01905, y0=0.0, sizes=No
             rec["size"] = size
         else:
             _fit_natural(rec, packed.get(p["model"]), p.get("scale"))
+        rec = fit_prop(rec, packed.get(p["model"]) or _listed_measure(_props.norm_model(p["model"])), p["origin"], p["yaw"],
+                       p.get("scale"), scale, y0)
         out.append(rec)
     shaped = shape_matches(bsp, game_table, table, packed=packed) if shaped is None else shaped
     spots = _spots(doc)
@@ -388,6 +391,112 @@ def _fit_natural(rec, measured, modelscale):
     base = measured["min"][1] * _props._num(modelscale, 1.0)
     if abs(base) > 0.05:
         rec["at"][1] = round(rec["at"][1] + base, 4)
+
+
+# The prop fit pass. Whatever chose a stand-in and its `size` (the free table with no size, a `Sizes` row, the
+# natural fit, a library pick), the drawn box is checked against the source model's measured box at convert time,
+# with the runtime's own sum (dot-map mesh_props.gd `_place_prop`: native box x scale x size / native longest side):
+# - drawn longest side outside [FIT_LOW, FIT_HIGH] x the source's: `size` is set to the source's longest side
+#   (`rescaled`), so a 3.8 m fence is no longer a 1 m kit fence and a 0.8 m sky cluster no longer a 23 m tree;
+# - then, a stand-in whose proportions still do not fit (sorted sides, one off by more than FIT_DISTORT times and
+#   FIT_SLACK metres; a 12 x 2.4 x 0.08 m window drawn as a 12 x 8 x 4 m block) is replaced by a neutral block of
+#   the source's measured box (`boxed`; the record keeps `model`, `solid` and says `misfit: <stand-in>`).
+# Upright natural stand-ins (trees, plants) are sized by height on purpose and are only rescaled when FIT_OUTLIER
+# times off. No measure (a stock model missing from model_dims.tsv), no check (`unmeasured`). The policy is
+# $DOT_PROP_FIT: `rescale` (the default), `off`, or `fail` (raise on the first misfit instead of fixing it);
+# the thresholds are $DOT_PROP_FIT_LOW, _HIGH, _DISTORT, _SLACK and _OUTLIER. Counts land in FIT_STATS and the
+# coverage report's `prop_fit`.
+FIT_LOW, FIT_HIGH, FIT_DISTORT, FIT_SLACK, FIT_OUTLIER = 0.8, 1.25, 2.5, 0.5, 10.0
+FIT_MIN_SIDE = 0.05
+FIT_STATS = {}
+_STANDIN_DIMS = None
+
+
+def _fit_env(name, default):
+    v = os.environ.get("DOT_PROP_FIT_" + name)
+    return float(v) if v not in (None, "") else default
+
+
+def fit_policy():
+    pol = os.environ.get("DOT_PROP_FIT", "rescale") or "rescale"
+    if pol not in ("rescale", "off", "fail"):
+        raise ValueError("DOT_PROP_FIT=%r: use rescale, off or fail" % pol)
+    return pol
+
+
+def standin_dims(ident):
+    """The native (x, y, z) a stand-in id is drawn at before `size` and `scale`, or None: a dot-map prop from
+    `standin_dims.tsv`, a `lib/<id>` from the model library's manifest."""
+    global _STANDIN_DIMS
+    if _STANDIN_DIMS is None:
+        from . import propaudit
+        _STANDIN_DIMS = dict(propaudit.load_standin_dims())
+        try:
+            from . import modelmap
+            for row in modelmap.manifest():
+                _STANDIN_DIMS["lib/" + row["id"]] = tuple(row["dims"])
+        except (OSError, KeyError, ValueError):
+            pass
+    return _STANDIN_DIMS.get(ident)
+
+
+def _count(key):
+    FIT_STATS[key] = FIT_STATS.get(key, 0) + 1
+
+
+def fit_prop(rec, measured, o, yaw, modelscale, scale, y0):
+    """`rec` checked against the source's measure (see above): itself, rescaled, or a block in its place."""
+    pol = fit_policy()
+    if pol == "off" or "box" in rec:
+        return rec
+    native = standin_dims(rec.get("stand_in", ""))
+    if not measured or not native or max(native) <= 0.001:
+        _count("unmeasured")
+        return rec
+    k = _props._num(modelscale, 1.0)
+    src = [v * k for v in measured["size"]]
+    if max(src) < FIT_MIN_SIDE:
+        _count("tiny")
+        return rec
+
+    def drawn(size):
+        f = k * (size / max(native) if size else 1.0)
+        return [v * f for v in native]
+
+    lo, hi = _fit_env("LOW", FIT_LOW), _fit_env("HIGH", FIT_HIGH)
+    outlier = _fit_env("OUTLIER", FIT_OUTLIER)
+    out = drawn(rec.get("size"))
+    ratio = max(out) / max(src)
+    upright = rec.get("stand_in") in NATURAL_UPRIGHT or "tree" in rec.get("stand_in", "")
+    off = (ratio >= outlier or ratio <= 1.0 / outlier) if upright else not lo <= ratio <= hi
+    if off:
+        if pol == "fail":
+            raise ValueError("prop fit: %s as %s drawn %.2fx its measured size" % (rec.get("model"), rec.get("stand_in"), ratio))
+        rec["size"] = round(max(measured["size"]), 3)
+        out = drawn(rec["size"])
+        _count("rescaled")
+    if upright:
+        _count("rescaled_upright" if off else "fits")
+        return rec
+    dist, slack = _fit_env("DISTORT", FIT_DISTORT), _fit_env("SLACK", FIT_SLACK)
+    bad = any(a >= FIT_MIN_SIDE and b > 0 and max(a / b, b / a) > dist and abs(a - b) > slack
+              for a, b in zip(sorted(src), sorted(out)))
+    if not bad:
+        if not off:
+            _count("fits")
+        return rec
+    if pol == "fail":
+        raise ValueError("prop fit: %s as %s is the wrong shape (%s m drawn for %s m)" % (rec.get("model"), rec.get("stand_in"),
+                         [round(v, 2) for v in out], [round(v, 2) for v in src]))
+    tmp = {}
+    _collide(tmp, measured, o, yaw, modelscale, scale, y0, key="bounds")
+    box = {"box": tmp["bounds"]["box"], "at": tmp["bounds"]["at"], "yaw": tmp["bounds"]["yaw"], "scale": 1.0,
+           "model": rec.get("model"), "misfit": rec.get("stand_in")}
+    for key in ("solid", "collide"):
+        if key in rec:
+            box[key] = rec[key]
+    _count("boxed")
+    return box
 
 
 def _models_measure(bsp):
@@ -528,9 +637,10 @@ def _shaped_placements(spots, shaped, scale, y0, boxed=frozenset(), packed=None)
         if sol:
             rec["solid"] = sol
             _collide(rec, measured, o, ang[1], sc, scale, y0)
+        measured = measured or _listed_measure(_props.norm_model(model))
         if "collide" not in rec:
-            _collide(rec, measured or _listed_measure(_props.norm_model(model)), o, ang[1], sc, scale, y0, key="bounds")
-        out.append(rec)
+            _collide(rec, measured, o, ang[1], sc, scale, y0, key="bounds")
+        out.append(fit_prop(rec, measured, o, ang[1], sc, scale, y0))
     return out
 
 
